@@ -6,13 +6,17 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "verify:universe": "node scripts/verify-universe.mjs"
   },
   "dependencies": {
+    "html2canvas": "^1.4.1",
+    "jspdf": "^4.2.1",
     "lightweight-charts": "^5.2.1",
     "next": "16.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
+    "react-resizable-panels": "^2.1.9",
     "yahoo-finance2": "^4.0.2"
   },
   "devDependencies": {

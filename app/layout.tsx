@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { KeyboardLayer } from "@/components/keyboard-layer";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -15,7 +16,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Bursa Terminal",
   description:
-    "High-density Malaysian market terminal for Bursa Malaysia equities, filings, and macro intel.",
+    "The financial workspace built for the Malaysian market. Live Bursa quotes, BNM rates, and Shariah screening.",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: "#0a0a0a",
+  colorScheme: "dark",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -24,7 +33,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="h-full overflow-hidden bg-terminal font-sans text-neutral-200">
+      {/* Landing and news desks scroll; the terminal pins itself to the viewport. */}
+      <body className="min-h-full overflow-x-hidden bg-terminal font-sans text-neutral-200">
+        <KeyboardLayer />
         {children}
       </body>
     </html>

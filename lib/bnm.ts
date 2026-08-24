@@ -16,6 +16,8 @@ export const VALID_SESSIONS = ["0900", "1200", "1700"] as const;
 const TRACKED_PAIRS = [
   { currencyCode: "USD", pair: "USD/MYR" },
   { currencyCode: "SGD", pair: "SGD/MYR" },
+  { currencyCode: "EUR", pair: "EUR/MYR" },
+  { currencyCode: "CNY", pair: "CNY/MYR" },
 ];
 
 type BnmRateRow = {

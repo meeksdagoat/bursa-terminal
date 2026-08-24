@@ -14,6 +14,7 @@ import {
   type LineData,
   type UTCTimestamp,
 } from "lightweight-charts";
+import { Jargon } from "@/components/jargon-term";
 import { formatKlTime, formatPrice, formatVolume } from "@/lib/format";
 import type { Candle } from "@/lib/types";
 
@@ -157,8 +158,11 @@ export default function PriceChart({ candles, style, intraday, up }: PriceChartP
           <span>
             C <span className="text-neutral-200">{formatPrice(readout.close)}</span>
           </span>
-          <span>
-            VOL <span className="text-neutral-200">{formatVolume(readout.volume)}</span>
+          {/* Re-enables pointer events on the label alone so the definition can
+              be opened without handing the whole readout the mouse. */}
+          <span className="pointer-events-auto">
+            <Jargon term="volume">VOL</Jargon>{" "}
+            <span className="text-neutral-200">{formatVolume(readout.volume)}</span>
           </span>
         </div>
       ) : null}

@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
   const session = normalizeSession(request.nextUrl.searchParams.get("session"));
 
   try {
-    const payload = await cached(`bnm:${session}`, TTL_MS, () => getBnmSnapshot(session));
+    const payload = await cached(`bnm:${session}:v2`, TTL_MS, () => getBnmSnapshot(session));
     return Response.json(payload, {
       headers: { "Cache-Control": "public, max-age=0, s-maxage=300" },
     });

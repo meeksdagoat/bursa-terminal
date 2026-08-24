@@ -28,6 +28,7 @@ export function useLiveData<T>(url: string, intervalMs: number): LiveData<T> {
 
   useEffect(() => {
     let cancelled = false;
+    setLoading(true);
 
     async function load() {
       abortRef.current?.abort();
