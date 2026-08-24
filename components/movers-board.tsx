@@ -43,7 +43,7 @@ export function MoversBoard({ payload, error, loading, size = 6 }: MoversBoardPr
           </span>
           <Link
             href="/terminal"
-            className="border border-line px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-gain hover:bg-gain/10"
+            className="inline-flex min-h-11 items-center border border-line px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-gain hover:bg-gain/10 md:min-h-0"
           >
             Open Bursa MY
           </Link>

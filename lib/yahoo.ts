@@ -207,6 +207,60 @@ export async function fetchTickerNews(symbol: string, name: string): Promise<Tic
   return items;
 }
 
+const QUOTE_SUMMARY_MODULES = [
+  "summaryDetail",
+  "financialData",
+  "defaultKeyStatistics",
+  "calendarEvents",
+  "price",
+] as const;
+
+/**
+ * Yahoo quoteSummary for the modules the Bursa deep-dive panel reads.
+ * yahoo-finance2 hits the same v10 quoteSummary endpoint and carries the crumb.
+ */
+export async function fetchQuoteSummary(symbol: string): Promise<unknown> {
+  return yahoo.quoteSummary(
+    symbol,
+    { modules: [...QUOTE_SUMMARY_MODULES] },
+    { validateResult: false },
+  );
+}
+
+export type FundamentalsSeriesType = "annual" | "quarterly";
+export type FundamentalsSeriesModule = "financials" | "balance-sheet" | "cash-flow" | "all";
+
+/**
+ * Yahoo fundamentals-timeseries statements. Unreported periods are omitted
+ * (`padTimeSeries: false`); do not invent values client-side.
+ */
+export async function fetchFundamentalsTimeSeries(
+  symbol: string,
+  options: {
+    period1: string | Date;
+    period2?: string | Date;
+    type: FundamentalsSeriesType;
+    module: FundamentalsSeriesModule;
+  },
+): Promise<unknown[]> {
+  const raw: unknown = await yahoo.fundamentalsTimeSeries(
+    symbol,
+    {
+      period1: options.period1,
+      ...(options.period2 ? { period2: options.period2 } : {}),
+      type: options.type,
+      module: options.module,
+      padTimeSeries: false,
+      merge: false,
+      region: "MY",
+      lang: "en-MY",
+    },
+    { validateResult: false },
+  );
+
+  return Array.isArray(raw) ? raw : [];
+}
+
 export async function fetchDailyCloses(
   symbol: string,
   period1: Date,

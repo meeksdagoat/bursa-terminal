@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type MouseEvent } from "react";
 import {
   CandlestickSeries,
   ColorType,
@@ -18,17 +18,21 @@ import {
   type LineData,
   type Time,
   type UTCTimestamp,
+  type WhitespaceData,
 } from "lightweight-charts";
 import { Jargon } from "@/components/jargon-term";
 import { formatKlTime, formatPrice, formatVolume } from "@/lib/format";
 import {
   FIB_LEVELS,
+  alignToTimes,
   emaOverlay,
   macdOverlay,
   rsiOverlay,
+  sanitizeCandles,
   smaOverlay,
   toHeikinAshi,
   volumeProfile,
+  type AlignedPoint,
   type VolumeBin,
 } from "@/lib/chart-overlays";
 import type { ChartType } from "@/lib/ranges";
@@ -122,29 +126,6 @@ const TIME_SCALE = {
   barSpacing: 6,
 } as const;
 
-function applyContainerSize(chart: IChartApi, container: HTMLElement) {
-  const width = container.clientWidth;
-  const height = container.clientHeight;
-  if (width < 1 || height < 1) return;
-  chart.applyOptions({ width, height });
-}
-
-function fitTimeScale(chart: IChartApi, barCount: number) {
-  chart.timeScale().applyOptions({
-    timeVisible: true,
-    secondsVisible: false,
-    rightOffset: 12,
-    barSpacing: 6,
-  });
-  chart.timeScale().fitContent();
-  if (barCount > 0) {
-    chart.timeScale().setVisibleLogicalRange({
-      from: 0,
-      to: barCount - 1 + 12,
-    });
-  }
-}
-
 function toOhlc(candles: Candle[]): CandlestickData<UTCTimestamp>[] {
   return candles.map((candle) => ({
     time: candle.time as UTCTimestamp,
@@ -170,6 +151,50 @@ function toLine(candles: Candle[]): LineData<UTCTimestamp>[] {
   }));
 }
 
+function toAlignedLine(
+  points: AlignedPoint[],
+): (LineData<UTCTimestamp> | WhitespaceData<UTCTimestamp>)[] {
+  return points.map((point) =>
+    point.value == null
+      ? { time: point.time as UTCTimestamp }
+      : { time: point.time as UTCTimestamp, value: point.value },
+  );
+}
+
+function toAlignedHistogram(
+  points: AlignedPoint[],
+  colorOf: (value: number) => string,
+): (HistogramData<UTCTimestamp> | WhitespaceData<UTCTimestamp>)[] {
+  return points.map((point) =>
+    point.value == null
+      ? { time: point.time as UTCTimestamp }
+      : {
+          time: point.time as UTCTimestamp,
+          value: point.value,
+          color: colorOf(point.value),
+        },
+  );
+}
+
+type DatasetMark = { first: number; length: number; last: number };
+
+function markDataset(candles: Candle[]): DatasetMark | null {
+  if (candles.length === 0) return null;
+  return {
+    first: candles[0].time,
+    length: candles.length,
+    last: candles[candles.length - 1].time,
+  };
+}
+
+function shouldFitContent(prev: DatasetMark | null, next: DatasetMark | null): boolean {
+  if (!next) return false;
+  if (!prev) return true;
+  const sameWindow = prev.first === next.first && prev.length === next.length && prev.last === next.last;
+  const appendedBar = prev.first === next.first && next.length === prev.length + 1 && next.last >= prev.last;
+  return !sameWindow && !appendedBar;
+}
+
 function newId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
 }
@@ -182,7 +207,7 @@ type PriceMapper = {
   width: number;
 };
 
-export function StockCandlestickChart({
+export const StockCandlestickChart = memo(function StockCandlestickChart({
   candles,
   chartType = "candlestick",
   overlays = EMPTY_OVERLAYS,
@@ -193,14 +218,14 @@ export function StockCandlestickChart({
   const chartRef = useRef<IChartApi | null>(null);
   const candleSeriesRef = useRef<ISeriesApi<"Candlestick"> | ISeriesApi<"Line"> | null>(null);
   const volumeSeriesRef = useRef<ISeriesApi<"Histogram"> | null>(null);
-  const overlaySeriesRef = useRef<ISeriesApi<"Line">[]>([]);
+  const overlaySeriesRef = useRef<Map<string, ISeriesApi<"Line">>>(new Map());
   const rsiSeriesRef = useRef<ISeriesApi<"Line"> | null>(null);
   const macdLineRef = useRef<ISeriesApi<"Line"> | null>(null);
   const macdSignalRef = useRef<ISeriesApi<"Line"> | null>(null);
   const macdHistRef = useRef<ISeriesApi<"Histogram"> | null>(null);
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const byTimeRef = useRef<Map<number, Candle>>(new Map());
-  const barCountRef = useRef(0);
+  const datasetRef = useRef<DatasetMark | null>(null);
   const [hovered, setHovered] = useState<Candle | null>(null);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [draft, setDraft] = useState<ChartPoint | null>(null);
@@ -208,9 +233,10 @@ export function StockCandlestickChart({
   const [mapper, setMapper] = useState<PriceMapper | null>(null);
   const [profile, setProfile] = useState<VolumeBin[]>([]);
 
+  const prepared = useMemo(() => sanitizeCandles(candles), [candles]);
   const displayCandles = useMemo(
-    () => (chartType === "heikin-ashi" ? toHeikinAshi(candles) : candles),
-    [candles, chartType],
+    () => (chartType === "heikin-ashi" ? toHeikinAshi(prepared) : prepared),
+    [prepared, chartType],
   );
 
   const overlayKey = `${overlays.rsi ? 1 : 0}${overlays.macd ? 1 : 0}${chartType}`;
@@ -219,15 +245,20 @@ export function StockCandlestickChart({
     const container = containerRef.current;
     if (!container) return;
 
+    const coarse = window.matchMedia("(pointer: coarse)").matches;
+
     const chart = createChart(container, {
-      width: container.clientWidth,
-      height: container.clientHeight,
+      autoSize: true,
       layout: {
         background: { type: ColorType.Solid, color: BACKGROUND },
         textColor: AXIS_TEXT,
         fontSize: 10,
         fontFamily: "var(--font-geist-mono), ui-monospace, monospace",
         attributionLogo: false,
+        panes: {
+          separatorColor: "#262626",
+          separatorHoverColor: "rgba(245, 158, 11, 0.35)",
+        },
       },
       grid: {
         vertLines: { color: GRID, style: LineStyle.Dotted },
@@ -236,7 +267,7 @@ export function StockCandlestickChart({
       rightPriceScale: {
         borderColor: GRID,
         entireTextOnly: true,
-        scaleMargins: { top: 0.05, bottom: overlays.rsi || overlays.macd ? 0.08 : 0.28 },
+        scaleMargins: { top: 0.06, bottom: 0.22 },
       },
       localization: {
         timeFormatter: formatKlCrosshairTime,
@@ -261,8 +292,8 @@ export function StockCandlestickChart({
       handleScroll: {
         mouseWheel: true,
         pressedMouseMove: true,
-        horzTouchDrag: true,
-        vertTouchDrag: true,
+        horzTouchDrag: !coarse,
+        vertTouchDrag: false,
       },
       handleScale: {
         axisPressedMouseMove: true,
@@ -291,7 +322,7 @@ export function StockCandlestickChart({
       priceScaleId: "",
     });
     chart.priceScale("").applyOptions({
-      scaleMargins: { top: overlays.rsi || overlays.macd ? 0.82 : 0.78, bottom: 0 },
+      scaleMargins: { top: 0.8, bottom: 0 },
     });
 
     let rsiSeries: ISeriesApi<"Line"> | null = null;
@@ -305,17 +336,21 @@ export function StockCandlestickChart({
     if (overlays.rsi) {
       const pane = chart.addPane(true);
       pane.setStretchFactor(0.18);
-      rsiSeries = chart.addSeries(
-        LineSeries,
-        {
-          color: "#eab308",
-          lineWidth: 1,
-          priceLineVisible: false,
-          lastValueVisible: true,
-          title: "RSI",
-        },
-        chart.panes().length - 1,
-      );
+      rsiSeries = pane.addSeries(LineSeries, {
+        color: "#eab308",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        title: "RSI",
+        priceScaleId: "rsi",
+        autoscaleInfoProvider: () => ({
+          priceRange: { minValue: 0, maxValue: 100 },
+        }),
+      });
+      rsiSeries.priceScale().applyOptions({
+        borderColor: GRID,
+        scaleMargins: { top: 0.12, bottom: 0.12 },
+      });
       rsiSeries.createPriceLine({
         price: 70,
         color: "rgba(239,68,68,0.45)",
@@ -335,22 +370,30 @@ export function StockCandlestickChart({
     if (overlays.macd) {
       const pane = chart.addPane(true);
       pane.setStretchFactor(0.2);
-      const paneIndex = chart.panes().length - 1;
-      macdHist = chart.addSeries(
-        HistogramSeries,
-        { priceLineVisible: false, lastValueVisible: false, title: "MACD" },
-        paneIndex,
-      );
-      macdLine = chart.addSeries(
-        LineSeries,
-        { color: "#38bdf8", lineWidth: 1, priceLineVisible: false, lastValueVisible: true },
-        paneIndex,
-      );
-      macdSignal = chart.addSeries(
-        LineSeries,
-        { color: "#f97316", lineWidth: 1, priceLineVisible: false, lastValueVisible: true },
-        paneIndex,
-      );
+      macdHist = pane.addSeries(HistogramSeries, {
+        priceLineVisible: false,
+        lastValueVisible: false,
+        title: "MACD",
+        priceScaleId: "macd",
+      });
+      macdLine = pane.addSeries(LineSeries, {
+        color: "#38bdf8",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        priceScaleId: "macd",
+      });
+      macdSignal = pane.addSeries(LineSeries, {
+        color: "#f97316",
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: true,
+        priceScaleId: "macd",
+      });
+      macdLine.priceScale().applyOptions({
+        borderColor: GRID,
+        scaleMargins: { top: 0.1, bottom: 0.1 },
+      });
     }
 
     chartRef.current = chart;
@@ -362,6 +405,7 @@ export function StockCandlestickChart({
     macdHistRef.current = macdHist;
 
     chart.subscribeCrosshairMove((param) => {
+      if (coarse) return;
       const time = param.time as number | undefined;
       setHovered(time == null ? null : (byTimeRef.current.get(time) ?? null));
     });
@@ -383,12 +427,9 @@ export function StockCandlestickChart({
     };
 
     const observer = new ResizeObserver(() => {
-      applyContainerSize(chart, container);
-      fitTimeScale(chart, barCountRef.current);
       refreshMapper();
     });
     observer.observe(container);
-    applyContainerSize(chart, container);
 
     const onRangeChange = () => refreshMapper();
     chart.timeScale().subscribeVisibleLogicalRangeChange(onRangeChange);
@@ -396,13 +437,16 @@ export function StockCandlestickChart({
     const blockPageScroll = (event: TouchEvent) => {
       if (event.touches.length >= 1) event.preventDefault();
     };
-    container.addEventListener("touchmove", blockPageScroll, { passive: false });
+    if (!coarse) {
+      container.addEventListener("touchmove", blockPageScroll, { passive: false });
+    }
 
     return () => {
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onRangeChange);
-      container.removeEventListener("touchmove", blockPageScroll);
+      if (!coarse) container.removeEventListener("touchmove", blockPageScroll);
       observer.disconnect();
-      overlaySeriesRef.current = [];
+      overlaySeriesRef.current.clear();
+      datasetRef.current = null;
       rsiSeriesRef.current = null;
       macdLineRef.current = null;
       macdSignalRef.current = null;
@@ -422,10 +466,10 @@ export function StockCandlestickChart({
     if (!main || !volumeSeries || !chart) return;
 
     const source = displayCandles;
+    const times = source.map((candle) => candle.time);
     const byTime = new Map<number, Candle>();
     for (const candle of source) byTime.set(candle.time, candle);
     byTimeRef.current = byTime;
-    barCountRef.current = source.length;
 
     if (chartType === "line") {
       (main as ISeriesApi<"Line">).setData(toLine(source));
@@ -434,65 +478,78 @@ export function StockCandlestickChart({
     }
     volumeSeries.setData(toVolume(source));
 
-    for (const line of overlaySeriesRef.current) {
-      try {
-        chart.removeSeries(line);
-      } catch {
-        /* series already gone with a pane rebuild */
+    const upsertOverlay = (
+      id: string,
+      enabled: boolean,
+      points: { time: number; value: number }[],
+      color: string,
+      title: string,
+    ) => {
+      const existing = overlaySeriesRef.current.get(id);
+      if (!enabled) {
+        if (existing) {
+          try {
+            chart.removeSeries(existing);
+          } catch {
+            /* pane rebuild already dropped it */
+          }
+          overlaySeriesRef.current.delete(id);
+        }
+        return;
       }
-    }
-    overlaySeriesRef.current = [];
-
-    const addOverlay = (points: { time: number; value: number }[], color: string, title: string) => {
-      if (points.length === 0) return;
-      const series = chart.addSeries(LineSeries, {
-        color,
-        lineWidth: 1,
-        priceLineVisible: false,
-        lastValueVisible: true,
-        title,
-        crosshairMarkerVisible: false,
-      });
-      series.setData(
-        points.map((point) => ({ time: point.time as UTCTimestamp, value: point.value })),
-      );
-      overlaySeriesRef.current.push(series);
+      const series =
+        existing ??
+        chart.addSeries(
+          LineSeries,
+          {
+            color,
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: true,
+            title,
+            crosshairMarkerVisible: false,
+          },
+          0,
+        );
+      if (!existing) overlaySeriesRef.current.set(id, series);
+      series.setData(toAlignedLine(alignToTimes(times, points)));
     };
 
-    if (overlays.sma20) addOverlay(smaOverlay(candles, 20), SMA_COLORS[20], "SMA 20");
-    if (overlays.sma50) addOverlay(smaOverlay(candles, 50), SMA_COLORS[50], "SMA 50");
-    if (overlays.sma200) addOverlay(smaOverlay(candles, 200), SMA_COLORS[200], "SMA 200");
-    if (overlays.ema) addOverlay(emaOverlay(candles, 20), EMA_COLOR, "EMA 20");
+    upsertOverlay("sma20", overlays.sma20, smaOverlay(prepared, 20), SMA_COLORS[20], "SMA 20");
+    upsertOverlay("sma50", overlays.sma50, smaOverlay(prepared, 50), SMA_COLORS[50], "SMA 50");
+    upsertOverlay("sma200", overlays.sma200, smaOverlay(prepared, 200), SMA_COLORS[200], "SMA 200");
+    upsertOverlay("ema", overlays.ema, emaOverlay(prepared, 20), EMA_COLOR, "EMA 20");
 
     if (overlays.rsi && rsiSeriesRef.current) {
-      rsiSeriesRef.current.setData(
-        rsiOverlay(candles).map((point) => ({
-          time: point.time as UTCTimestamp,
-          value: point.value,
-        })),
-      );
+      rsiSeriesRef.current.setData(toAlignedLine(alignToTimes(times, rsiOverlay(prepared))));
     }
 
     if (overlays.macd && macdLineRef.current && macdSignalRef.current && macdHistRef.current) {
-      const macd = macdOverlay(candles);
+      const macd = macdOverlay(prepared);
       macdLineRef.current.setData(
-        macd.map((point) => ({ time: point.time as UTCTimestamp, value: point.macd })),
+        toAlignedLine(alignToTimes(times, macd.map((point) => ({ time: point.time, value: point.macd })))),
       );
       macdSignalRef.current.setData(
-        macd.map((point) => ({ time: point.time as UTCTimestamp, value: point.signal })),
+        toAlignedLine(
+          alignToTimes(times, macd.map((point) => ({ time: point.time, value: point.signal }))),
+        ),
       );
       macdHistRef.current.setData(
-        macd.map((point) => ({
-          time: point.time as UTCTimestamp,
-          value: point.histogram,
-          color: point.histogram >= 0 ? "rgba(34,197,94,0.55)" : "rgba(239,68,68,0.55)",
-        })),
+        toAlignedHistogram(
+          alignToTimes(times, macd.map((point) => ({ time: point.time, value: point.histogram }))),
+          (value) => (value >= 0 ? "rgba(34,197,94,0.55)" : "rgba(239,68,68,0.55)"),
+        ),
       );
     }
 
     setProfile(overlays.volumeProfile ? volumeProfile(source) : []);
-    fitTimeScale(chart, source.length);
-  }, [displayCandles, candles, chartType, overlays]);
+
+    const nextMark = markDataset(source);
+    if (shouldFitContent(datasetRef.current, nextMark)) {
+      chart.timeScale().fitContent();
+    }
+    datasetRef.current = nextMark;
+  }, [displayCandles, prepared, chartType, overlays]);
 
   useEffect(() => {
     const series = candleSeriesRef.current;
@@ -687,11 +744,11 @@ export function StockCandlestickChart({
             setDrawings([]);
             setDraft(null);
           }}
-          className="absolute bottom-6 left-10 z-30 border border-line bg-[#121212]/90 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-500 hover:text-loss"
+          className="absolute bottom-6 left-10 z-30 min-h-11 border border-line bg-[#121212]/90 px-2.5 font-mono text-[10px] uppercase tracking-wider text-neutral-500 hover:text-loss md:min-h-0 md:px-1.5 md:py-0.5 md:text-[8px]"
         >
           Clear drawings
         </button>
       ) : null}
     </div>
   );
-}
+});

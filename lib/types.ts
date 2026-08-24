@@ -238,6 +238,53 @@ export type FilingsPayload = {
   errors: string[];
 };
 
+export type AnnouncementCategory =
+  | "Financial Result"
+  | "Shareholding Change"
+  | "General Announcement"
+  | "Dividend"
+  | "Board Change"
+  | "Additional Listing"
+  | "Other";
+
+export type BursaAnnouncement = {
+  id: string;
+  title: string;
+  category: AnnouncementCategory;
+  publishedAt: string | null;
+  url: string | null;
+  source: string;
+};
+
+export type BursaAnnouncementsPayload = {
+  source: "bursa" | "google-news";
+  symbol: string;
+  company: string;
+  asOf: string;
+  items: BursaAnnouncement[];
+};
+
+export type WarrantType = "Call" | "Put";
+
+export type StructuredWarrant = {
+  code: string;
+  symbol: string;
+  name: string | null;
+  type: WarrantType;
+  lastPrice: number | null;
+  changePct: number | null;
+  volume: number | null;
+  expiry: string | null;
+  quoteSource: "yahoo" | "screener";
+};
+
+export type WarrantsPayload = {
+  symbol: string;
+  company: string;
+  asOf: string;
+  items: StructuredWarrant[];
+};
+
 export type OfficialDesk = {
   handle: string;
   org: string;
@@ -301,4 +348,94 @@ export type NewsPayload = {
 export type CompanyNewsPayload = NewsPayload & {
   symbol: string;
   company: string;
+};
+
+/** One reported quarter. Amounts are reporting currency; EPS is per share. Null = not reported. */
+export type QuarterlyResult = {
+  period: string;
+  fiscalYear: number;
+  quarter: 1 | 2 | 3 | 4;
+  revenue: number | null;
+  netProfit: number | null;
+  eps: number | null;
+  revenueYoyPct: number | null;
+  netProfitYoyPct: number | null;
+  epsYoyPct: number | null;
+};
+
+/** Full-year P&L / cash / leverage snapshot. Null = line item not reported for that year. */
+export type AnnualResult = {
+  year: number;
+  revenue: number | null;
+  grossProfit: number | null;
+  netInterestIncome: number | null;
+  netIncome: number | null;
+  operatingCashFlow: number | null;
+  debtToEquity: number | null;
+};
+
+/** Banks/insurers use net interest income; operating companies use gross profit. */
+export type FundamentalsProfitLine = "grossProfit" | "netInterestIncome";
+
+export type FundamentalsPayload = {
+  source: "yahoo";
+  symbol: string;
+  company: string;
+  currency: string;
+  asOf: string;
+  profitLine: FundamentalsProfitLine;
+  quarterly: QuarterlyResult[];
+  annual: AnnualResult[];
+};
+
+export type CorporateEventType =
+  | "layoffs"
+  | "ma"
+  | "management"
+  | "expansion"
+  | "contract"
+  | "regulatory";
+
+export type EventImpact = "high" | "medium" | "low";
+export type EventSentiment = "positive" | "negative" | "neutral";
+
+export type CorporateEvent = {
+  id: string;
+  date: string;
+  type: CorporateEventType;
+  impact: EventImpact;
+  sentiment: EventSentiment;
+  title: string;
+  summary: string;
+  source: string;
+  url: string | null;
+};
+
+export type CorporateEventsPayload = {
+  /** `"stub"` until a live events/news timeline provider is wired in the route. */
+  source: "stub";
+  symbol: string;
+  company: string;
+  asOf: string;
+  items: CorporateEvent[];
+};
+
+/** Live Yahoo quoteSummary snapshot for a Bursa ticker. Dates are KL-formatted. */
+export type BursaQuote = {
+  source: "yahoo";
+  symbol: string;
+  companyName: string;
+  price: number | null;
+  dayChangePercent: number | null;
+  marketCap: number | null;
+  peRatio: number | null;
+  dividendYield: number | null;
+  roe: number | null;
+  exDividendDate: string | null;
+  earningsDate: string | null;
+  /** ISO timestamps used by the corporate-action calendar. */
+  exDividendAt: string | null;
+  dividendAt: string | null;
+  earningsAt: string[];
+  asOf: string;
 };

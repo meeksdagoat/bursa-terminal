@@ -1,8 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
+import { HScroll } from "@/components/h-scroll";
 import { Jargon } from "@/components/jargon-term";
+import { TapHint } from "@/components/tap-hint";
 import {
   EMPTY_OVERLAYS,
   type ChartOverlays,
@@ -70,7 +72,7 @@ type ChartWidgetProps = {
   ticks?: Record<string, TickPulse>;
 };
 
-export function ChartWidget({ row, saved, onToggleSave, ticks = {} }: ChartWidgetProps) {
+function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetProps) {
   const [timeframe, setTimeframe] = useState<ChartTimeframe>("1D");
   const [chartType, setChartType] = useState<ChartType>("candlestick");
   const [overlays, setOverlays] = useState<ChartOverlays>(EMPTY_OVERLAYS);
@@ -147,16 +149,17 @@ export function ChartWidget({ row, saved, onToggleSave, ticks = {} }: ChartWidge
         </div>
 
         <div className="flex min-w-0 flex-col items-start gap-2 sm:items-end">
-          <span
-            title={SHARIAH_SOURCE}
-            className={`rounded-sm border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-              row.shariah
-                ? "border-amber-400/50 bg-gain/15 text-gain shadow-[0_0_12px_rgba(34,197,94,0.15)]"
-                : "border-neutral-600 bg-neutral-800 text-neutral-400"
-            }`}
-          >
-            {row.shariah ? "Shariah compliant" : "Non-Shariah"}
-          </span>
+          <TapHint text={SHARIAH_SOURCE} title="Screening" align="right">
+            <span
+              className={`rounded-sm border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                row.shariah
+                  ? "border-amber-400/50 bg-gain/15 text-gain shadow-[0_0_12px_rgba(34,197,94,0.15)]"
+                  : "border-neutral-600 bg-neutral-800 text-neutral-400"
+              }`}
+            >
+              {row.shariah ? "Shariah compliant" : "Non-Shariah"}
+            </span>
+          </TapHint>
           <dl className="grid grid-cols-3 gap-px border border-line bg-line">
             <Stat label="P/E" term="pe" value={formatRatio(quote?.pe)} />
             <Stat label="Mkt Cap" term="marketCap" value={formatMarketCap(quote?.marketCap)} />
@@ -176,13 +179,13 @@ export function ChartWidget({ row, saved, onToggleSave, ticks = {} }: ChartWidge
       />
 
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-2 py-1.5">
-        <div className="flex items-center gap-px overflow-x-auto">
+        <HScroll className="min-w-0 items-center gap-px">
           {CHART_TIMEFRAMES.map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => setTimeframe(key)}
-              className={`min-h-11 min-w-11 px-1.5 font-mono text-[11px] tracking-wider transition-colors md:min-h-0 md:min-w-0 md:py-0.5 md:text-[10px] ${
+              className={`min-h-11 min-w-11 shrink-0 snap-start px-1.5 font-mono text-[11px] tracking-wider transition-colors md:min-h-0 md:min-w-0 md:py-0.5 md:text-[10px] ${
                 timeframe === key
                   ? "bg-[#1f1f1f] text-amber-400"
                   : "text-neutral-500 hover:text-neutral-300"
@@ -191,17 +194,17 @@ export function ChartWidget({ row, saved, onToggleSave, ticks = {} }: ChartWidge
               {key}
             </button>
           ))}
-        </div>
+        </HScroll>
 
         <span className="hidden h-4 w-px bg-line sm:block" />
 
-        <div className="flex items-center gap-px overflow-x-auto">
+        <HScroll className="min-w-0 items-center gap-px">
           {CHART_TYPES.map((key) => (
             <button
               key={key}
               type="button"
               onClick={() => setChartType(key)}
-              className={`min-h-11 px-1.5 font-mono text-[10px] tracking-wider md:min-h-0 md:py-0.5 ${
+              className={`min-h-11 shrink-0 snap-start px-1.5 font-mono text-[10px] tracking-wider md:min-h-0 md:py-0.5 ${
                 chartType === key
                   ? "bg-[#1f1f1f] text-amber-400"
                   : "text-neutral-500 hover:text-neutral-300"
@@ -210,7 +213,7 @@ export function ChartWidget({ row, saved, onToggleSave, ticks = {} }: ChartWidge
               {CHART_TYPE_LABEL[key]}
             </button>
           ))}
-        </div>
+        </HScroll>
 
         {rangeChangePct != null ? (
           <span className={`ml-auto font-mono text-[9px] ${changeClass(rangeChangePct)}`}>
@@ -238,16 +241,16 @@ export function ChartWidget({ row, saved, onToggleSave, ticks = {} }: ChartWidge
         ))}
       </div>
 
-      <div className="relative flex min-h-[180px] flex-1 overflow-hidden overscroll-none bg-[#0a0a0a]">
-        <div className="z-20 flex w-9 shrink-0 flex-col items-center gap-1 border-r border-line bg-[#101010] py-2">
+        <div className="relative flex min-h-[180px] flex-1 overflow-hidden overscroll-none bg-[#0a0a0a] max-lg:h-[40vh] max-lg:min-h-[280px] max-lg:max-h-[380px] max-lg:flex-none">
+        <div className="z-20 flex w-11 shrink-0 flex-col items-center gap-1 border-r border-line bg-[#101010] py-2 md:w-9">
           {TOOLS.map((tool) => (
             <button
               key={tool.id}
               type="button"
-              title={tool.title}
+              aria-label={tool.title}
               aria-pressed={drawingTool === tool.id}
               onClick={() => setDrawingTool(tool.id)}
-              className={`flex h-8 w-8 items-center justify-center border font-mono text-[10px] ${
+              className={`flex min-h-11 min-w-11 items-center justify-center border font-mono text-[10px] md:h-8 md:w-8 md:min-h-0 md:min-w-0 ${
                 drawingTool === tool.id
                   ? "border-amber-400/60 bg-amber-400/10 text-amber-300"
                   : "border-transparent text-neutral-500 hover:border-line hover:text-neutral-200"
@@ -348,3 +351,33 @@ function ChartMessage({ text, tone = "muted" }: { text: string; tone?: "muted" |
     </div>
   );
 }
+
+function sameTick(
+  a: Record<string, TickPulse> | undefined,
+  b: Record<string, TickPulse> | undefined,
+  symbol: string,
+) {
+  return a?.[symbol]?.at === b?.[symbol]?.at && a?.[symbol]?.dir === b?.[symbol]?.dir;
+}
+
+export const ChartWidget = memo(ChartWidgetInner, (prev, next) => {
+  const a = prev.row;
+  const b = next.row;
+  return (
+    prev.saved === next.saved &&
+    prev.onToggleSave === next.onToggleSave &&
+    a.symbol === b.symbol &&
+    a.name === b.name &&
+    a.shariah === b.shariah &&
+    a.quote?.price === b.quote?.price &&
+    a.quote?.changePct === b.quote?.changePct &&
+    a.quote?.pe === b.quote?.pe &&
+    a.quote?.marketCap === b.quote?.marketCap &&
+    a.quote?.dividendYieldPct === b.quote?.dividendYieldPct &&
+    a.quote?.yearLow === b.quote?.yearLow &&
+    a.quote?.yearHigh === b.quote?.yearHigh &&
+    a.quote?.quoteTime === b.quote?.quoteTime &&
+    a.quote?.marketState === b.quote?.marketState &&
+    sameTick(prev.ticks, next.ticks, a.symbol)
+  );
+});

@@ -21,9 +21,13 @@ export function usePriceFlash(
 
   useEffect(() => {
     if (!pulse) return;
-    setDir(pulse.dir);
-    const timer = window.setTimeout(() => setDir(null), FLASH_MS);
-    return () => window.clearTimeout(timer);
+    setDir(null);
+    const start = window.setTimeout(() => setDir(pulse.dir), 0);
+    const stop = window.setTimeout(() => setDir(null), FLASH_MS);
+    return () => {
+      window.clearTimeout(start);
+      window.clearTimeout(stop);
+    };
   }, [pulse?.at, pulse?.dir]);
 
   return flashClass(dir);

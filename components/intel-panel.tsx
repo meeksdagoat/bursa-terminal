@@ -1,173 +1,134 @@
 "use client";
 
-import { useState } from "react";
-import { FilingsPanel } from "@/components/filings-panel";
-import { Jargon } from "@/components/jargon-term";
-import { TechnicalGauge } from "@/components/technical-gauge";
-import { formatKlDate, formatKlStamp, formatOpr } from "@/lib/format";
-import type { FilingsPayload, MacroPayload, OprSnapshot } from "@/lib/types";
+import { lazy, memo, Suspense, useState } from "react";
+import { sectorPeers } from "@/lib/universe";
 import { useShariahOnly } from "@/lib/use-shariah";
 
-type Tab = "technicals" | "filings" | "macro";
+const CorporatePerformance = lazy(() =>
+  import("@/components/corporate-performance").then((mod) => ({ default: mod.CorporatePerformance })),
+);
+const StockDeepDivePanel = lazy(() =>
+  import("@/components/StockDeepDivePanel").then((mod) => ({ default: mod.StockDeepDivePanel })),
+);
+const MajorEvents = lazy(() =>
+  import("@/components/major-events").then((mod) => ({ default: mod.MajorEvents })),
+);
+const BursaAnnouncementsPanel = lazy(() =>
+  import("@/components/BursaAnnouncementsPanel").then((mod) => ({
+    default: mod.BursaAnnouncementsPanel,
+  })),
+);
+const WarrantsPanel = lazy(() =>
+  import("@/components/WarrantsPanel").then((mod) => ({ default: mod.WarrantsPanel })),
+);
+const TechnicalGauge = lazy(() =>
+  import("@/components/technical-gauge").then((mod) => ({ default: mod.TechnicalGauge })),
+);
+
+type Tab = "technicals" | "performance" | "peers" | "events" | "filings" | "warrants";
 
 type IntelPanelProps = {
   symbol: string;
-  opr: OprSnapshot | null;
-  macro: MacroPayload | null;
-  macroError: string | null;
-  macroLoading: boolean;
-  filings: FilingsPayload | null;
-  filingsError: string | null;
-  filingsLoading: boolean;
   companyName: string;
   /** Whether the charted company is on the curated Shariah list. */
   companyShariah: boolean;
 };
 
-export function IntelPanel({
-  symbol,
-  opr,
-  macro,
-  macroError,
-  macroLoading,
-  filings,
-  filingsError,
-  filingsLoading,
-  companyName,
-  companyShariah,
-}: IntelPanelProps) {
-  const [tab, setTab] = useState<Tab>("technicals");
+function TabFallback() {
+  return (
+    <p className="px-2.5 py-3 font-mono text-[10px] uppercase tracking-wider text-neutral-600">
+      LOADING PANEL…
+    </p>
+  );
+}
+
+function IntelPanelInner({ symbol, companyName, companyShariah }: IntelPanelProps) {
+  const [tab, setTab] = useState<Tab>("performance");
   const shariahOnly = useShariahOnly();
-  const items = macro?.items ?? [];
   const filingsBlocked = shariahOnly && !companyShariah;
 
   return (
     <section className="flex h-full min-h-0 flex-col bg-panel">
-      <div className="flex min-h-11 shrink-0 items-center overflow-x-auto border-b border-line md:h-7 md:min-h-0">
+      <div className="flex min-h-11 shrink-0 items-center overflow-x-auto scrollbar-none snap-x border-b border-line md:h-7 md:min-h-0">
         <TabButton
-          active={tab === "technicals"}
-          onClick={() => setTab("technicals")}
-          label="Technical Analytics"
-          shortLabel="Tech"
+          active={tab === "performance"}
+          onClick={() => setTab("performance")}
+          label="Corporate Performance"
+          shortLabel="Performance"
+        />
+        <TabButton
+          active={tab === "peers"}
+          onClick={() => setTab("peers")}
+          label="Peer Comparison"
+          shortLabel="Peers"
+        />
+        <TabButton
+          active={tab === "events"}
+          onClick={() => setTab("events")}
+          label="Major Events & News"
+          shortLabel="Events"
         />
         <TabButton
           active={tab === "filings"}
           onClick={() => setTab("filings")}
-          label="Bursa Regulatory Filings"
-          shortLabel="Filings"
+          label="Announcements"
+          shortLabel="Anns"
         />
         <TabButton
-          active={tab === "macro"}
-          onClick={() => setTab("macro")}
-          label="Macro & Policy Intel"
-          shortLabel="Macro"
+          active={tab === "warrants"}
+          onClick={() => setTab("warrants")}
+          label="Warrants"
+          shortLabel="Warrants"
+        />
+        <TabButton
+          active={tab === "technicals"}
+          onClick={() => setTab("technicals")}
+          label="Technical Analysis"
+          shortLabel="Tech"
         />
 
-        <span
-          className={`ml-auto hidden pr-2 font-mono text-[9px] md:inline ${
-            (tab === "macro" && macroError) || (tab === "filings" && filingsError)
-              ? "text-loss"
-              : "text-neutral-700"
-          }`}
-        >
+        <span className="ml-auto hidden pr-2 font-mono text-[9px] text-neutral-700 md:inline">
           {tab === "technicals"
             ? `1Y DAILY · ${symbol}`
-            : tab === "filings"
-              ? filingsBlocked
-                ? "HIDDEN BY SHARIAH FILTER"
-                : filingsError
-                  ? "FILINGS FEED ERROR"
-                  : `LIVE · ${filings?.items.length ?? 0}`
-              : macroError
-                ? "OPR LIVE · POLICY FEED ERROR"
-                : `OPR LIVE · POLICY LIVE · ${items.length}`}
+            : tab === "performance"
+              ? `REPORTED · ${symbol}`
+              : tab === "peers"
+                ? `YAHOO LIVE · ${symbol}`
+                : tab === "events"
+                  ? `TIMELINE · ${symbol}`
+                  : tab === "warrants"
+                    ? `SW · ${symbol}`
+                    : filingsBlocked
+                      ? "HIDDEN BY SHARIAH FILTER"
+                      : `LIVE · ${symbol}`}
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
-        {tab === "technicals" ? (
-          <TechnicalGauge symbol={symbol} companyName={companyName} />
-        ) : tab === "filings" ? (
-          filingsBlocked ? (
+      <div className="min-h-0 flex-1 overflow-auto overscroll-contain touch-pan-y">
+        <Suspense fallback={<TabFallback />}>
+          {tab === "technicals" ? (
+            <TechnicalGauge symbol={symbol} companyName={companyName} />
+          ) : tab === "performance" ? (
+            <CorporatePerformance key={symbol} symbol={symbol} companyName={companyName} />
+          ) : tab === "peers" ? (
+            <StockDeepDivePanel
+              key={symbol}
+              currentTicker={symbol}
+              peerTickers={sectorPeers(symbol, 4)}
+            />
+          ) : tab === "events" ? (
+            <MajorEvents key={symbol} symbol={symbol} companyName={companyName} />
+          ) : tab === "warrants" ? (
+            <WarrantsPanel key={symbol} symbol={symbol} companyName={companyName} />
+          ) : filingsBlocked ? (
             <p className="px-2.5 py-3 font-mono text-[10px] leading-relaxed text-neutral-600">
-              {companyName.toUpperCase()} IS NOT ON THE SHARIAH LIST · FILINGS HIDDEN WHILE THE
+              {companyName.toUpperCase()} IS NOT ON THE SHARIAH LIST · ANNOUNCEMENTS HIDDEN WHILE THE
               SHARIAH FILTER IS ON
             </p>
           ) : (
-            <FilingsPanel
-              payload={filings?.symbol ? filings : null}
-              error={filingsError}
-              loading={filingsLoading}
-              companyName={companyName}
-            />
-          )
-        ) : (
-          <ul className="divide-y divide-line">
-            <li className="bg-[#101510] px-2.5 py-2">
-              <div className="flex items-center gap-2">
-                <span className="rounded-sm border border-gain/40 bg-gain/10 px-1 py-px font-mono text-[9px] tracking-wider text-gain">
-                  BNM LIVE
-                </span>
-                <span className="text-[12px] font-medium text-neutral-100">
-                  <Jargon term="opr">Overnight Policy Rate</Jargon> {formatOpr(opr?.level)}
-                </span>
-                {opr?.changeBps != null ? (
-                  <span className="font-mono text-[10px] text-neutral-400">
-                    {opr.changeBps === 0
-                      ? "unchanged"
-                      : `${opr.changeBps > 0 ? "+" : ""}${opr.changeBps}bps`}
-                  </span>
-                ) : null}
-              </div>
-              <p className="mt-0.5 text-[11px] leading-snug text-neutral-400">
-                Effective {formatKlDate(opr?.effectiveDate)}
-                {opr?.lastUpdated ? ` · BNM last updated ${opr.lastUpdated}` : ""}
-              </p>
-            </li>
-
-            {items.map((item) => (
-              <li key={item.id} className="relative hover:bg-[#161616]">
-                {item.url ? (
-                  <a
-                    href={item.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label={`${item.title} — open on ${item.publisher ?? "source"}`}
-                    className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
-                  />
-                ) : null}
-
-                <div className="pointer-events-none relative z-10 px-2.5 py-2">
-                  <div className="flex items-center gap-2">
-                    <span className="w-[44px] shrink-0 font-mono text-[10px] text-neutral-500">
-                      {formatKlStamp(item.publishedAt)}
-                    </span>
-                    <span className="shrink-0 rounded-sm border border-line px-1 py-px font-mono text-[9px] tracking-wider text-amber-400/90">
-                      {item.source}
-                    </span>
-                    <span className="text-[12px] font-medium leading-snug text-neutral-100">
-                      {item.title}
-                    </span>
-                  </div>
-                  <p className="mt-0.5 pl-[62px] text-[11px] leading-snug text-neutral-400">
-                    {item.publisher ?? "Google News"} · {formatKlDate(item.publishedAt)}
-                    {item.url ? " ↗" : ""}
-                  </p>
-                </div>
-              </li>
-            ))}
-
-            {items.length === 0 ? (
-              <li className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">
-                {macroError
-                  ? `POLICY FEED UNAVAILABLE · ${macroError}`
-                  : macroLoading
-                    ? "LOADING POLICY HEADLINES…"
-                    : "NO POLICY HEADLINES RETURNED"}
-              </li>
-            ) : null}
-          </ul>
-        )}
+            <BursaAnnouncementsPanel key={symbol} symbol={symbol} companyName={companyName} />
+          )}
+        </Suspense>
       </div>
     </section>
   );
@@ -188,8 +149,8 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`h-full min-h-11 shrink-0 border-r border-line px-3 text-[10px] font-semibold uppercase tracking-[0.12em] md:min-h-0 ${
-        active ? "bg-[#1a1a1a] text-amber-400" : "text-neutral-500 hover:text-neutral-300"
+      className={`h-full min-h-11 shrink-0 snap-start border-r border-line px-3 text-[10px] font-semibold uppercase tracking-[0.12em] md:min-h-0 ${
+        active ? "bg-[#1a1a1a] text-gain" : "text-neutral-500 hover:text-neutral-300"
       }`}
     >
       <span className="md:hidden">{shortLabel}</span>
@@ -197,3 +158,5 @@ function TabButton({
     </button>
   );
 }
+
+export const IntelPanel = memo(IntelPanelInner);

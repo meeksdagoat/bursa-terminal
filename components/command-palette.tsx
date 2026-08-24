@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { deskHref, HEADLINE_CATEGORIES } from "@/lib/categories";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { findEntry, searchUniverse, terminalHref } from "@/lib/universe";
 import { useShariahOnly } from "@/lib/use-shariah";
 
@@ -26,6 +27,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
   const router = useRouter();
   const shariahOnly = useShariahOnly();
   const [query, setQuery] = useState("");
+  useBodyScrollLock(true);
 
   useEffect(() => {
     function onKey(event: KeyboardEvent) {
@@ -69,7 +71,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
         role="dialog"
         aria-modal="true"
         aria-label="Command bar"
-        className="relative w-full max-h-[88dvh] overflow-hidden rounded-t-lg border border-line bg-panel shadow-2xl md:w-[min(520px,94vw)] md:max-h-none md:rounded-none"
+        className="relative w-full max-h-[88dvh] overflow-hidden rounded-t-lg border border-line bg-panel shadow-2xl modal-overscroll md:w-[min(520px,94vw)] md:max-h-none md:rounded-none"
       >
         <form onSubmit={handleSubmit} className="border-b border-line p-2">
           <input

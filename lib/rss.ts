@@ -139,11 +139,16 @@ export async function fetchRss(url: string, limit: number): Promise<RssItem[]> {
   return parseRss(await response.text(), limit);
 }
 
-export async function fetchHtml(url: string, timeoutMs = REQUEST_TIMEOUT_MS): Promise<string> {
+export async function fetchHtml(
+  url: string,
+  timeoutMs = REQUEST_TIMEOUT_MS,
+  extraHeaders?: Record<string, string>,
+): Promise<string> {
   const response = await fetch(url, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
+      ...extraHeaders,
     },
     cache: "no-store",
     signal: AbortSignal.timeout(timeoutMs),

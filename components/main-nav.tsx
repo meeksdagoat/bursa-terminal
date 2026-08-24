@@ -28,10 +28,10 @@ type MainNavProps = {
   active: NavActive;
 };
 
-/** Shared menu: Bursa MY is the terminal, My Portfolio is the book, news desks live on /news. Hidden below md — the hamburger drawer replaces it. */
+/** Shared menu: Bursa MY is the terminal, My Portfolio is the book, news desks live on /news. Hidden below lg — the bottom drawer replaces it. */
 export function MainNav({ active }: MainNavProps) {
   return (
-    <nav className="hidden shrink-0 items-stretch overflow-x-auto border-b border-line bg-panel md:flex">
+    <nav className="hidden shrink-0 items-stretch overflow-x-auto border-b border-line bg-panel lg:flex">
       {NAV_ITEMS.map((item) => {
         const selected = item.id === active;
         const desk = item.id !== "market" && item.id !== "portfolio";

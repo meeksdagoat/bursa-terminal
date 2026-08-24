@@ -29,3 +29,8 @@ export function useBreakpoint(): Breakpoint {
   if (tablet) return "tablet";
   return "mobile";
 }
+
+/** True on phones/tablets where hover is unreliable and ticks should be throttled. */
+export function useCoarsePointer(): boolean {
+  return useMediaQuery("(pointer: coarse)");
+}

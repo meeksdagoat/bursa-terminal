@@ -34,7 +34,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       {/* Landing and news desks scroll; the terminal pins itself to the viewport. */}
-      <body className="min-h-full overflow-x-hidden bg-terminal font-sans text-neutral-200">
+      <body className="min-h-full overflow-x-hidden touch-pan-y bg-terminal font-sans text-neutral-200">
         <KeyboardLayer />
         {children}
       </body>

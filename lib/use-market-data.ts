@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { bursaTickSize, isBursaOpen, resolveFeedStatus, type FeedStatus } from "./market-status";
 import type { Quote, QuotesPayload } from "./types";
 import { useLiveData } from "./use-live-data";
+import { useCoarsePointer } from "./use-media-query";
 
 export type TickPulse = {
   dir: "up" | "down";
@@ -17,6 +18,7 @@ export type MarketData = {
   error: string | null;
   loading: boolean;
   updatedAt: number | null;
+  latencyMs: number | null;
   refresh: () => void;
   status: FeedStatus;
   ticks: Record<string, TickPulse>;
@@ -24,9 +26,12 @@ export type MarketData = {
 };
 
 const LIVE_POLL_MS = 2_500;
+const LIVE_POLL_TOUCH_MS = 5_000;
 const CLOSED_POLL_MS = 60_000;
 const TICK_MIN_MS = 2_000;
 const TICK_MAX_MS = 3_000;
+const TICK_MIN_TOUCH_MS = 4_500;
+const TICK_MAX_TOUCH_MS = 6_000;
 const MAX_DRIFT_PCT = 0.0035;
 
 function cloneQuote(quote: Quote): Quote {
@@ -136,13 +141,15 @@ function withLiveQuotes(payload: QuotesPayload | null, quotes: Quote[]): QuotesP
  */
 export function useMarketData(symbols: string[]): MarketData {
   const live = isBursaOpen();
+  const coarse = useCoarsePointer();
+  const pollMs = live ? (coarse ? LIVE_POLL_TOUCH_MS : LIVE_POLL_MS) : CLOSED_POLL_MS;
   const quotesUrl = useMemo(() => {
     const list = [...new Set(symbols.filter((symbol) => symbol.length > 0))].sort();
     if (list.length === 0) return "/api/quotes?symbols=1155.KL";
     return `/api/quotes?symbols=${encodeURIComponent(list.join(","))}`;
   }, [symbols]);
 
-  const feed = useLiveData<QuotesPayload>(quotesUrl, live ? LIVE_POLL_MS : CLOSED_POLL_MS);
+  const feed = useLiveData<QuotesPayload>(quotesUrl, pollMs);
   const [displayQuotes, setDisplayQuotes] = useState<Quote[]>([]);
   const [ticks, setTicks] = useState<Record<string, TickPulse>>({});
   const anchorsRef = useRef<Quote[]>([]);
@@ -171,7 +178,9 @@ export function useMarketData(symbols: string[]): MarketData {
     let timer = 0;
 
     function schedule() {
-      const wait = TICK_MIN_MS + Math.random() * (TICK_MAX_MS - TICK_MIN_MS);
+      const min = coarse ? TICK_MIN_TOUCH_MS : TICK_MIN_MS;
+      const max = coarse ? TICK_MAX_TOUCH_MS : TICK_MAX_MS;
+      const wait = min + Math.random() * (max - min);
       timer = window.setTimeout(() => {
         if (document.hidden || !isBursaOpen()) {
           schedule();
@@ -189,7 +198,7 @@ export function useMarketData(symbols: string[]): MarketData {
 
     schedule();
     return () => window.clearTimeout(timer);
-  }, [live, feed.data?.asOf, quotesUrl]);
+  }, [live, feed.data?.asOf, quotesUrl, coarse]);
 
   const data = useMemo(
     () => withLiveQuotes(feed.data, displayQuotes.length > 0 ? displayQuotes : collectQuotes(feed.data)),
@@ -220,6 +229,7 @@ export function useMarketData(symbols: string[]): MarketData {
     error: feed.error,
     loading: feed.loading,
     updatedAt: feed.updatedAt,
+    latencyMs: feed.latencyMs,
     refresh,
     status,
     ticks,

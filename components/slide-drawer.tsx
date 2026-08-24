@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, type ReactNode } from "react";
+import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 type SlideDrawerProps = {
   open: boolean;
@@ -10,6 +11,7 @@ type SlideDrawerProps = {
   labelledBy?: string;
   children: ReactNode;
   className?: string;
+  bodyClassName?: string;
 };
 
 /**
@@ -24,7 +26,10 @@ export function SlideDrawer({
   labelledBy,
   children,
   className = "",
+  bodyClassName = "overflow-hidden",
 }: SlideDrawerProps) {
+  useBodyScrollLock(open);
+
   useEffect(() => {
     if (!open) return;
 
@@ -33,12 +38,7 @@ export function SlideDrawer({
     }
 
     window.addEventListener("keydown", onKey);
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      document.body.style.overflow = previousOverflow;
-    };
+    return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
   if (!open) return null;
@@ -63,7 +63,7 @@ export function SlideDrawer({
         aria-modal="true"
         aria-label={title}
         aria-labelledby={labelledBy}
-        className={`absolute flex flex-col overflow-hidden border-line bg-panel shadow-2xl ${panel} ${className}`}
+        className={`absolute flex flex-col overflow-hidden border-line bg-panel shadow-2xl modal-overscroll ${panel} ${className}`}
       >
         {title ? (
           <div className="flex h-11 shrink-0 items-center justify-between border-b border-line px-3">
@@ -79,7 +79,7 @@ export function SlideDrawer({
             </button>
           </div>
         ) : null}
-        <div className="min-h-0 min-w-0 flex-1 overflow-hidden">{children}</div>
+        <div className={`min-h-0 min-w-0 flex-1 overscroll-contain ${bodyClassName}`}>{children}</div>
       </div>
     </div>
   );

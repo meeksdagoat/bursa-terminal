@@ -1,6 +1,6 @@
 import type { Quote } from "./types";
 
-export type FeedStatus = "live" | "delayed" | "closed" | "connecting" | "error";
+export type FeedStatus = "live" | "delayed" | "closed" | "connecting" | "reconnecting" | "error";
 
 const KL_TZ = "Asia/Kuala_Lumpur";
 
@@ -43,6 +43,7 @@ export function resolveFeedStatus(input: {
   error?: string | null;
   loading?: boolean;
 }): FeedStatus {
+  if (input.error && input.connected) return "reconnecting";
   if (input.error && !input.connected) return "error";
   if (!input.connected) return input.loading ? "connecting" : "error";
 

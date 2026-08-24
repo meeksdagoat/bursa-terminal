@@ -16,6 +16,7 @@ import type {
   OfficialPayload,
   QuotesPayload,
 } from "@/lib/types";
+import { feedStatusFromQuote } from "@/lib/market-status";
 import { heatmapSymbols } from "@/lib/sectors";
 import { findEntry, terminalHref, universe } from "@/lib/universe";
 import { useLiveData } from "@/lib/use-live-data";
@@ -65,13 +66,19 @@ export function HomeOverview({ category }: HomeOverviewProps) {
   );
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-terminal text-neutral-200">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden touch-pan-y bg-terminal text-neutral-200">
       <HeaderBar
         bnm={bnm.data}
         index={quotes.data?.index ?? null}
         onSearch={handleSearch}
         searchPlaceholder="Search a ticker to open the terminal — Maybank 1155.KL"
         active={category}
+        feedStatus={feedStatusFromQuote(quotes.data?.index, {
+          connected: quotes.data != null,
+          error: quotes.error,
+          loading: quotes.loading,
+        })}
+        latencyMs={quotes.latencyMs}
       />
 
       <MainNav active={category} />

@@ -1,6 +1,7 @@
 import type { Candle } from "./types";
 
 export type OverlayPoint = { time: number; value: number };
+export type AlignedPoint = { time: number; value?: number };
 
 export type MacdPoint = {
   time: number;
@@ -183,3 +184,54 @@ export function volumeProfile(candles: Candle[], bins = 24): VolumeBin[] {
 }
 
 export const FIB_LEVELS = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1] as const;
+
+/** Unix seconds. Accepts seconds, milliseconds, Date, or ISO/date strings. */
+export function toUnixSeconds(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return Math.floor(value > 1e11 ? value / 1000 : value);
+  }
+  if (value instanceof Date) {
+    const ms = value.getTime();
+    return Number.isNaN(ms) ? null : Math.floor(ms / 1000);
+  }
+  if (typeof value === "string" && value.length > 0) {
+    const numeric = Number(value);
+    if (Number.isFinite(numeric) && value.trim() !== "") {
+      return Math.floor(numeric > 1e11 ? numeric / 1000 : numeric);
+    }
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000);
+  }
+  return null;
+}
+
+export function sanitizeCandles(candles: Candle[]): Candle[] {
+  const byTime = new Map<number, Candle>();
+  for (const candle of candles) {
+    const time = toUnixSeconds(candle.time);
+    if (time == null) continue;
+    if (![candle.open, candle.high, candle.low, candle.close].every(Number.isFinite)) continue;
+    byTime.set(time, { ...candle, time });
+  }
+  return [...byTime.values()].sort((a, b) => a.time - b.time);
+}
+
+/**
+ * Map sparse indicator samples onto the candle time axis. Missing values become
+ * whitespace so the series stays index-aligned with the main chart.
+ */
+export function alignToTimes(
+  times: number[],
+  points: ReadonlyArray<{ time: number; value: number }>,
+): AlignedPoint[] {
+  const byTime = new Map<number, number>();
+  for (const point of points) {
+    const time = toUnixSeconds(point.time);
+    if (time == null || !Number.isFinite(point.value)) continue;
+    byTime.set(time, point.value);
+  }
+  return times.map((time) => {
+    const value = byTime.get(time);
+    return value == null ? { time } : { time, value };
+  });
+}

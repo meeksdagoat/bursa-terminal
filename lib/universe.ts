@@ -295,6 +295,15 @@ export function isTrackedSymbol(symbol: string): boolean {
   return bySymbol.has(symbol);
 }
 
+/** Same-sector names first, then other tracked tickers, so thin sectors still fill a matrix. */
+export function sectorPeers(symbol: string, limit = 4): string[] {
+  const entry = entryBySymbol(symbol);
+  if (!entry) return [];
+  const same = universe.filter((row) => row.sector === entry.sector && row.symbol !== symbol);
+  const rest = universe.filter((row) => row.sector !== entry.sector && row.symbol !== symbol);
+  return [...same, ...rest].slice(0, limit).map((row) => row.symbol);
+}
+
 /** High-density chart workspace. Optional ticker is applied as `?symbol=`. */
 export function terminalHref(symbol?: string): string {
   return symbol ? `/terminal?symbol=${encodeURIComponent(symbol)}` : "/terminal";

@@ -27,14 +27,22 @@ const klDateFormatter = new Intl.DateTimeFormat("en-GB", {
   month: "short",
 });
 
+const klFullDateFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Kuala_Lumpur",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+});
+
 function isNumber(value: number | null | undefined): value is number {
   return value != null && Number.isFinite(value);
 }
 
 export function formatPct(value: number | null | undefined): string {
   if (!isNumber(value)) return DASH;
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(2)}%`;
+  if (value > 0) return `+${value.toFixed(2)}%`;
+  if (value < 0) return `-${Math.abs(value).toFixed(2)}%`;
+  return `${value.toFixed(2)}%`;
 }
 
 export function formatPrice(value: number | null | undefined): string {
@@ -78,6 +86,17 @@ export function formatMarketCap(value: number | null | undefined): string {
 
 export function formatVolume(value: number | null | undefined): string {
   return isNumber(value) ? compactFormatter.format(value) : DASH;
+}
+
+/** Compact magnitude without a currency prefix — table cells whose header already says RM. */
+export function formatCompact(value: number | null | undefined): string {
+  return isNumber(value) ? compactFormatter.format(value) : DASH;
+}
+
+export function formatEps(value: number | null | undefined): string {
+  if (!isNumber(value)) return DASH;
+  const digits = Math.abs(value) >= 1 ? 2 : 3;
+  return value.toFixed(digits);
 }
 
 export function formatOpr(value: number | null | undefined): string {
@@ -130,6 +149,12 @@ export function formatKlDate(iso: string | null | undefined): string {
   if (!iso) return DASH;
   const date = new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso);
   return Number.isNaN(date.getTime()) ? DASH : klDateFormatter.format(date);
+}
+
+export function formatKlFullDate(iso: string | null | undefined): string {
+  if (!iso) return DASH;
+  const date = new Date(iso.length === 10 ? `${iso}T00:00:00Z` : iso);
+  return Number.isNaN(date.getTime()) ? DASH : klFullDateFormatter.format(date);
 }
 
 const klDayFormatter = new Intl.DateTimeFormat("en-CA", {

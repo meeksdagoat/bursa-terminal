@@ -6,6 +6,7 @@ import { GlobalEconomyDesk } from "@/components/global-economy-desk";
 import { HeaderBar } from "@/components/header-bar";
 import { MainNav } from "@/components/main-nav";
 import { formatKlTime } from "@/lib/format";
+import { feedStatusFromQuote } from "@/lib/market-status";
 import type { BnmPayload, GlobalEconomyPayload, HeadlinesPayload, QuotesPayload } from "@/lib/types";
 import { findEntry, terminalHref, universe } from "@/lib/universe";
 import { useLiveData } from "@/lib/use-live-data";
@@ -53,6 +54,12 @@ export function GlobalEconomyView() {
         onSearch={handleSearch}
         searchPlaceholder="Search a ticker to open the terminal — Maybank 1155.KL"
         active="global-economy"
+        feedStatus={feedStatusFromQuote(quotes.data?.index, {
+          connected: quotes.data != null,
+          error: quotes.error,
+          loading: quotes.loading,
+        })}
+        latencyMs={quotes.latencyMs}
       />
 
       <MainNav active="global-economy" />

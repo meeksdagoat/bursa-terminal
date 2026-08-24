@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { memo, useMemo } from "react";
 import { changeClass, formatPct, formatPrice } from "@/lib/format";
 import { sectorPerformance } from "@/lib/sectors";
 import type { SectorPerformance, WatchlistRow } from "@/lib/types";
@@ -18,7 +18,7 @@ type WatchlistSidebarProps = {
   ticks?: Record<string, TickPulse>;
 };
 
-export function WatchlistSidebar({
+function WatchlistSidebarInner({
   rows,
   sectors,
   selectedSymbol,
@@ -181,3 +181,5 @@ function WatchlistRowItem({
     </li>
   );
 }
+
+export const WatchlistSidebar = memo(WatchlistSidebarInner);

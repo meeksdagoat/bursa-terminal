@@ -1,7 +1,8 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { memo, useMemo, useState } from "react";
 import { Eli5Block } from "@/components/eli5-summary";
+import { ShowMoreBar } from "@/components/h-scroll";
 import { hasValidSummary } from "@/lib/eli5";
 import { formatKlStamp } from "@/lib/format";
 import { textIsShariahSafe } from "@/lib/shariah";
@@ -21,7 +22,7 @@ type NewsFeedProps = {
   companySymbol?: string | null;
 };
 
-export function NewsFeed({
+function NewsFeedInner({
   payload,
   error,
   loading,
@@ -31,6 +32,7 @@ export function NewsFeed({
   companySymbol = null,
 }: NewsFeedProps) {
   const [activeTag, setActiveTag] = useState<string | null>(null);
+  const [limit, setLimit] = useState(32);
 
   const shariahOnly = useShariahOnly();
 
@@ -48,6 +50,7 @@ export function NewsFeed({
     () => (activeTag ? items.filter((item) => item.tag === activeTag) : items),
     [items, activeTag],
   );
+  const shown = visible.slice(0, limit);
 
   const company = scope === "company";
   const hidden = all.length - items.length;
@@ -88,8 +91,8 @@ export function NewsFeed({
         </div>
       ) : null}
 
-      <ul className="min-h-0 flex-1 divide-y divide-line overflow-auto">
-        {visible.map((item) => (
+      <ul className="min-h-0 flex-1 divide-y divide-line overflow-auto overscroll-contain">
+        {shown.map((item) => (
           <li key={item.id} className="relative hover:bg-[#161616]">
             {item.url ? (
               // Stretched link: the card is clickable while the tag button below
@@ -161,9 +164,16 @@ export function NewsFeed({
           </li>
         ) : null}
       </ul>
+      <ShowMoreBar
+        remaining={visible.length - shown.length}
+        onClick={() => setLimit((n) => n + 32)}
+        label="headlines"
+      />
     </aside>
   );
 }
+
+export const NewsFeed = memo(NewsFeedInner);
 
 function ScopeButton({
   label,

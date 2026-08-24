@@ -47,7 +47,7 @@ const FEATURES = [
   },
   {
     id: "shariah",
-    title: "Shariah Screener & AI ELI5",
+    title: "Shariah Screener & AI Summary",
     body: "One-click Shariah filtering across watchlists and search, plus plain-English filing and headline summaries for beginners.",
     icon: (
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" aria-hidden>

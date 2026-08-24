@@ -19,8 +19,6 @@ import { formatKlTime } from "@/lib/format";
 import type {
   BnmPayload,
   CompanyNewsPayload,
-  FilingsPayload,
-  MacroPayload,
   NewsPayload,
   WatchlistRow,
 } from "@/lib/types";
@@ -33,22 +31,13 @@ import { useWatchlist } from "@/lib/use-watchlist";
 
 const BNM_REFRESH_MS = 10 * 60 * 1000;
 const NEWS_REFRESH_MS = 60 * 1000;
-const MACRO_REFRESH_MS = 10 * 60 * 1000;
 
 type TerminalDashboardProps = {
   /** Ticker to chart on load, resolved from `?symbol=` by the route. */
   initialSymbol: string;
 };
 
-type MobilePane = "chart" | "watchlist" | "news" | "oscillators";
-type TabletDrawer = "watchlist" | "news" | null;
-
-const MOBILE_PANES: { id: MobilePane; label: string }[] = [
-  { id: "chart", label: "Chart" },
-  { id: "watchlist", label: "Watchlist" },
-  { id: "news", label: "News" },
-  { id: "oscillators", label: "Oscillators" },
-];
+type CompactDrawer = "watchlist" | "news" | null;
 
 export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   const router = useRouter();
@@ -59,8 +48,8 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   const [searchHint, setSearchHint] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [newsScope, setNewsScope] = useState<NewsScope>("company");
-  const [mobilePane, setMobilePane] = useState<MobilePane>("chart");
-  const [tabletDrawer, setTabletDrawer] = useState<TabletDrawer>(null);
+  const [compactDrawer, setCompactDrawer] = useState<CompactDrawer>(null);
+  const [layoutReady, setLayoutReady] = useState(false);
 
   useEffect(() => {
     setSelectedSymbol(initialSymbol);
@@ -68,7 +57,11 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   }, [initialSymbol]);
 
   useEffect(() => {
-    setTabletDrawer(null);
+    setLayoutReady(true);
+  }, []);
+
+  useEffect(() => {
+    setCompactDrawer(null);
   }, [breakpoint]);
 
   // The charted ticker is quoted even when it is not saved, so browsing the
@@ -80,17 +73,12 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
 
   const quotes = useMarketData(quoteSymbols);
   const bnm = useLiveData<BnmPayload>("/api/bnm", BNM_REFRESH_MS);
-  const macro = useLiveData<MacroPayload>("/api/macro", MACRO_REFRESH_MS);
 
   const companyNews = useLiveData<CompanyNewsPayload>(
     `/api/company-news?symbol=${encodeURIComponent(selectedSymbol)}`,
     NEWS_REFRESH_MS,
   );
   const marketNews = useLiveData<NewsPayload>("/api/news", NEWS_REFRESH_MS);
-  const filings = useLiveData<FilingsPayload>(
-    `/api/filings?symbol=${encodeURIComponent(selectedSymbol)}`,
-    NEWS_REFRESH_MS,
-  );
 
   const quoteBySymbol = quotes.quoteBySymbol;
 
@@ -122,8 +110,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   const handleSelectFromList = useCallback(
     (symbol: string) => {
       selectSymbol(symbol);
-      setMobilePane("chart");
-      setTabletDrawer(null);
+      setCompactDrawer(null);
     },
     [selectSymbol],
   );
@@ -143,7 +130,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
       if (match) {
         selectSymbol(match.symbol);
         setSearchHint(null);
-        setMobilePane("chart");
+        setCompactDrawer(null);
         return;
       }
       setSearchHint(
@@ -187,13 +174,6 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   const intelPane = (
     <IntelPanel
       symbol={selected.symbol}
-      opr={bnm.data?.opr ?? null}
-      macro={macro.data}
-      macroError={macro.error}
-      macroLoading={macro.loading}
-      filings={filings.data?.symbol === selected.symbol ? filings.data : null}
-      filingsError={filings.error}
-      filingsLoading={filings.loading || filings.data?.symbol !== selected.symbol}
       companyName={selected.name}
       companyShariah={selected.shariah}
     />
@@ -213,7 +193,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   );
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-terminal text-neutral-200">
+    <div className="flex h-dvh min-h-0 flex-col overflow-hidden touch-pan-y bg-terminal text-neutral-200">
       <HeaderBar
         bnm={bnm.data}
         index={quotes.data?.index ?? null}
@@ -221,6 +201,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
         active="market"
         feedStatus={quotes.status}
         ticks={quotes.ticks}
+        latencyMs={quotes.latencyMs}
         actions={
           <ExportMenu
             actions={[
@@ -257,30 +238,21 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
         </div>
       ) : null}
 
-      {breakpoint === "desktop" ? (
+      {layoutReady && breakpoint === "desktop" ? (
         <DesktopWorkspace
           watchlistPane={watchlistPane}
           chartPane={chartPane}
           intelPane={intelPane}
           newsPane={newsPane}
         />
-      ) : breakpoint === "tablet" ? (
-        <TabletWorkspace
-          chartPane={chartPane}
-          intelPane={intelPane}
-          watchlistPane={watchlistPane}
-          newsPane={newsPane}
-          drawer={tabletDrawer}
-          onDrawer={setTabletDrawer}
-        />
       ) : (
-        <MobileWorkspace
-          pane={mobilePane}
-          onPane={setMobilePane}
+        <CompactWorkspace
           chartPane={chartPane}
+          intelPane={intelPane}
           watchlistPane={watchlistPane}
           newsPane={newsPane}
-          intelPane={intelPane}
+          drawer={compactDrawer}
+          onDrawer={setCompactDrawer}
         />
       )}
 
@@ -357,7 +329,7 @@ function DesktopWorkspace({
   );
 }
 
-function TabletWorkspace({
+function CompactWorkspace({
   chartPane,
   intelPane,
   watchlistPane,
@@ -369,12 +341,20 @@ function TabletWorkspace({
   intelPane: ReactNode;
   watchlistPane: ReactNode;
   newsPane: ReactNode;
-  drawer: TabletDrawer;
-  onDrawer: (drawer: TabletDrawer) => void;
+  drawer: CompactDrawer;
+  onDrawer: (drawer: CompactDrawer) => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="flex shrink-0 border-b border-line bg-panel">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden touch-pan-y">
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y">
+        <div className="overflow-hidden">{chartPane}</div>
+        <div className="min-h-[52vh] border-t border-line">{intelPane}</div>
+      </div>
+
+      <nav
+        className="flex shrink-0 border-t border-line bg-panel pb-[env(safe-area-inset-bottom)]"
+        aria-label="Terminal drawers"
+      >
         <button
           type="button"
           onClick={() => onDrawer("watchlist")}
@@ -389,88 +369,19 @@ function TabletWorkspace({
         >
           News
         </button>
-      </div>
-
-      <PanelGroup
-        autoSaveId="bursa-terminal-tablet"
-        direction="vertical"
-        className="min-h-0 flex-1"
-      >
-        <Panel id="tablet-chart" defaultSize={62} minSize={35} className="min-h-0">
-          {chartPane}
-        </Panel>
-        <PanelSplitter direction="vertical" />
-        <Panel id="tablet-intel" defaultSize={38} minSize={25} className="min-h-0">
-          {intelPane}
-        </Panel>
-      </PanelGroup>
+      </nav>
 
       <SlideDrawer
         open={drawer === "watchlist"}
         onClose={() => onDrawer(null)}
-        side="left"
+        side="bottom"
+        title="Watchlist"
       >
         {watchlistPane}
       </SlideDrawer>
-      <SlideDrawer
-        open={drawer === "news"}
-        onClose={() => onDrawer(null)}
-        side="right"
-      >
+      <SlideDrawer open={drawer === "news"} onClose={() => onDrawer(null)} side="bottom" title="News">
         {newsPane}
       </SlideDrawer>
-    </div>
-  );
-}
-
-function MobileWorkspace({
-  pane,
-  onPane,
-  chartPane,
-  watchlistPane,
-  newsPane,
-  intelPane,
-}: {
-  pane: MobilePane;
-  onPane: (pane: MobilePane) => void;
-  chartPane: ReactNode;
-  watchlistPane: ReactNode;
-  newsPane: ReactNode;
-  intelPane: ReactNode;
-}) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="min-h-0 min-w-0 flex-1 overflow-hidden">
-        {pane === "chart"
-          ? chartPane
-          : pane === "watchlist"
-            ? watchlistPane
-            : pane === "news"
-              ? newsPane
-              : intelPane}
-      </div>
-
-      <nav
-        className="flex shrink-0 border-t border-line bg-panel pb-[env(safe-area-inset-bottom)]"
-        aria-label="Terminal views"
-      >
-        {MOBILE_PANES.map((item) => {
-          const active = pane === item.id;
-          return (
-            <button
-              key={item.id}
-              type="button"
-              onClick={() => onPane(item.id)}
-              aria-current={active ? "page" : undefined}
-              className={`min-h-11 flex-1 px-1 text-[10px] font-semibold uppercase tracking-[0.12em] ${
-                active ? "bg-[#1a1a1a] text-amber-400" : "text-neutral-500"
-              }`}
-            >
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
     </div>
   );
 }

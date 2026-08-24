@@ -1,5 +1,6 @@
 "use client";
 
+import { memo } from "react";
 import type { FeedStatus } from "@/lib/market-status";
 
 const COPY: Record<
@@ -7,7 +8,7 @@ const COPY: Record<
   { label: string; short: string; dot: string; text: string; border: string; pulse: boolean }
 > = {
   live: {
-    label: "LIVE CONNECTED",
+    label: "LIVE · CONNECTED",
     short: "LIVE",
     dot: "bg-gain",
     text: "text-gain",
@@ -33,14 +34,22 @@ const COPY: Record<
   connecting: {
     label: "CONNECTING",
     short: "…",
-    dot: "bg-neutral-500",
-    text: "text-neutral-400",
-    border: "border-line bg-[#1a1a1a]",
+    dot: "bg-amber-400",
+    text: "text-amber-300",
+    border: "border-amber-400/40 bg-amber-400/10",
+    pulse: true,
+  },
+  reconnecting: {
+    label: "RECONNECTING",
+    short: "RETRY",
+    dot: "bg-amber-400",
+    text: "text-amber-300",
+    border: "border-amber-400/40 bg-amber-400/10",
     pulse: true,
   },
   error: {
-    label: "FEED ERROR",
-    short: "ERR",
+    label: "DISCONNECTED",
+    short: "OFF",
     dot: "bg-loss",
     text: "text-loss",
     border: "border-loss/40 bg-loss/10",
@@ -51,10 +60,12 @@ const COPY: Record<
 type ConnectionStatusProps = {
   status: FeedStatus;
   compact?: boolean;
+  latencyMs?: number | null;
 };
 
-export function ConnectionStatus({ status, compact }: ConnectionStatusProps) {
+function ConnectionStatusInner({ status, compact, latencyMs }: ConnectionStatusProps) {
   const look = COPY[status];
+  const showLatency = latencyMs != null && (status === "live" || status === "delayed" || status === "closed");
 
   return (
     <span
@@ -70,6 +81,16 @@ export function ConnectionStatus({ status, compact }: ConnectionStatusProps) {
       <span className={`font-mono text-[9px] font-semibold uppercase tracking-[0.12em] ${look.text}`}>
         {compact ? look.short : look.label}
       </span>
+      {showLatency ? (
+        <span
+          title="Quote feed round-trip"
+          className="font-mono text-[9px] tabular-nums tracking-tight text-neutral-500"
+        >
+          {latencyMs}ms
+        </span>
+      ) : null}
     </span>
   );
 }
+
+export const ConnectionStatus = memo(ConnectionStatusInner);

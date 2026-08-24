@@ -6,6 +6,7 @@ import { FormEvent, useMemo, useRef, useState } from "react";
 import { AllocationDonut } from "@/components/allocation-donut";
 import { ExportMenu } from "@/components/export-menu";
 import { HeaderBar } from "@/components/header-bar";
+import { stickyCellClass, stickyHeadClass, tableCellClass, tableHeadClass } from "@/components/h-scroll";
 import { MainNav } from "@/components/main-nav";
 import { ValueSparkline } from "@/components/value-sparkline";
 import {
@@ -339,7 +340,7 @@ export function PortfolioDashboard() {
   ];
 
   return (
-    <div className="flex min-h-full flex-col bg-terminal text-neutral-200">
+    <div className="flex min-h-full flex-col touch-pan-y bg-terminal text-neutral-200">
       <HeaderBar
         bnm={bnm.data}
         index={quotes.data?.index ?? null}
@@ -348,6 +349,7 @@ export function PortfolioDashboard() {
         active="portfolio"
         feedStatus={quotes.status}
         ticks={quotes.ticks}
+        latencyMs={quotes.latencyMs}
         actions={<ExportMenu actions={exportActions} />}
       />
       <MainNav active="portfolio" />
@@ -702,20 +704,20 @@ export function PortfolioDashboard() {
             ) : null}
           </div>
 
-          <div className="hidden overflow-x-auto md:block">
+          <div className="hidden overflow-x-auto overscroll-x-contain touch-pan-x md:block">
           <table className="w-full min-w-[860px] border-collapse text-left">
             <thead>
               <tr className="border-b border-line text-[9px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-                <th className="px-3 py-2">Name</th>
-                <th className="px-3 py-2">Shares</th>
-                <th className="px-3 py-2">Buy px</th>
-                <th className="px-3 py-2">Last</th>
-                <th className="px-3 py-2">Value</th>
-                <th className="px-3 py-2">Wt</th>
-                <th className="px-3 py-2">P&amp;L</th>
-                <th className="px-3 py-2">{RANGE_LABEL[range]}</th>
-                <th className="px-3 py-2">Bought</th>
-                <th className="px-3 py-2" />
+                <th className={`${stickyHeadClass} text-left`}>Name</th>
+                <th className={`${tableHeadClass} text-right`}>Shares</th>
+                <th className={`${tableHeadClass} text-right`}>Buy px</th>
+                <th className={`${tableHeadClass} text-right`}>Last</th>
+                <th className={`${tableHeadClass} text-right`}>Value</th>
+                <th className={`${tableHeadClass} text-right`}>Wt</th>
+                <th className={`${tableHeadClass} text-right`}>P&amp;L</th>
+                <th className={`${tableHeadClass} text-right`}>{RANGE_LABEL[range]}</th>
+                <th className={`${tableHeadClass} text-left`}>Bought</th>
+                <th className={tableHeadClass} />
               </tr>
             </thead>
             <tbody className="divide-y divide-line">
@@ -725,29 +727,29 @@ export function PortfolioDashboard() {
 
                 return (
                   <tr key={row.holding.id} className="hover:bg-[#161616]">
-                    <td className="px-3 py-2">
+                    <td className={stickyCellClass}>
                       <Link href={terminalHref(row.holding.symbol)} className="block">
-                        <span className="block text-[13px] text-neutral-100">
+                        <span className="block text-neutral-100">
                           {row.entry?.name ?? row.holding.symbol}
                         </span>
                         <span className="font-mono text-[9px] text-neutral-600">{row.holding.symbol}</span>
                       </Link>
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={tableCellClass}>
                       <TinyInput
                         value={String(row.holding.quantity)}
                         onCommit={(next) => portfolio.update(row.holding.id, { quantity: Number(next) })}
                       />
                     </td>
-                    <td className="px-3 py-2">
+                    <td className={tableCellClass}>
                       <TinyInput
                         value={String(row.holding.costPerShare)}
                         onCommit={(next) => portfolio.update(row.holding.id, { costPerShare: Number(next) })}
                       />
                     </td>
-                    <td className="px-3 py-2 font-mono text-[12px] text-neutral-100">{formatPrice(row.last)}</td>
-                    <td className="px-3 py-2 font-mono text-[12px] text-neutral-100">{formatRinggit(row.value)}</td>
-                    <td className="px-3 py-2 font-mono text-[11px] text-neutral-400">
+                    <td className={`${tableCellClass} text-right font-mono text-neutral-100`}>{formatPrice(row.last)}</td>
+                    <td className={`${tableCellClass} text-right font-mono text-neutral-100`}>{formatRinggit(row.value)}</td>
+                    <td className={`${tableCellClass} text-right font-mono text-neutral-400`}>
                       {weight != null ? `${weight.toFixed(1)}%` : "—"}
                     </td>
                     <td className="px-3 py-2">
@@ -894,26 +896,26 @@ function TinyInput({ value, onCommit }: { value: string; onCommit: (next: string
 function TransactionTable({ transactions }: { transactions: Transaction[] }) {
   return (
     <section className="min-w-0 border border-line bg-panel">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overscroll-x-contain touch-pan-x">
         <table className="w-full min-w-[720px] border-collapse text-left">
           <thead>
             <tr className="border-b border-line text-[9px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-              <th className="px-3 py-2">Date</th>
-              <th className="px-3 py-2">Symbol</th>
-              <th className="px-3 py-2">Type</th>
-              <th className="px-3 py-2">Qty</th>
-              <th className="px-3 py-2">Price</th>
-              <th className="px-3 py-2">Fees</th>
-              <th className="px-3 py-2">Realised P&amp;L</th>
+              <th className={`${tableHeadClass} text-left`}>Date</th>
+              <th className={`${stickyHeadClass} text-left`}>Symbol</th>
+              <th className={`${tableHeadClass} text-left`}>Type</th>
+              <th className={`${tableHeadClass} text-right`}>Qty</th>
+              <th className={`${tableHeadClass} text-right`}>Price</th>
+              <th className={`${tableHeadClass} text-right`}>Fees</th>
+              <th className={`${tableHeadClass} text-right`}>Realised P&amp;L</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {transactions.map((row) => (
               <tr key={row.id} className="hover:bg-[#161616]">
-                <td className="px-3 py-2 font-mono text-[11px] text-neutral-300">
+                <td className={`${tableCellClass} font-mono text-neutral-300`}>
                   {formatHoldingDay(row.date)}
                 </td>
-                <td className="px-3 py-2 font-mono text-[11px] text-neutral-100">{row.symbol}</td>
+                <td className={`${stickyCellClass} font-mono text-neutral-100`}>{row.symbol}</td>
                 <td className={`px-3 py-2 font-mono text-[11px] uppercase ${row.type === "buy" ? "text-gain" : "text-loss"}`}>
                   {row.type}
                 </td>
@@ -950,22 +952,22 @@ function DividendTable({ rows }: { rows: ReturnType<typeof estimateDividends> })
           the current lot. Historical yield is the Yahoo trailing annual figure.
         </p>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto overscroll-x-contain touch-pan-x">
         <table className="w-full min-w-[720px] border-collapse text-left">
           <thead>
             <tr className="border-b border-line text-[9px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-              <th className="px-3 py-2">Name</th>
-              <th className="px-3 py-2">Yield</th>
-              <th className="px-3 py-2">Est. annual</th>
-              <th className="px-3 py-2">Next payout</th>
-              <th className="px-3 py-2">Next date</th>
+              <th className={`${stickyHeadClass} text-left`}>Name</th>
+              <th className={`${tableHeadClass} text-right`}>Yield</th>
+              <th className={`${tableHeadClass} text-right`}>Est. annual</th>
+              <th className={`${tableHeadClass} text-right`}>Next payout</th>
+              <th className={`${tableHeadClass} text-left`}>Next date</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {rows.map((row) => (
               <tr key={row.symbol} className="hover:bg-[#161616]">
-                <td className="px-3 py-2">
-                  <span className="block text-[13px] text-neutral-100">{row.name}</span>
+                <td className={stickyCellClass}>
+                  <span className="block text-neutral-100">{row.name}</span>
                   <span className="font-mono text-[9px] text-neutral-600">{row.symbol}</span>
                 </td>
                 <td className="px-3 py-2 font-mono text-[12px] text-neutral-200">

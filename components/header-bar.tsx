@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { FormEvent, ReactNode, useState } from "react";
 import { ConnectionStatus } from "@/components/connection-status";
+import { HScroll } from "@/components/h-scroll";
 import { Jargon } from "@/components/jargon-term";
 import { NAV_ITEMS, type NavActive } from "@/components/main-nav";
 import { SlideDrawer } from "@/components/slide-drawer";
@@ -32,6 +33,7 @@ type HeaderBarProps = {
   active?: NavActive;
   feedStatus?: FeedStatus;
   ticks?: Record<string, TickPulse>;
+  latencyMs?: number | null;
   actions?: ReactNode;
 };
 
@@ -44,6 +46,7 @@ export function HeaderBar({
   active,
   feedStatus,
   ticks = {},
+  latencyMs = null,
   actions,
 }: HeaderBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -57,7 +60,6 @@ export function HeaderBar({
     onSearch(submitted);
   }
 
-  const opr = bnm?.opr ?? null;
   const placeholder = searchPlaceholder ?? "Search ticker — Maybank 1155.KL";
 
   return (
@@ -65,10 +67,10 @@ export function HeaderBar({
       <div className="flex min-h-12 items-center gap-2 px-3 py-1.5 md:h-12 md:gap-4 md:py-0">
         <button
           type="button"
-          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-line text-neutral-300 md:hidden"
+          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-line text-neutral-300 lg:hidden"
           aria-expanded={menuOpen}
           aria-controls="app-nav-drawer"
-          aria-label="Open navigation menu"
+          aria-label="Open navigation and market indicators"
           onClick={() => setMenuOpen(true)}
         >
           <span aria-hidden className="flex flex-col gap-1">
@@ -99,63 +101,16 @@ export function HeaderBar({
         <ShariahToggle />
 
         <span className="hidden md:inline-flex">
-          <ConnectionStatus status={status} />
+          <ConnectionStatus status={status} latencyMs={latencyMs} />
         </span>
         <span className="md:hidden">
-          <ConnectionStatus status={status} compact />
+          <ConnectionStatus status={status} compact latencyMs={latencyMs} />
         </span>
 
         {actions}
 
-        <div className="ml-auto flex min-w-0 items-center lg:hidden">
-          <span className="truncate font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-            KLCI
-          </span>
-          <span className="ml-1.5 font-mono text-[12px] text-neutral-100">{formatPrice(index?.price)}</span>
-          <span className={`ml-1.5 font-mono text-[11px] ${changeClass(index?.changePct)}`}>
-            {formatPct(index?.changePct)}
-          </span>
-        </div>
-
         <div className="ml-auto hidden items-stretch divide-x divide-line border border-line lg:flex">
-          {(bnm?.rates ?? [])
-            .filter(
-              (rate) =>
-                rate.pair === "USD/MYR" || rate.pair === "SGD/MYR" || rate.pair === "EUR/MYR",
-            )
-            .map((rate) => (
-              <Tile
-                key={rate.pair}
-                label={rate.pair}
-                note={`BNM ${bnm?.session ?? ""} · ${formatKlDate(rate.date)}`}
-                value={formatFx(rate.rate)}
-                changePct={rate.changePct}
-              />
-            ))}
-
-          {!bnm ? (
-            <>
-              <Tile label="USD/MYR" note="BNM" value="—" changePct={null} />
-              <Tile label="SGD/MYR" note="BNM" value="—" changePct={null} />
-            </>
-          ) : null}
-
-          <IndexTile index={index} ticks={ticks} />
-
-          <Tile
-            label="BNM OPR"
-            term="opr"
-            note={opr?.effectiveDate ? `eff. ${formatKlDate(opr.effectiveDate)}` : "BNM"}
-            value={formatOpr(opr?.level)}
-            changePct={null}
-            badge={
-              opr?.changeBps != null
-                ? opr.changeBps === 0
-                  ? "UNCH"
-                  : `${opr.changeBps > 0 ? "+" : ""}${opr.changeBps}bps`
-                : undefined
-            }
-          />
+          <MacroTiles bnm={bnm} index={index} ticks={ticks} />
         </div>
       </div>
 
@@ -166,13 +121,22 @@ export function HeaderBar({
         <SearchField id="ticker-search-mobile" placeholder={placeholder} />
       </form>
 
+      <HScroll
+        snap
+        className="border-t border-line lg:hidden"
+        aria-label="Market indicators"
+      >
+        <MacroTiles bnm={bnm} index={index} ticks={ticks} snap />
+      </HScroll>
+
       <SlideDrawer
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
-        side="left"
-        title="Navigate"
+        side="bottom"
+        title="Navigate & macros"
+        bodyClassName="overflow-y-auto"
       >
-        <nav id="app-nav-drawer" className="flex h-full flex-col overflow-y-auto">
+        <nav id="app-nav-drawer" className="flex flex-col">
           {NAV_ITEMS.map((item) => {
             const selected = item.id === active;
             return (
@@ -190,6 +154,9 @@ export function HeaderBar({
             );
           })}
         </nav>
+        <div className="grid grid-cols-2 gap-px border-t border-line bg-line">
+          <MacroTiles bnm={bnm} index={index} ticks={ticks} stacked />
+        </div>
       </SlideDrawer>
     </header>
   );
@@ -268,16 +235,79 @@ function ShariahToggle() {
   );
 }
 
+function MacroTiles({
+  bnm,
+  index,
+  ticks,
+  snap = false,
+  stacked = false,
+}: {
+  bnm: BnmPayload | null;
+  index: Quote | null;
+  ticks: Record<string, TickPulse>;
+  snap?: boolean;
+  stacked?: boolean;
+}) {
+  const opr = bnm?.opr ?? null;
+  const fx = (bnm?.rates ?? []).filter(
+    (rate) => rate.pair === "USD/MYR" || rate.pair === "SGD/MYR" || rate.pair === "EUR/MYR",
+  );
+  const tileClass = snap ? "snap-start" : stacked ? "bg-panel" : "";
+
+  return (
+    <>
+      {fx.map((rate) => (
+        <Tile
+          key={rate.pair}
+          className={tileClass}
+          label={rate.pair}
+          note={`BNM ${bnm?.session ?? ""} · ${formatKlDate(rate.date)}`}
+          value={formatFx(rate.rate)}
+          changePct={rate.changePct}
+        />
+      ))}
+
+      {!bnm ? (
+        <>
+          <Tile className={tileClass} label="USD/MYR" note="BNM" value="—" changePct={null} />
+          <Tile className={tileClass} label="SGD/MYR" note="BNM" value="—" changePct={null} />
+        </>
+      ) : null}
+
+      <IndexTile index={index} ticks={ticks} className={tileClass} />
+
+      <Tile
+        className={tileClass}
+        label="BNM OPR"
+        term="opr"
+        note={opr?.effectiveDate ? `eff. ${formatKlDate(opr.effectiveDate)}` : "BNM"}
+        value={formatOpr(opr?.level)}
+        changePct={null}
+        badge={
+          opr?.changeBps != null
+            ? opr.changeBps === 0
+              ? "UNCH"
+              : `${opr.changeBps > 0 ? "+" : ""}${opr.changeBps}bps`
+            : undefined
+        }
+      />
+    </>
+  );
+}
+
 function IndexTile({
   index,
   ticks,
+  className,
 }: {
   index: Quote | null;
   ticks: Record<string, TickPulse>;
+  className?: string;
 }) {
   const flash = usePriceFlash(index?.symbol, ticks);
   return (
     <Tile
+      className={className}
       label="FBM KLCI"
       term="klci"
       note={index?.delayMinutes ? `^KLSE · ${index.delayMinutes}m delay` : "^KLSE"}
@@ -295,13 +325,16 @@ type TileProps = {
   changePct: number | null;
   badge?: string;
   flash?: string;
+  className?: string;
   /** Adds a definition to the label, for the tiles a beginner will not know. */
   term?: JargonTerm;
 };
 
-function Tile({ label, note, value, changePct, badge, term, flash }: TileProps) {
+function Tile({ label, note, value, changePct, badge, term, flash, className = "" }: TileProps) {
   return (
-    <div className={`flex min-w-[132px] flex-col justify-center px-3 py-1 ${flash ?? ""}`}>
+    <div
+      className={`flex min-h-11 min-w-[148px] shrink-0 flex-col justify-center px-3 py-1.5 ${flash ?? ""} ${className}`}
+    >
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[9px] font-medium uppercase tracking-wider text-neutral-500">
           {term ? (
