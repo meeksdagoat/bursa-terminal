@@ -9,11 +9,11 @@ import { ResponsiveSplit } from "@/components/responsive-split";
 import { upcomingEvents } from "@/lib/economy-calendar";
 import { summariseDosmStat, summariseMacroEvent } from "@/lib/eli5";
 import { changeClass, formatKlDate, formatKlStamp, formatOpr, formatPct, formatPrice } from "@/lib/format";
+import { FX_PAIRS, ratesHaveValues } from "@/lib/fx-live";
 import type { JargonTerm } from "@/lib/jargon";
 import { heatmapRows } from "@/lib/sectors";
 import type { BnmPayload, EconomyPayload, HeadlinesPayload, SectorPerformance } from "@/lib/types";
-
-const FX_PAIRS = ["USD/MYR", "SGD/MYR", "EUR/MYR", "CNY/MYR"] as const;
+import { useEconomyLive } from "@/lib/use-economy-live";
 
 type EconomyDeskProps = {
   bnm: BnmPayload | null;
@@ -34,14 +34,19 @@ export function EconomyDesk({
   headlinesError,
   headlinesLoading,
 }: EconomyDeskProps) {
+  const live = useEconomyLive(sectors);
   const opr = bnm?.opr ?? null;
   const cpi = economy?.cpi ?? null;
   const cpo = economy?.commodities.find((item) => item.id === "cpo") ?? null;
   const brent = economy?.commodities.find((item) => item.id === "brent") ?? null;
-  const rates = bnm?.rates ?? [];
+  const rates = ratesHaveValues(live.rates) ? live.rates : (bnm?.rates ?? []);
+  const fxLoading = live.fxLoading && !ratesHaveValues(rates);
   const snapshot = economy?.snapshot ?? [];
-  const heatmap = heatmapRows(sectors);
+  const heatmapSectors = live.sectors.length > 0 ? live.sectors : sectors;
+  const heatmap = heatmapRows(heatmapSectors);
+  const heatmapLoading = live.heatmapLoading && heatmap.every((row) => row.changePct == null);
   const events = upcomingEvents();
+  const sessionBadge = live.sessionLive ? "LIVE" : "LAST SESSION";
 
   return (
     <ResponsiveSplit
@@ -113,6 +118,7 @@ export function EconomyDesk({
               <div className="grid grid-cols-2 gap-px bg-neutral-800">
                 {FX_PAIRS.map((pair) => {
                   const rate = rates.find((item) => item.pair === pair);
+                  const changePct = rate?.changePct ?? null;
                   return (
                     <div key={pair} className="bg-[#0a0a0a] px-2.5 py-2.5">
                       <div className="flex items-center justify-between gap-2">
@@ -120,24 +126,27 @@ export function EconomyDesk({
                           {pair}
                         </span>
                         <span
-                          className={`rounded-sm border px-1 py-px font-mono text-[9px] ${
-                            (rate?.changePct ?? 0) > 0
-                              ? "border-gain/40 bg-gain/10 text-gain"
-                              : (rate?.changePct ?? 0) < 0
-                                ? "border-loss/40 bg-loss/10 text-loss"
-                                : "border-neutral-800 text-neutral-500"
-                          }`}
+                          className={`rounded-sm border px-1 py-px font-mono text-[9px] ${toneBadgeClass(changePct)}`}
                         >
-                          {formatPct(rate?.changePct ?? null)}
+                          {fxLoading ? "..." : formatPct(changePct)}
                         </span>
                       </div>
                       <p className="mt-1 font-mono text-[16px] text-neutral-100">
-                        {rate?.rate != null ? rate.rate.toFixed(4) : "—"}
+                        {fxLoading ? "..." : rate?.rate != null ? rate.rate.toFixed(4) : "—"}
                       </p>
                     </div>
                   );
                 })}
               </div>
+              {live.fxError ? (
+                <p className="border-t border-neutral-800 px-2.5 py-1.5 font-mono text-[9px] text-loss">
+                  FX FEED · {live.fxError}
+                </p>
+              ) : (
+                <p className="border-t border-neutral-800 px-2.5 py-1 font-mono text-[8px] uppercase tracking-wider text-neutral-700">
+                  {live.fxSource === "open-er" ? "OPEN ER API · 30S POLL" : "BNM OPEN API · 30S POLL"}
+                </p>
+              )}
             </Card>
 
             <Card title="DOSM Macro Snapshot">
@@ -166,26 +175,38 @@ export function EconomyDesk({
             </Card>
 
             <Card title="Bursa Sector Heatmap">
+              <div className="flex items-center justify-between border-b border-neutral-800 px-2.5 py-1">
+                <p className="font-mono text-[8px] uppercase tracking-wider text-neutral-600">
+                  {live.sessionLive ? "SESSION TAPE" : "OUTSIDE HOURS"}
+                  {live.marketState ? ` · ${live.marketState}` : ""}
+                </p>
+                <span
+                  className={`rounded-sm border px-1 py-px font-mono text-[8px] uppercase tracking-wider ${
+                    live.sessionLive
+                      ? "border-gain/40 bg-gain/10 text-gain"
+                      : "border-amber-400/40 bg-amber-400/10 text-amber-300"
+                  }`}
+                >
+                  {sessionBadge}
+                </span>
+              </div>
               <div className="grid grid-cols-2 gap-px bg-neutral-800 sm:grid-cols-3">
-                {heatmap.map((row) => (
-                  <div key={row.label} className="bg-[#0a0a0a] px-2.5 py-2.5">
-                    <p className="text-[10px] leading-snug text-neutral-400">{row.label}</p>
-                    <p className={`mt-1 font-mono text-[14px] ${changeClass(row.changePct)}`}>
-                      {formatPct(row.changePct)}
-                    </p>
-                    <span
-                      className={`mt-1 inline-block rounded-sm border px-1 py-px font-mono text-[8px] uppercase tracking-wider ${
-                        (row.changePct ?? 0) > 0
-                          ? "border-gain/40 text-gain"
-                          : (row.changePct ?? 0) < 0
-                            ? "border-loss/40 text-loss"
-                            : "border-neutral-800 text-neutral-500"
-                      }`}
-                    >
-                      {(row.changePct ?? 0) > 0 ? "UP" : (row.changePct ?? 0) < 0 ? "DOWN" : "FLAT"}
-                    </span>
-                  </div>
-                ))}
+                {heatmap.map((row) => {
+                  const tone = heatmapTone(row.changePct);
+                  return (
+                    <div key={row.label} className="bg-[#0a0a0a] px-2.5 py-2.5">
+                      <p className="text-[10px] leading-snug text-neutral-400">{row.label}</p>
+                      <p className={`mt-1 font-mono text-[14px] ${tone.valueClass}`}>
+                        {heatmapLoading ? "..." : formatPct(row.changePct)}
+                      </p>
+                      <span
+                        className={`mt-1 inline-block rounded-sm border px-1 py-px font-mono text-[8px] uppercase tracking-wider ${tone.badgeClass}`}
+                      >
+                        {heatmapLoading ? "..." : tone.badge}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
             </Card>
 
@@ -253,6 +274,40 @@ const EMPTY_SNAPSHOT = [
   { id: "trade" as const, label: "Trade Balance Surplus", value: null, display: "—", hint: "DOSM", period: null },
   { id: "ipi" as const, label: "Industrial Production Index", value: null, display: "—", hint: "DOSM", period: null },
 ];
+
+function toneBadgeClass(changePct: number | null): string {
+  if (changePct == null || changePct === 0) {
+    return "border-amber-400/40 bg-amber-400/10 text-amber-300";
+  }
+  if (changePct > 0) return "border-gain/40 bg-gain/10 text-gain";
+  return "border-loss/40 bg-loss/10 text-loss";
+}
+
+function heatmapTone(changePct: number | null): {
+  badge: string;
+  badgeClass: string;
+  valueClass: string;
+} {
+  if (changePct == null || changePct === 0) {
+    return {
+      badge: "FLAT",
+      badgeClass: "border-amber-400/40 text-amber-300",
+      valueClass: "text-amber-300",
+    };
+  }
+  if (changePct > 0) {
+    return {
+      badge: "UP",
+      badgeClass: "border-gain/40 text-gain",
+      valueClass: changeClass(changePct),
+    };
+  }
+  return {
+    badge: "DOWN",
+    badgeClass: "border-loss/40 text-loss",
+    valueClass: changeClass(changePct),
+  };
+}
 
 export function Card({ title, children }: { title: string; children: ReactNode }) {
   return (

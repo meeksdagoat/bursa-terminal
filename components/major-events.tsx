@@ -1,53 +1,33 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { formatKlFullDate } from "@/lib/format";
-import type {
-  CorporateEvent,
-  CorporateEventType,
-  CorporateEventsPayload,
-  EventImpact,
-  EventSentiment,
-} from "@/lib/types";
+import { formatEventHeadline, formatKlFullDate } from "@/lib/format";
+import {
+  EVENT_SENTIMENT_BADGE,
+  EVENT_SENTIMENT_LABEL,
+  EVENT_TYPE_LABEL,
+} from "@/lib/event-classify";
+import type { CorporateEvent, CorporateEventsPayload, EventSentiment } from "@/lib/types";
 import { useLiveData } from "@/lib/use-live-data";
 
-const REFRESH_MS = 30 * 60 * 1000;
+const REFRESH_MS = 5 * 60 * 1000;
 
-const TYPE_LABEL: Record<CorporateEventType, string> = {
-  layoffs: "Layoffs",
-  ma: "M&A",
-  management: "Management",
-  expansion: "Expansion",
-  contract: "Contract",
-  regulatory: "Regulatory",
+const EFFECT_OPTIONS: EventSentiment[] = ["positive", "neutral", "negative"];
+
+const EFFECT_OPTION_CLASS: Record<EventSentiment, string> = {
+  positive: "text-gain",
+  neutral: "text-amber-300",
+  negative: "text-loss",
 };
 
-const TYPE_OPTIONS: CorporateEventType[] = [
-  "layoffs",
-  "ma",
-  "management",
-  "expansion",
-  "contract",
-  "regulatory",
-];
-
-const IMPACT_LABEL: Record<EventImpact, string> = {
-  high: "High impact",
-  medium: "Medium impact",
-  low: "Low impact",
+const SOURCE_LABEL: Record<CorporateEventsPayload["source"], string> = {
+  "bursa+news": "BURSA + NEWS",
+  bursa: "BURSA FILINGS",
+  news: "COMPANY NEWS",
 };
 
-const SENTIMENT_LABEL: Record<EventSentiment, string> = {
-  positive: "Positive",
-  negative: "Negative",
-  neutral: "Neutral",
-};
-
-const BADGE: Record<EventSentiment, string> = {
-  positive: "border-gain/45 bg-gain/10 text-gain",
-  negative: "border-loss/45 bg-loss/10 text-loss",
-  neutral: "border-amber-400/40 bg-amber-400/10 text-amber-300",
-};
+const SELECT_CLASS =
+  "h-8 rounded border border-neutral-800 bg-[#141414] px-2 py-1 font-mono text-xs text-neutral-300 md:h-6";
 
 type MajorEventsProps = {
   symbol: string;
@@ -56,7 +36,7 @@ type MajorEventsProps = {
 
 export function MajorEvents({ symbol, companyName }: MajorEventsProps) {
   const [year, setYear] = useState<string>("all");
-  const [type, setType] = useState<string>("all");
+  const [effect, setEffect] = useState<string>("all");
   const url = `/api/events?symbol=${encodeURIComponent(symbol)}`;
   const { data, error, loading } = useLiveData<CorporateEventsPayload>(url, REFRESH_MS);
 
@@ -79,10 +59,10 @@ export function MajorEvents({ symbol, companyName }: MajorEventsProps) {
       items.filter((item) => {
         const itemYear = String(new Date(item.date).getUTCFullYear());
         if (year !== "all" && itemYear !== year) return false;
-        if (type !== "all" && item.type !== type) return false;
+        if (effect !== "all" && item.sentiment !== effect) return false;
         return true;
       }),
-    [items, year, type],
+    [items, year, effect],
   );
 
   if (error && !payload) {
@@ -97,14 +77,14 @@ export function MajorEvents({ symbol, companyName }: MajorEventsProps) {
   }
 
   return (
-    <div className="flex min-h-0 flex-col">
+    <div className="flex min-h-0 min-w-0 flex-col">
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-2.5 py-2">
         <label className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-neutral-500">
           Year
           <select
             value={year}
             onChange={(event) => setYear(event.target.value)}
-            className="h-8 border border-line bg-[#0e0e0e] px-1.5 font-mono text-[10px] text-neutral-200 md:h-6"
+            className={SELECT_CLASS}
           >
             <option value="all">All years</option>
             {years.map((value) => (
@@ -115,34 +95,34 @@ export function MajorEvents({ symbol, companyName }: MajorEventsProps) {
           </select>
         </label>
         <label className="flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-neutral-500">
-          Type
+          Effects
           <select
-            value={type}
-            onChange={(event) => setType(event.target.value)}
-            className="h-8 border border-line bg-[#0e0e0e] px-1.5 font-mono text-[10px] text-neutral-200 md:h-6"
+            value={effect}
+            onChange={(event) => setEffect(event.target.value)}
+            className={`${SELECT_CLASS} ${effect === "all" ? "" : EFFECT_OPTION_CLASS[effect as EventSentiment]}`}
           >
-            <option value="all">All types</option>
-            {TYPE_OPTIONS.map((value) => (
-              <option key={value} value={value}>
-                {TYPE_LABEL[value]}
+            <option value="all">All effects</option>
+            {EFFECT_OPTIONS.map((value) => (
+              <option key={value} value={value} className={EFFECT_OPTION_CLASS[value]}>
+                {EVENT_SENTIMENT_LABEL[value]}
               </option>
             ))}
           </select>
         </label>
         <span className="ml-auto font-mono text-[9px] uppercase tracking-wider text-neutral-700">
-          {payload?.source === "stub" ? "STUB TIMELINE · SWAP /api/events" : "LIVE TIMELINE"} · {visible.length}
+          LIVE · {payload ? SOURCE_LABEL[payload.source] : "TIMELINE"} · {visible.length}
         </span>
       </div>
 
-      <ol className="divide-y divide-line">
+      <ol className="min-w-0 divide-y divide-line">
         {visible.map((item) => (
           <EventRow key={item.id} item={item} />
         ))}
         {visible.length === 0 ? (
           <li className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">
             {items.length === 0
-              ? `NO MATERIAL EVENTS FOR ${companyName.toUpperCase()}`
-              : "NO EVENTS MATCH THE YEAR / TYPE FILTERS"}
+              ? `NO LIVE FILINGS OR NEWS FOR ${companyName.toUpperCase()}`
+              : "NO EVENTS MATCH THE YEAR / EFFECTS FILTERS"}
           </li>
         ) : null}
       </ol>
@@ -151,38 +131,57 @@ export function MajorEvents({ symbol, companyName }: MajorEventsProps) {
 }
 
 function EventRow({ item }: { item: CorporateEvent }) {
-  return (
-    <li className="px-2.5 py-2 hover:bg-[#161616]">
-      <div className="flex flex-wrap items-center gap-2">
+  const headline = formatEventHeadline(item.title);
+  const body = (
+    <div className="min-w-0 overflow-hidden px-2.5 py-2">
+      <div className="flex min-w-0 items-center gap-2">
         <span className="w-[74px] shrink-0 font-mono text-[10px] text-neutral-500">
           {formatKlFullDate(item.date)}
         </span>
-        <ImpactBadge impact={item.impact} sentiment={item.sentiment} />
-        <span className="rounded-sm border border-line px-1 py-px font-mono text-[9px] uppercase tracking-wider text-neutral-500">
-          {TYPE_LABEL[item.type]}
+        <SentimentBadge sentiment={item.sentiment} />
+        <span className="shrink-0 rounded-sm border border-line px-1 py-px font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+          {EVENT_TYPE_LABEL[item.type]}
         </span>
-        <span className="min-w-0 text-[12px] font-medium leading-snug text-neutral-100">{item.title}</span>
       </div>
-      <p className="mt-0.5 pl-0 text-[11px] leading-snug text-neutral-400 sm:pl-[82px]">{item.summary}</p>
-      <p className="mt-0.5 font-mono text-[9px] uppercase tracking-wider text-neutral-700 sm:pl-[82px]">
-        {item.source}
+      <p
+        className="mt-1 line-clamp-2 min-w-0 overflow-hidden break-words text-[12px] font-medium leading-snug text-neutral-100"
+        title={item.title}
+      >
+        {headline}
       </p>
+      {item.summary ? (
+        <p className="mt-0.5 min-w-0 text-[11px] leading-snug text-neutral-400">{item.summary}</p>
+      ) : null}
+      <p className="mt-0.5 font-mono text-[9px] uppercase tracking-wider text-neutral-700">
+        {item.source}
+        {item.url ? " ↗" : ""}
+      </p>
+    </div>
+  );
+
+  if (!item.url) return <li className="min-w-0">{body}</li>;
+
+  return (
+    <li className="relative min-w-0 hover:bg-[#161616]">
+      <a
+        href={item.url}
+        target="_blank"
+        rel="noopener noreferrer"
+        title={item.title}
+        aria-label={`${headline} — open source`}
+        className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
+      />
+      <div className="pointer-events-none relative z-10 min-w-0">{body}</div>
     </li>
   );
 }
 
-function ImpactBadge({
-  impact,
-  sentiment,
-}: {
-  impact: EventImpact;
-  sentiment: EventSentiment;
-}) {
+function SentimentBadge({ sentiment }: { sentiment: EventSentiment }) {
   return (
     <span
-      className={`shrink-0 rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${BADGE[sentiment]}`}
+      className={`shrink-0 whitespace-nowrap rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${EVENT_SENTIMENT_BADGE[sentiment]}`}
     >
-      {IMPACT_LABEL[impact]} — {SENTIMENT_LABEL[sentiment]}
+      {EVENT_SENTIMENT_LABEL[sentiment]}
     </span>
   );
 }

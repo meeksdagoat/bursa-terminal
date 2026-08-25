@@ -20,7 +20,7 @@ const HEATMAP_CONFIG = {
   isZoomEnabled: true,
   hasSymbolTooltip: true,
   width: "100%",
-  height: 280,
+  height: "100%",
 };
 
 export function GlobalMarketHeatmap() {
@@ -57,7 +57,7 @@ export function GlobalMarketHeatmap() {
   }, []);
 
   return (
-    <section className="flex min-h-0 flex-col border border-neutral-800 bg-[#0d0d0d]">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d]">
       <header className="shrink-0 border-b border-neutral-800 px-3 py-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           S&P 500 Heatmap
@@ -67,7 +67,7 @@ export function GlobalMarketHeatmap() {
       <div
         ref={hostRef}
         data-tv-heatmap
-        className="h-[280px] w-full overflow-hidden bg-transparent [&_iframe]:block [&_iframe]:h-[280px] [&_iframe]:w-full"
+        className="min-h-0 w-full flex-1 overflow-hidden bg-transparent [&_.tradingview-widget-container]:h-full [&_.tradingview-widget-container]:w-full [&_.tradingview-widget-container__widget]:h-full [&_iframe]:block [&_iframe]:h-full [&_iframe]:w-full"
         aria-label="S&P 500 sector heatmap"
       />
     </section>

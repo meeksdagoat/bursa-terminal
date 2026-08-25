@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const payload = await cached(`events:stub:${entry.symbol}`, TTL_MS, () => getCompanyEvents(entry));
+    const payload = await cached(`events:live:v1:${entry.symbol}`, TTL_MS, () => getCompanyEvents(entry));
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Unknown error";

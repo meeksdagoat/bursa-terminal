@@ -5,7 +5,8 @@ import { GlobalMacroCalendarWidget } from "@/components/GlobalMacroCalendarWidge
 import { Eli5Block } from "@/components/eli5-summary";
 import { summariseMacroEvent } from "@/lib/eli5";
 import { formatKlDate } from "@/lib/format";
-import { allGlobalMacroEvents, klTodayIso } from "@/lib/global-calendar";
+import { allGlobalMacroEvents, eventCalendarDate, klTodayIso } from "@/lib/global-calendar";
+import { MYT_LABEL, MYT_TIME_BADGE_CLASS } from "@/lib/myt";
 
 /**
  * Two-column Global Event Calendar: chronological list + month widget.
@@ -18,13 +19,13 @@ export function GlobalEventCalendar() {
 
   const visible = useMemo(() => {
     if (selectedDate) {
-      return catalog.filter((event) => event.date === selectedDate);
+      return catalog.filter((event) => eventCalendarDate(event) === selectedDate);
     }
-    return catalog.filter((event) => event.date >= today);
+    return catalog.filter((event) => eventCalendarDate(event) >= today);
   }, [catalog, selectedDate, today]);
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-panel">
+    <div className="flex h-full min-h-[200px] min-w-0 flex-col overflow-hidden bg-panel">
       <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-3 py-2">
         <div>
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
@@ -32,21 +33,26 @@ export function GlobalEventCalendar() {
           </h2>
           <p className="mt-0.5 text-[11px] text-neutral-500">FOMC · US CPI · ECB · BOJ · PBOC LPR</p>
         </div>
-        {selectedDate ? (
-          <button
-            type="button"
-            onClick={() => setSelectedDate(null)}
-            className="min-h-8 shrink-0 rounded-sm border border-neutral-700 px-2 font-mono text-[9px] uppercase tracking-wider text-neutral-300 hover:border-amber-500/40 hover:text-amber-300 lg:min-h-0 lg:py-1"
-          >
-            Show all
-          </button>
-        ) : null}
+        <div className="flex shrink-0 items-center gap-2">
+          <span className="rounded border border-emerald-800/50 bg-emerald-950/60 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-400">
+            {MYT_LABEL}
+          </span>
+          {selectedDate ? (
+            <button
+              type="button"
+              onClick={() => setSelectedDate(null)}
+              className="min-h-8 shrink-0 rounded-sm border border-neutral-700 px-2 font-mono text-[9px] uppercase tracking-wider text-neutral-300 hover:border-amber-500/40 hover:text-amber-300 lg:min-h-0 lg:py-1"
+            >
+              Show all
+            </button>
+          ) : null}
+        </div>
       </div>
 
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3 lg:overflow-hidden">
-        <div className="grid grid-cols-1 gap-4 lg:h-full lg:grid-cols-12">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-hidden p-3">
+        <div className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-12">
           <section
-            className="order-2 min-h-0 lg:order-1 lg:col-span-7 lg:overflow-y-auto"
+            className="order-2 min-h-0 overflow-y-auto lg:order-1 lg:col-span-7"
             aria-label="Upcoming macro events"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -65,29 +71,38 @@ export function GlobalEventCalendar() {
               <ul className="divide-y divide-neutral-800 border border-neutral-800 bg-[#0d0d0d]">
                 {visible.map((event) => (
                   <li key={event.id} className="px-2.5 py-2">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <p className="truncate text-[11px] text-neutral-200">{event.title}</p>
                         <p className="font-mono text-[9px] uppercase tracking-wider text-neutral-600">
-                          {event.source} · {formatKlDate(event.date)}
+                          {event.source} · {formatKlDate(eventCalendarDate(event))}
                         </p>
                       </div>
-                      <span
-                        className={`shrink-0 rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
-                          event.kind === "cpi"
-                            ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                            : "border-amber-400/30 bg-amber-400/10 text-amber-300"
-                        }`}
-                      >
-                        {event.badge}
-                      </span>
+                      <div className="flex shrink-0 flex-col items-end gap-1">
+                        {event.myt ? (
+                          <span className={MYT_TIME_BADGE_CLASS} title={event.myt.label}>
+                            {event.myt.badge}
+                          </span>
+                        ) : null}
+                        <span
+                          className={`rounded-sm border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider ${
+                            event.kind === "cpi"
+                              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                              : "border-amber-400/30 bg-amber-400/10 text-amber-300"
+                          }`}
+                        >
+                          {event.badge}
+                        </span>
+                      </div>
                     </div>
                     <Eli5Block
                       build={() =>
                         summariseMacroEvent({
                           title: event.title,
                           source: event.source,
-                          when: `${formatKlDate(event.date)} · ${event.badge}`,
+                          when: event.myt
+                            ? `${formatKlDate(event.myt.mytDate)} · ${event.myt.badge} · ${event.badge}`
+                            : `${formatKlDate(event.date)} · ${event.badge}`,
                         })
                       }
                       subject={event.title}
@@ -98,7 +113,7 @@ export function GlobalEventCalendar() {
             )}
           </section>
 
-          <div className="order-1 min-h-[22rem] lg:order-2 lg:col-span-5 lg:min-h-0">
+          <div className="order-1 min-h-0 overflow-hidden lg:order-2 lg:col-span-5">
             <GlobalMacroCalendarWidget
               events={catalog}
               selectedDate={selectedDate}

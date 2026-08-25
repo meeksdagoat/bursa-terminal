@@ -15,7 +15,7 @@ import type { UniverseEntry } from "@/lib/types";
 import { searchUniverse } from "@/lib/universe";
 import { useShariahOnly } from "@/lib/use-shariah";
 
-const RESULT_LIMIT = 12;
+const RESULT_LIMIT = 16;
 
 type TickerSearchFieldProps = {
   id: string;
@@ -228,8 +228,8 @@ export function TickerSearchField({
                           selected ? "bg-gain/10" : "hover:bg-[#1b1b1b]"
                         }`}
                       >
-                        <span className="w-[46px] shrink-0 font-mono text-[10px] text-neutral-400">
-                          <Highlight text={entry.code} query={query} />
+                        <span className="w-[58px] shrink-0 font-mono text-[10px] text-neutral-400">
+                          <Highlight text={entry.shortName || entry.code} query={query} />
                         </span>
                         <span className="min-w-0 flex-1 truncate text-[11px] text-neutral-100">
                           <Highlight text={entry.name} query={query} />
@@ -241,7 +241,7 @@ export function TickerSearchField({
                           ) : null}
                         </span>
                         <span className="max-w-[4.5rem] shrink-0 truncate rounded-sm border border-neutral-800 px-1 py-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-500">
-                          {entry.sector}
+                          {entry.market}
                         </span>
                         {entry.shariah ? (
                           <span title="Shariah-compliant" className="shrink-0 text-[10px]" aria-label="Shariah">
@@ -266,7 +266,11 @@ export function TickerSearchField({
 function aliasMatch(entry: UniverseEntry, query: string): string | null {
   const needle = query.trim().toLowerCase();
   if (!needle) return null;
-  if (entry.code.toLowerCase().includes(needle) || entry.name.toLowerCase().includes(needle)) {
+  if (
+    entry.code.toLowerCase().includes(needle) ||
+    entry.shortName.toLowerCase().includes(needle) ||
+    entry.name.toLowerCase().includes(needle)
+  ) {
     return null;
   }
   return entry.aliases.find((alias) => alias.toLowerCase().includes(needle)) ?? null;

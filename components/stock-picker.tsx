@@ -36,7 +36,7 @@ export function StockPicker({
   const shariahOnly = useShariahOnly();
   const saved = useMemo(() => new Set(savedSymbols), [savedSymbols]);
   const results = useMemo(() => {
-    const matches = searchUniverse(query);
+    const matches = searchUniverse(query, universe.length);
     return shariahOnly ? matches.filter((entry) => entry.shariah) : matches;
   }, [query, shariahOnly]);
 
@@ -117,6 +117,12 @@ export function StockPicker({
                       </span>
                       <span className="min-w-0 flex-1 truncate text-[12px] text-neutral-100">
                         {entry.name}
+                        <span className="ml-1.5 font-mono text-[9px] text-neutral-600">
+                          {entry.shortName}
+                        </span>
+                      </span>
+                      <span className="hidden w-[36px] shrink-0 font-mono text-[9px] text-neutral-500 sm:block">
+                        {entry.market}
                       </span>
                       <span className="hidden w-[86px] shrink-0 truncate text-[10px] text-neutral-500 sm:block">
                         {entry.sector}

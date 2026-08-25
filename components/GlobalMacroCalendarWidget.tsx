@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import {
   WEEKDAY_LABELS,
   daysInMonth,
+  eventCalendarDate,
   formatMonthYear,
   isoFromParts,
   klTodayIso,
@@ -13,6 +14,7 @@ import {
   type DatedMacroEvent,
   type MacroEventKind,
 } from "@/lib/global-calendar";
+import { MYT_TIME_BADGE_COMPACT_CLASS } from "@/lib/myt";
 
 const KIND_DOT: Record<MacroEventKind, string> = {
   rate: "bg-amber-400 shadow-[0_0_7px_rgba(251,191,36,0.95)]",
@@ -102,17 +104,19 @@ export function GlobalMacroCalendarWidget({
   const todayIso = klTodayIso();
   const todayParts = parseIsoDate(todayIso) ?? { year: 2026, month: 8, day: 25 };
   const [{ year, month }, setCursor] = useState(() => {
-    const nextEvent = events.find((event) => event.date >= todayIso) ?? events[0];
-    const start = parseIsoDate(nextEvent?.date ?? todayIso);
+    const nextEvent =
+      events.find((event) => eventCalendarDate(event) >= todayIso) ?? events[0];
+    const start = parseIsoDate(nextEvent ? eventCalendarDate(nextEvent) : todayIso);
     return { year: start?.year ?? todayParts.year, month: start?.month ?? todayParts.month };
   });
 
   const eventsByDate = useMemo(() => {
     const map = new Map<string, DatedMacroEvent[]>();
     for (const event of events) {
-      const list = map.get(event.date) ?? [];
+      const key = eventCalendarDate(event);
+      const list = map.get(key) ?? [];
       list.push(event);
-      map.set(event.date, list);
+      map.set(key, list);
     }
     return map;
   }, [events]);
@@ -206,10 +210,15 @@ export function GlobalMacroCalendarWidget({
           const count = cell.events.length;
           const selected = selectedDate === cell.iso;
           const kinds = [...new Set(cell.events.map((event) => event.kind))];
+          const times = cell.events
+            .map((event) => event.myt)
+            .filter((stamp): stamp is NonNullable<typeof stamp> => stamp != null);
           const eventLabel =
             count === 0
               ? "No events"
-              : `${count} ${count === 1 ? "event" : "events"}`;
+              : times.length > 0
+                ? `${count} ${count === 1 ? "event" : "events"} · ${times.map((stamp) => stamp.badge).join(", ")}`
+                : `${count} ${count === 1 ? "event" : "events"}`;
 
           return (
             <button
@@ -229,9 +238,9 @@ export function GlobalMacroCalendarWidget({
               aria-pressed={selected}
               aria-label={`${cell.iso} · ${eventLabel}`}
               title={count > 0 ? `${cell.iso} · ${eventLabel}` : cell.iso}
-              className={`relative flex min-h-11 flex-col items-center justify-between border border-neutral-800 px-0.5 py-0.5 transition-colors lg:min-h-0 ${
+              className={`relative flex min-h-0 flex-col items-center justify-between border border-neutral-800 px-0.5 py-0.5 transition-colors ${
                 selected
-                  ? "z-[1] border-amber-500/80 bg-amber-500/10"
+                  ? "border-amber-500/80 bg-amber-500/10"
                   : cell.isToday
                     ? "bg-white/[0.03] hover:border-amber-500/50 hover:bg-amber-500/5"
                     : "bg-[#0d0d0d] hover:border-amber-500/50 hover:bg-amber-500/5"
@@ -250,7 +259,21 @@ export function GlobalMacroCalendarWidget({
               >
                 {cell.day}
               </span>
-              {count > 0 ? (
+              {times.length > 0 ? (
+                <span className="flex max-w-full flex-col items-center gap-0.5">
+                  {cell.events.slice(0, 2).map((event) =>
+                    event.myt ? (
+                      <span
+                        key={event.id}
+                        className={MYT_TIME_BADGE_COMPACT_CLASS}
+                        title={event.myt.badge}
+                      >
+                        {event.myt.compact}
+                      </span>
+                    ) : null,
+                  )}
+                </span>
+              ) : count > 0 ? (
                 <span className="rounded-sm bg-amber-500/15 px-1 font-mono text-[7px] uppercase leading-none tracking-wider text-amber-300">
                   {count} {count === 1 ? "event" : "events"}
                 </span>

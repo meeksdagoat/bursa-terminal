@@ -1,7 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { changeClass, formatPct, formatPrice, formatVolume } from "@/lib/format";
+import { useMemo } from "react";
+import { formatPct, formatPrice, formatVolume } from "@/lib/format";
+
+function displayVolume(volume: number | null) {
+  return volume != null && volume > 0 ? formatVolume(volume) : "—";
+}
+import { resolveMoversBoard } from "@/lib/movers-fallback";
 import type { MoverRow, MoversPayload } from "@/lib/types";
 
 type MoversBoardProps = {
@@ -10,10 +16,21 @@ type MoversBoardProps = {
   loading: boolean;
   /** Rows per board; the overview shows six of each. */
   size?: number;
+  onRetry?: () => void;
 };
 
-export function MoversBoard({ payload, error, loading, size = 6 }: MoversBoardProps) {
-  const breadth = payload?.breadth ?? null;
+export function MoversBoard({ payload, error, loading, size = 6, onRetry }: MoversBoardProps) {
+  const board = useMemo(() => resolveMoversBoard(payload), [payload]);
+  const gainers = board.gainers.slice(0, size);
+  const losers = board.losers.slice(0, size);
+  const feed = [...gainers, ...losers];
+  const breadth = board.breadth;
+  const usingFallback = board.source === "fallback" || Boolean(error);
+  const status = usingFallback
+    ? "LAST SESSION"
+    : loading
+      ? "LOADING"
+      : `YAHOO · ${board.marketState ?? "—"}`;
 
   return (
     <section className="border-b border-line bg-terminal">
@@ -28,19 +45,22 @@ export function MoversBoard({ payload, error, loading, size = 6 }: MoversBoardPr
         </div>
 
         <div className="flex items-center gap-3 font-mono text-[10px]">
-          {breadth ? (
-            <>
-              <span className="text-gain">{breadth.advancers} UP</span>
-              <span className="text-loss">{breadth.decliners} DOWN</span>
-              <span className="text-neutral-500">{breadth.unchanged} FLAT</span>
-              <span className="text-neutral-600">
-                {breadth.covered}/{breadth.universe} TRADED
-              </span>
-            </>
-          ) : null}
-          <span className={error ? "text-loss" : "text-neutral-600"}>
-            {error ? "FEED ERROR" : loading ? "LOADING" : `YAHOO · ${payload?.marketState ?? "—"}`}
+          <span className="text-gain">{breadth.advancers} UP</span>
+          <span className="text-loss">{breadth.decliners} DOWN</span>
+          <span className="text-neutral-500">{breadth.unchanged} FLAT</span>
+          <span className="text-neutral-600">
+            {breadth.covered}/{breadth.universe} TRADED
           </span>
+          <span className={error ? "text-loss" : "text-neutral-600"}>{status}</span>
+          {onRetry ? (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="inline-flex min-h-11 items-center border border-line px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-neutral-300 hover:text-gain md:min-h-0"
+            >
+              Retry
+            </button>
+          ) : null}
           <Link
             href="/terminal"
             className="inline-flex min-h-11 items-center border border-line px-2 py-0.5 text-[9px] font-semibold uppercase tracking-[0.12em] text-gain hover:bg-gain/10 md:min-h-0"
@@ -50,28 +70,12 @@ export function MoversBoard({ payload, error, loading, size = 6 }: MoversBoardPr
         </div>
       </div>
 
-      {error ? (
-        <p className="px-3 py-6 text-center font-mono text-[11px] text-loss">
-          MOVERS FEED UNAVAILABLE · {error}
-        </p>
-      ) : (
-        <div className="grid grid-cols-1 divide-y divide-line lg:grid-cols-2 lg:divide-x lg:divide-y-0">
-          <Board
-            title="Top Gainers"
-            rows={payload?.gainers ?? []}
-            loading={loading}
-            size={size}
-            tone="gain"
-          />
-          <Board
-            title="Top Losers"
-            rows={payload?.losers ?? []}
-            loading={loading}
-            size={size}
-            tone="loss"
-          />
-        </div>
-      )}
+      <div className="grid grid-cols-1 divide-y divide-line lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+        <Board title="Top Gainers" rows={gainers} loading={loading} tone="gain" />
+        <Board title="Top Losers" rows={losers} loading={loading} tone="loss" />
+      </div>
+
+      <MoversTape rows={feed} onRetry={onRetry} reconnecting={loading} />
     </section>
   );
 }
@@ -80,17 +84,13 @@ function Board({
   title,
   rows,
   loading,
-  size,
   tone,
 }: {
   title: string;
   rows: MoverRow[];
   loading: boolean;
-  size: number;
   tone: "gain" | "loss";
 }) {
-  const visible = rows.slice(0, size);
-
   return (
     <div className="min-w-0">
       <div className="flex items-center justify-between border-b border-line bg-panel px-3 py-1.5">
@@ -101,46 +101,110 @@ function Board({
         >
           {title}
         </h3>
-        <span className="font-mono text-[9px] text-neutral-600">TOP {size}</span>
+        <span className="font-mono text-[9px] text-neutral-600">TOP {rows.length || "—"}</span>
       </div>
 
       <ul className="divide-y divide-line">
-        {visible.map((row, position) => (
-          <li key={row.symbol} className="relative hover:bg-[#161616]">
-            <Link
-              href={`/terminal?symbol=${encodeURIComponent(row.symbol)}`}
-              title={`Open ${row.name} in the market terminal`}
-              className="flex items-center gap-3 px-3 py-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
-            >
-              <span className="w-3 shrink-0 font-mono text-[10px] text-neutral-700">
-                {position + 1}
-              </span>
+        {rows.map((row, position) => {
+          const up = (row.quote.changePct ?? 0) >= 0;
+          return (
+            <li key={row.symbol} className="relative hover:bg-[#161616]">
+              <Link
+                href={`/terminal?symbol=${encodeURIComponent(row.symbol)}`}
+                title={`Open ${row.name} in the market terminal`}
+                className="flex items-center gap-3 px-3 py-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
+              >
+                <span className="w-3 shrink-0 font-mono text-[10px] text-neutral-700">
+                  {position + 1}
+                </span>
 
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[13px] font-medium text-neutral-100">{row.name}</p>
-                <p className="font-mono text-[9px] text-neutral-600">
-                  {row.symbol} · {row.sector} · VOL {formatVolume(row.quote.volume)}
-                </p>
-              </div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-[13px] font-medium text-neutral-100">{row.name}</p>
+                  <p className="font-mono text-[9px] text-neutral-600">
+                    {row.code} · {row.sector} · VOL {displayVolume(row.quote.volume)}
+                  </p>
+                </div>
 
-              <div className="shrink-0 text-right">
-                <p className="font-mono text-[13px] text-neutral-100">
-                  {formatPrice(row.quote.price)}
-                </p>
-                <p className={`font-mono text-[11px] ${changeClass(row.quote.changePct)}`}>
-                  {formatPct(row.quote.changePct)}
-                </p>
-              </div>
-            </Link>
-          </li>
-        ))}
+                <div className="shrink-0 text-right">
+                  <p className="font-mono text-[13px] text-neutral-100">
+                    RM {formatPrice(row.quote.price)}
+                  </p>
+                  <span
+                    className={`mt-0.5 inline-flex rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold ${
+                      up ? "bg-gain/15 text-gain" : "bg-loss/15 text-loss"
+                    }`}
+                  >
+                    {formatPct(row.quote.changePct)}
+                  </span>
+                </div>
+              </Link>
+            </li>
+          );
+        })}
 
-        {visible.length === 0 ? (
+        {rows.length === 0 ? (
           <li className="px-3 py-6 text-center font-mono text-[10px] text-neutral-600">
             {loading ? "SCANNING THE UNIVERSE…" : "NO QUALIFYING MOVES THIS SESSION"}
           </li>
         ) : null}
       </ul>
+    </div>
+  );
+}
+
+function MoversTape({
+  rows,
+  onRetry,
+  reconnecting,
+}: {
+  rows: MoverRow[];
+  onRetry?: () => void;
+  reconnecting: boolean;
+}) {
+  const tape = [...rows, ...rows];
+
+  return (
+    <div className="border-t border-line">
+      <div className="flex items-center justify-between px-3 py-1.5">
+        <h3 className="text-[10px] font-semibold uppercase tracking-[0.14em] text-neutral-400">
+          Movers feed
+        </h3>
+        {onRetry ? (
+          <button
+            type="button"
+            onClick={onRetry}
+            className="font-mono text-[9px] uppercase tracking-[0.12em] text-neutral-500 hover:text-gain"
+          >
+            {reconnecting ? "Reconnecting…" : "Reconnect"}
+          </button>
+        ) : null}
+      </div>
+      <div className="overflow-hidden border-t border-line py-1.5">
+        <div className="tape-track flex">
+          {tape.map((row, index) => {
+            const up = (row.quote.changePct ?? 0) >= 0;
+            return (
+              <Link
+                key={`${row.symbol}-${index}`}
+                href={`/terminal?symbol=${encodeURIComponent(row.symbol)}`}
+                className="flex shrink-0 items-center gap-2 px-3"
+              >
+                <span className="font-mono text-[10px] text-neutral-500">{row.code}</span>
+                <span className="font-mono text-[11px] text-neutral-100">
+                  RM {formatPrice(row.quote.price)}
+                </span>
+                <span
+                  className={`rounded-full px-1.5 py-0.5 font-mono text-[9px] ${
+                    up ? "bg-gain/15 text-gain" : "bg-loss/15 text-loss"
+                  }`}
+                >
+                  {formatPct(row.quote.changePct)}
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      </div>
     </div>
   );
 }

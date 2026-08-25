@@ -157,6 +157,21 @@ export function formatKlFullDate(iso: string | null | undefined): string {
   return Number.isNaN(date.getTime()) ? DASH : klFullDateFormatter.format(date);
 }
 
+/**
+ * Bursa filings often glue the company name onto the headline
+ * (`BoardroomHONG LEONG…`). Restore spaces so the row can wrap and clamp.
+ */
+export function formatEventHeadline(title: string): string {
+  return title
+    .replace(/\u00a0/g, " ")
+    .replace(/([a-z])([A-Z])/g, "$1 $2")
+    .replace(/([A-Za-z])(\d{1,2}\/\d{1,2}\/\d{2,4})/g, "$1 $2")
+    .replace(/(\d)([A-Z]{2,})/g, "$1 $2")
+    .replace(/:(?=[A-Za-z])/g, ": ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
 const klDayFormatter = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Asia/Kuala_Lumpur",
   year: "numeric",

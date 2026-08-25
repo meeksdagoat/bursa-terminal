@@ -1,6 +1,7 @@
 "use client";
 
 import { formatKlStamp } from "@/lib/format";
+import { classifyEventSentiment, EVENT_SENTIMENT_BADGE, EVENT_SENTIMENT_LABEL } from "@/lib/event-classify";
 import type { AnnouncementCategory, BursaAnnouncement, BursaAnnouncementsPayload } from "@/lib/types";
 import { useLiveData } from "@/lib/use-live-data";
 import { ShowMoreBar } from "@/components/h-scroll";
@@ -62,11 +63,17 @@ export function BursaAnnouncementsPanel({ symbol, companyName }: BursaAnnounceme
 }
 
 function AnnouncementRow({ item }: { item: BursaAnnouncement }) {
+  const sentiment = classifyEventSentiment(item.title, item.category);
   const body = (
     <div className="px-2.5 py-2">
       <div className="flex items-start gap-2">
         <span className="w-[44px] shrink-0 pt-0.5 font-mono text-[10px] text-neutral-500">
           {formatKlStamp(item.publishedAt)}
+        </span>
+        <span
+          className={`mt-0.5 shrink-0 whitespace-nowrap rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${EVENT_SENTIMENT_BADGE[sentiment]}`}
+        >
+          {EVENT_SENTIMENT_LABEL[sentiment]}
         </span>
         <span
           className={`mt-0.5 shrink-0 whitespace-nowrap rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${BADGE[item.category]}`}

@@ -1,11 +1,22 @@
 import type { HeadlineCategory } from "./categories";
 
+export type MarketBoard = "MAIN" | "ACE" | "LEAP";
+
 export type UniverseEntry = {
+  /** Yahoo Finance symbol, always `${code}.KL`. */
   symbol: string;
+  /** Bursa stock code, e.g. `"1155"`, `"0166"`, `"03046"`. */
   code: string;
   name: string;
+  /** Tape mnemonic, e.g. `"MAYBANK"`, `"PBBANK"`, `"FRONTKN"`. */
+  shortName: string;
+  /** Official registered name. */
+  fullName: string;
   sector: string;
+  market: MarketBoard;
   shariah: boolean;
+  /** Same as `shariah` — SAC / SC screening, indicative. */
+  isShariah: boolean;
   /** Board mnemonics and legal names that do not appear in the short listing name. */
   aliases: string[];
 };
@@ -124,7 +135,7 @@ export type MarketBreadth = {
 };
 
 export type MoversPayload = {
-  source: "yahoo";
+  source: "yahoo" | "fallback";
   asOf: string;
   delayMinutes: number | null;
   marketState: string | null;
@@ -134,6 +145,8 @@ export type MoversPayload = {
   breadth: MarketBreadth;
   /** Per-batch failures; the payload still resolves so one dead batch cannot blank the board. */
   errors: string[];
+  /** True when the board is ranked from the previous session (idle tape / closed market). */
+  lastSession?: boolean;
 };
 
 export type Headline = {
@@ -413,12 +426,16 @@ export type FundamentalsPayload = {
 };
 
 export type CorporateEventType =
+  | "results"
+  | "dividend"
+  | "agm"
   | "layoffs"
   | "ma"
   | "management"
   | "expansion"
   | "contract"
-  | "regulatory";
+  | "regulatory"
+  | "news";
 
 export type EventImpact = "high" | "medium" | "low";
 export type EventSentiment = "positive" | "negative" | "neutral";
@@ -436,12 +453,12 @@ export type CorporateEvent = {
 };
 
 export type CorporateEventsPayload = {
-  /** `"stub"` until a live events/news timeline provider is wired in the route. */
-  source: "stub";
+  source: "bursa+news" | "bursa" | "news";
   symbol: string;
   company: string;
   asOf: string;
   items: CorporateEvent[];
+  errors: string[];
 };
 
 /** Live Yahoo quoteSummary snapshot for a Bursa ticker. Dates are KL-formatted. */

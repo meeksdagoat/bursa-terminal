@@ -29,8 +29,8 @@ export function sectorPerformance(
 
 /** Desk heatmap groups. Universe sectors are combined where the label is broader. */
 export const HEATMAP_GROUPS = [
-  { label: "Technology", sectors: ["Tech"] },
-  { label: "Financial Services", sectors: ["Banking", "Financials"] },
+  { label: "Technology", sectors: ["Tech", "Technology"] },
+  { label: "Financial Services", sectors: ["Banking", "Financials", "Insurance", "Financial Services"] },
   { label: "Construction", sectors: ["Construction"] },
   { label: "Plantation", sectors: ["Plantation"] },
   { label: "Utilities", sectors: ["Utilities"] },
@@ -81,4 +81,21 @@ export function heatmapRows(sectors: SectorPerformance[]): Array<{
       count,
     };
   });
+}
+
+/** Last-print seed for the desk heatmap when Yahoo is idle and history has not landed. */
+export const LAST_SESSION_HEATMAP: SectorPerformance[] = [
+  { name: "Tech", changePct: 0.84, count: 6 },
+  { name: "Banking", changePct: 0.22, count: 6 },
+  { name: "Financials", changePct: 0.11, count: 3 },
+  { name: "Construction", changePct: -0.47, count: 6 },
+  { name: "Plantation", changePct: 0.36, count: 6 },
+  { name: "Utilities", changePct: -0.18, count: 6 },
+  { name: "Energy", changePct: 0.61, count: 6 },
+];
+
+export function heatmapIsEmpty(
+  rows: Array<{ changePct: number | null }>,
+): boolean {
+  return rows.every((row) => row.changePct == null || row.changePct === 0);
 }

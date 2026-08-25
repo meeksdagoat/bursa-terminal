@@ -33,6 +33,10 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# local ticker ingest dumps (regenerate via npm run ingest:universe)
+/data/raw/
+/tmp-tv-scan.json
+
 # vercel
 .vercel
 

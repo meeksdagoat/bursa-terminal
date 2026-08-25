@@ -1,7 +1,7 @@
 /**
- * Checks every ticker in lib/universe.ts against Yahoo Finance and reports the
- * ones that no longer resolve (renamed, delisted or a wrong board code), plus
- * any local name that has drifted from the listed name.
+ * Checks every ticker in data/bursa-universe.json against Yahoo Finance and
+ * reports the ones that no longer resolve (renamed, delisted or a wrong board
+ * code), plus any local name that has drifted from the listed name.
  *
  *   node scripts/verify-universe.mjs
  */
@@ -19,13 +19,16 @@ const yahoo = new YahooFinance({
   validation: { logErrors: false },
 });
 
-const source = await readFile(path.join(root, "lib/universe.ts"), "utf8");
-const seed = [...source.matchAll(/\[\s*"([^"]+)",\s*"([^"]+)",\s*"([^"]+)",\s*(true|false)\s*\]/g)].map(
-  ([, code, name, sector]) => ({ symbol: `${code}.KL`, code, name, sector }),
-);
+const roster = JSON.parse(await readFile(path.join(root, "data/bursa-universe.json"), "utf8"));
+const seed = roster.map((row) => ({
+  symbol: `${row.code}.KL`,
+  code: row.code,
+  name: row.name,
+  sector: row.sector,
+}));
 
 if (seed.length === 0) {
-  console.error("Could not extract any seed rows from lib/universe.ts");
+  console.error("Could not extract any rows from data/bursa-universe.json");
   process.exit(1);
 }
 

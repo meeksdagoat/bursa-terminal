@@ -2,11 +2,11 @@
 
 import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
+import { MarketOverview } from "@/components/market-overview";
 import { changeClass, formatFx, formatKlStamp, formatPct, formatPrice } from "@/lib/format";
 import type {
   BnmPayload,
   EconomyPayload,
-  MoversPayload,
   NewsPayload,
   QuotesPayload,
 } from "@/lib/types";
@@ -17,7 +17,6 @@ import { usePriceFlash } from "@/lib/use-price-flash";
 
 const BNM_REFRESH_MS = 10 * 60 * 1000;
 const NEWS_REFRESH_MS = 5 * 60 * 1000;
-const MOVERS_REFRESH_MS = 60 * 1000;
 
 const FEATURES = [
   {
@@ -74,12 +73,9 @@ export function LandingPage() {
   const quotes = useMarketData(["1155.KL", "1295.KL"]);
   const bnm = useLiveData<BnmPayload>("/api/bnm", BNM_REFRESH_MS);
   const economy = useLiveData<EconomyPayload>("/api/economy", BNM_REFRESH_MS);
-  const movers = useLiveData<MoversPayload>("/api/movers", MOVERS_REFRESH_MS);
   const news = useLiveData<NewsPayload>("/api/news", NEWS_REFRESH_MS);
 
   const tape = buildTape(quotes.data, bnm.data, economy.data);
-  const gainers = (movers.data?.gainers ?? []).slice(0, 5);
-  const losers = (movers.data?.losers ?? []).slice(0, 5);
   const stories = (news.data?.items ?? []).slice(0, 6);
 
   return (
@@ -268,27 +264,7 @@ export function LandingPage() {
           </div>
 
           <div className="mt-10 grid gap-4 lg:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl">
-              <div className="grid grid-cols-2 divide-x divide-white/10 border-b border-white/10">
-                <MoversColumn
-                  title="Top gainers"
-                  rows={gainers}
-                  loading={movers.loading}
-                  tone="gain"
-                />
-                <MoversColumn
-                  title="Top losers"
-                  rows={losers}
-                  loading={movers.loading}
-                  tone="loss"
-                />
-              </div>
-              {movers.error ? (
-                <p className="px-4 py-3 font-mono text-[10px] text-loss">
-                  MOVERS FEED UNAVAILABLE
-                </p>
-              ) : null}
-            </div>
+            <MarketOverview />
 
             <div
               id="news"
@@ -442,62 +418,6 @@ function HeroPreview({
           />
         </svg>
       </div>
-    </div>
-  );
-}
-
-function MoversColumn({
-  title,
-  rows,
-  loading,
-  tone,
-}: {
-  title: string;
-  rows: Array<{
-    symbol: string;
-    name: string;
-    quote: { price: number | null; changePct: number | null };
-  }>;
-  loading: boolean;
-  tone: "gain" | "loss";
-}) {
-  return (
-    <div>
-      <h3
-        className={`px-4 py-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${
-          tone === "gain" ? "text-gain" : "text-loss"
-        }`}
-      >
-        {title}
-      </h3>
-      <ul className="divide-y divide-white/5">
-        {rows.map((row) => (
-          <li key={row.symbol}>
-            <Link
-              href={terminalHref(row.symbol)}
-              className="flex items-center justify-between gap-3 px-4 py-2.5 hover:bg-white/[0.03]"
-            >
-              <span className="min-w-0">
-                <span className="block truncate text-[13px] text-neutral-100">{row.name}</span>
-                <span className="font-mono text-[10px] text-neutral-600">{row.symbol}</span>
-              </span>
-              <span className="shrink-0 text-right">
-                <span className="block font-mono text-[13px] text-white">
-                  {formatPrice(row.quote.price)}
-                </span>
-                <span className={`font-mono text-[11px] ${changeClass(row.quote.changePct)}`}>
-                  {formatPct(row.quote.changePct)}
-                </span>
-              </span>
-            </Link>
-          </li>
-        ))}
-        {rows.length === 0 ? (
-          <li className="px-4 py-8 text-center font-mono text-[10px] text-neutral-600">
-            {loading ? "SCANNING…" : "NO MOVES"}
-          </li>
-        ) : null}
-      </ul>
     </div>
   );
 }

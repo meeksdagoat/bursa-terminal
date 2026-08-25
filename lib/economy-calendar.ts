@@ -3,8 +3,13 @@
 export type MacroEvent = {
   id: string;
   title: string;
+  /** Calendar day in `releaseTimeZone` when set, otherwise a KL calendar day. */
   date: string;
   source: string;
+  /** Wall-clock release time `HH:mm` in `releaseTimeZone`. */
+  releaseTime?: string;
+  /** IANA zone for `releaseTime` — e.g. America/New_York, Europe/Berlin. */
+  releaseTimeZone?: string;
 };
 
 export const MACRO_EVENTS: MacroEvent[] = [

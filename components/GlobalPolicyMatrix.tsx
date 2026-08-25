@@ -20,7 +20,7 @@ export function GlobalPolicyMatrix({ rates, opr, malaysiaCpi }: GlobalPolicyMatr
   const rows = buildPolicyRows({ rates, opr, malaysiaCpi });
 
   return (
-    <section className="flex min-h-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d]">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d]">
       <header className="shrink-0 border-b border-neutral-800 px-3 py-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           Inflation & Policy Spread

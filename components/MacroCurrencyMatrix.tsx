@@ -39,7 +39,7 @@ export function MacroCurrencyMatrix({ markets, bnm, cpo }: MacroCurrencyMatrixPr
       : null;
 
   return (
-    <section className="flex min-h-0 flex-col border border-neutral-800 bg-[#0d0d0d]">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d]">
       <header className="shrink-0 border-b border-neutral-800 px-3 py-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           Currency & Commodity
@@ -47,7 +47,8 @@ export function MacroCurrencyMatrix({ markets, bnm, cpo }: MacroCurrencyMatrixPr
         <p className="mt-0.5 text-[10px] text-neutral-500">DXY · USD/MYR · FCPO · MGS–UST spread</p>
       </header>
 
-      <div className="grid grid-cols-2 gap-px bg-neutral-800">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="grid grid-cols-2 gap-px bg-neutral-800">
         <MatrixCard
           label="US Dollar Index"
           hint="TVC:DXY · greenback strength"
@@ -80,6 +81,7 @@ export function MacroCurrencyMatrix({ markets, bnm, cpo }: MacroCurrencyMatrixPr
           changeTone={spreadBps == null ? "text-neutral-400" : spreadBps >= 0 ? "text-emerald-400" : "text-rose-400"}
           valueClass={spreadBps == null ? "text-neutral-400" : spreadBps >= 0 ? "text-emerald-400" : "text-rose-400"}
         />
+        </div>
       </div>
     </section>
   );

@@ -1,9 +1,10 @@
 import type { NextRequest } from "next/server";
 import { cached } from "@/lib/cache";
+import { isBursaOpen } from "@/lib/market-status";
 import { sectorPerformance } from "@/lib/sectors";
-import type { QuotesPayload, UniverseEntry } from "@/lib/types";
+import type { Quote, QuotesPayload, UniverseEntry } from "@/lib/types";
 import { DEFAULT_WATCHLIST, KLCI_SYMBOL, entryBySymbol } from "@/lib/universe";
-import { fetchQuotes } from "@/lib/yahoo";
+import { fetchLastSessionMoves, fetchQuotes } from "@/lib/yahoo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -40,15 +41,56 @@ function parseSymbols(raw: string | null): UniverseEntry[] {
   });
 }
 
+function tapeIsIdle(quotes: Quote[]): boolean {
+  if (quotes.length === 0) return true;
+  return quotes.every((quote) => (quote.volume ?? 0) <= 0 || (quote.changePct ?? 0) === 0);
+}
+
+async function withLastSessionMoves(quotes: Quote[], entries: UniverseEntry[]): Promise<Quote[]> {
+  if (!tapeIsIdle(quotes) && isBursaOpen()) return quotes;
+
+  const sample: string[] = [];
+  const seen = new Set<string>();
+  for (const entry of entries) {
+    if (seen.has(entry.sector)) continue;
+    seen.add(entry.sector);
+    sample.push(entry.symbol);
+  }
+
+  const cacheKey = `last-session:${[...sample].sort().join(",")}`;
+  const moves = await cached(cacheKey, 30 * 60 * 1000, () => fetchLastSessionMoves(sample));
+  const bySector = new Map<string, number>();
+  for (const entry of entries) {
+    const pct = moves.get(entry.symbol);
+    if (pct != null) bySector.set(entry.sector, pct);
+  }
+
+  const quoteBySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
+  return entries.flatMap((entry) => {
+    const quote = quoteBySymbol.get(entry.symbol);
+    if (!quote) return [];
+    const sessionPct = moves.get(entry.symbol) ?? bySector.get(entry.sector);
+    if (sessionPct == null) return [quote];
+    if (quote.changePct != null && quote.changePct !== 0 && (quote.volume ?? 0) > 0) return [quote];
+    const previous = quote.previousClose ?? quote.price;
+    const change =
+      previous != null && Number.isFinite(previous) ? (previous * sessionPct) / 100 : quote.change;
+    return [{ ...quote, changePct: sessionPct, change: change ?? quote.change }];
+  });
+}
+
 async function buildPayload(entries: UniverseEntry[]): Promise<QuotesPayload> {
   const symbols = entries.map((entry) => entry.symbol);
   const rows = await fetchQuotes([...symbols, KLCI_SYMBOL]);
   const bySymbol = new Map(rows.map((row) => [row.symbol, row]));
 
-  const quotes = symbols.flatMap((symbol) => {
+  const liveQuotes = symbols.flatMap((symbol) => {
     const quote = bySymbol.get(symbol);
     return quote ? [quote] : [];
   });
+
+  const quotes =
+    entries.length >= 6 ? await withLastSessionMoves(liveQuotes, entries) : liveQuotes;
 
   const changeBySymbol = new Map(
     quotes.flatMap((quote) => (quote.changePct == null ? [] : [[quote.symbol, quote.changePct]])),

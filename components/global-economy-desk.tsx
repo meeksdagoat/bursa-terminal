@@ -72,7 +72,7 @@ export function GlobalEconomyDesk({
   );
 
   const marketBoard = (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+    <div className="flex h-full min-h-[200px] min-w-0 flex-col overflow-hidden">
       <div className="shrink-0 border-b border-line px-3 py-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
@@ -91,7 +91,7 @@ export function GlobalEconomyDesk({
         </p>
       </div>
 
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto bg-[#0a0a0a]">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-hidden bg-[#0a0a0a]">
         <GlobalEconomyTab
           snapshot={snapshot}
           snapshotError={snapshotError}
@@ -116,12 +116,29 @@ export function GlobalEconomyDesk({
   );
 
   const mainSplit = (
-    <PanelGroup autoSaveId="bursa-global-economy-chart" direction="vertical" className="h-full">
-      <Panel id="global-markets" defaultSize={60} minSize={32} className="min-h-0">
+    <PanelGroup
+      autoSaveId="bursa-global-economy-chart-v2"
+      direction="vertical"
+      className="flex h-full min-h-0 flex-col overflow-hidden"
+    >
+      <Panel
+        id="global-markets"
+        defaultSize={58}
+        minSize={30}
+        className="overflow-hidden"
+      >
         {marketBoard}
       </Panel>
-      <PanelSplitter direction="vertical" />
-      <Panel id="global-calendar" defaultSize={40} minSize={24} className="min-h-0">
+      <PanelSplitter
+        direction="vertical"
+        className="h-2 shrink-0 cursor-row-resize bg-neutral-800 transition-colors hover:bg-emerald-500 data-[resize-handle-state=hover]:bg-emerald-500 data-[resize-handle-state=drag]:bg-emerald-500"
+      />
+      <Panel
+        id="global-calendar"
+        defaultSize={42}
+        minSize={30}
+        className="overflow-hidden"
+      >
         {calendar}
       </Panel>
     </PanelGroup>
@@ -132,17 +149,17 @@ export function GlobalEconomyDesk({
       <PanelGroup
         autoSaveId="bursa-global-economy-layout"
         direction="horizontal"
-        className="min-h-0 flex-1"
+        className="min-h-0 flex-1 overflow-hidden"
       >
-        <Panel id="global-rates" defaultSize={18} minSize={15} order={1} className="min-h-0">
+        <Panel id="global-rates" defaultSize={18} minSize={15} order={1} className="min-h-0 overflow-hidden">
           {banks}
         </Panel>
         <PanelSplitter />
-        <Panel id="global-main" defaultSize={57} minSize={40} order={2} className="min-h-0">
+        <Panel id="global-main" defaultSize={57} minSize={40} order={2} className="min-h-0 overflow-hidden">
           {mainSplit}
         </Panel>
         <PanelSplitter />
-        <Panel id="global-news" defaultSize={25} minSize={20} order={3} className="min-h-0">
+        <Panel id="global-news" defaultSize={25} minSize={20} order={3} className="min-h-0 overflow-hidden">
           {news}
         </Panel>
       </PanelGroup>

@@ -1,15 +1,72 @@
-import { countdownLabel, upcomingFrom, type MacroEvent } from "./economy-calendar";
+import { countdownLabel, type MacroEvent } from "./economy-calendar";
+import { formatMytEventTime, type MytEventTime } from "./myt";
 
-/** Scheduled global macro prints. Dates are KL calendar days. */
+/** Scheduled global macro prints. `date` is the source-zone calendar day. */
 export const GLOBAL_MACRO_EVENTS: MacroEvent[] = [
-  { id: "fomc-sep", title: "FOMC Rate Decision", date: "2026-09-16", source: "Fed" },
-  { id: "uscpi-aug", title: "United States CPI Release", date: "2026-09-11", source: "BLS" },
-  { id: "ecb-sep", title: "ECB Monetary Policy Decision", date: "2026-09-11", source: "ECB" },
-  { id: "boj-sep", title: "BOJ Policy Rate Decision", date: "2026-09-19", source: "BOJ" },
-  { id: "fomc-nov", title: "FOMC Rate Decision", date: "2026-11-04", source: "Fed" },
-  { id: "uscpi-sep", title: "United States CPI Release", date: "2026-10-13", source: "BLS" },
-  { id: "ecb-oct", title: "ECB Monetary Policy Decision", date: "2026-10-30", source: "ECB" },
-  { id: "pboc-sep", title: "PBOC Loan Prime Rate Fixing", date: "2026-09-21", source: "PBOC" },
+  {
+    id: "fomc-sep",
+    title: "FOMC Rate Decision",
+    date: "2026-09-16",
+    source: "Fed",
+    releaseTime: "14:00",
+    releaseTimeZone: "America/New_York",
+  },
+  {
+    id: "uscpi-aug",
+    title: "United States CPI Release",
+    date: "2026-09-11",
+    source: "BLS",
+    releaseTime: "08:30",
+    releaseTimeZone: "America/New_York",
+  },
+  {
+    id: "ecb-sep",
+    title: "ECB Monetary Policy Decision",
+    date: "2026-09-11",
+    source: "ECB",
+    releaseTime: "14:15",
+    releaseTimeZone: "Europe/Berlin",
+  },
+  {
+    id: "boj-sep",
+    title: "BOJ Policy Rate Decision",
+    date: "2026-09-19",
+    source: "BOJ",
+    releaseTime: "11:30",
+    releaseTimeZone: "Asia/Tokyo",
+  },
+  {
+    id: "fomc-nov",
+    title: "FOMC Rate Decision",
+    date: "2026-11-04",
+    source: "Fed",
+    releaseTime: "14:00",
+    releaseTimeZone: "America/New_York",
+  },
+  {
+    id: "uscpi-sep",
+    title: "United States CPI Release",
+    date: "2026-10-13",
+    source: "BLS",
+    releaseTime: "08:30",
+    releaseTimeZone: "America/New_York",
+  },
+  {
+    id: "ecb-oct",
+    title: "ECB Monetary Policy Decision",
+    date: "2026-10-30",
+    source: "ECB",
+    releaseTime: "14:15",
+    releaseTimeZone: "Europe/Berlin",
+  },
+  {
+    id: "pboc-sep",
+    title: "PBOC Loan Prime Rate Fixing",
+    date: "2026-09-21",
+    source: "PBOC",
+    releaseTime: "09:15",
+    releaseTimeZone: "Asia/Shanghai",
+  },
 ];
 
 export const WEEKDAY_LABELS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] as const;
@@ -19,7 +76,13 @@ export type MacroEventKind = "rate" | "cpi" | "other";
 export type DatedMacroEvent = MacroEvent & {
   badge: string;
   kind: MacroEventKind;
+  /** Malaysia-time conversion; null when the print has no source clock. */
+  myt: MytEventTime | null;
 };
+
+export function eventCalendarDate(event: Pick<DatedMacroEvent, "date" | "myt">): string {
+  return event.myt?.mytDate ?? event.date;
+}
 
 export function klTodayIso(now = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -74,21 +137,34 @@ export function macroEventKind(event: Pick<MacroEvent, "title" | "source">): Mac
 }
 
 export function decorateMacroEvent(event: MacroEvent, now = new Date()): DatedMacroEvent {
-  return { ...event, badge: countdownLabel(event.date, now), kind: macroEventKind(event) };
+  const myt =
+    event.releaseTime && event.releaseTimeZone
+      ? formatMytEventTime(event.date, event.releaseTime, event.releaseTimeZone)
+      : null;
+  return {
+    ...event,
+    badge: countdownLabel(myt?.mytDate ?? event.date, now),
+    kind: macroEventKind(event),
+    myt,
+  };
 }
 
 export function allGlobalMacroEvents(now = new Date()): DatedMacroEvent[] {
   return GLOBAL_MACRO_EVENTS.slice()
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .map((event) => decorateMacroEvent(event, now));
+    .map((event) => decorateMacroEvent(event, now))
+    .sort((a, b) => {
+      const aKey = a.myt?.releasedAt ?? a.date;
+      const bKey = b.myt?.releasedAt ?? b.date;
+      return aKey.localeCompare(bKey);
+    });
 }
 
 export function upcomingGlobalEvents(
   limit = 12,
   now = new Date(),
 ): DatedMacroEvent[] {
-  return upcomingFrom(GLOBAL_MACRO_EVENTS, limit, now).map((event) => ({
-    ...event,
-    kind: macroEventKind(event),
-  }));
+  const today = klTodayIso(now);
+  return allGlobalMacroEvents(now)
+    .filter((event) => eventCalendarDate(event) >= today)
+    .slice(0, limit);
 }

@@ -30,7 +30,7 @@ const MAX_ITEMS = 24;
 const PRESS_NAMES: Record<string, string[]> = {
   "1155.KL": ["Maybank", "Malayan Banking"],
   "1023.KL": ["CIMB"],
-  "1066.KL": ["RHB Bank", "RHB"],
+  "5819.KL": ["Hong Leong Bank", "HLBANK"],
   "1015.KL": ["AmBank", "AMMB"],
   "1171.KL": ["MBSB Bank", "MBSB"],
   "1818.KL": ["Bursa Malaysia Berhad", "Bursa Malaysia"],
@@ -204,7 +204,7 @@ const AMBIGUOUS_HEADS = new Set([
 
 function aliasesFor(entry: UniverseEntry): string[] {
   const curated = PRESS_NAMES[entry.symbol];
-  const aliases = [...(curated ?? [entry.name]), entry.name, entry.code];
+  const aliases = [...(curated ?? [entry.name]), entry.name, entry.shortName, entry.fullName, entry.code];
   const tokens = entry.name.split(/\s+/).filter((token) => token.length > 0);
   const trimmed = [...tokens];
 

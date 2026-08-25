@@ -283,6 +283,40 @@ export async function fetchDailyCloses(
   });
 }
 
+const LAST_SESSION_LOOKBACK_MS = 21 * 86_400_000;
+const LAST_SESSION_CONCURRENCY = 8;
+
+/** Last completed session % change from daily closes — used when the live tape is idle. */
+export async function fetchLastSessionMoves(symbols: string[]): Promise<Map<string, number>> {
+  const unique = [...new Set(symbols.filter((symbol) => symbol.length > 0))];
+  const period1 = new Date(Date.now() - LAST_SESSION_LOOKBACK_MS);
+  const moves = new Map<string, number>();
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < unique.length) {
+      const index = cursor;
+      cursor += 1;
+      const symbol = unique[index];
+      try {
+        const closes = await fetchDailyCloses(symbol, period1);
+        if (closes.length < 2) continue;
+        const last = closes[closes.length - 1]?.close;
+        const previous = closes[closes.length - 2]?.close;
+        if (last == null || previous == null || previous === 0) continue;
+        moves.set(symbol, ((last - previous) / previous) * 100);
+      } catch (error) {
+        console.error("[yahoo] last-session move failed", symbol, error);
+      }
+    }
+  }
+
+  await Promise.all(
+    Array.from({ length: Math.min(LAST_SESSION_CONCURRENCY, unique.length) }, () => worker()),
+  );
+  return moves;
+}
+
 export async function fetchCandles(symbol: string, range: RangeKey): Promise<CandlesPayload> {
   return loadCandles(symbol, range, RANGE_CONFIG[range]);
 }
