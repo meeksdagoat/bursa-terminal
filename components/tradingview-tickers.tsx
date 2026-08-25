@@ -24,29 +24,37 @@ function TradingViewSingleQuote({ ticker }: { ticker: TickerSpec }) {
     const host = hostRef.current;
     if (!host) return;
 
+    let cancelled = false;
     const container = document.createElement("div");
     container.className = "tradingview-widget-container";
 
     const widget = document.createElement("div");
     widget.className = "tradingview-widget-container__widget";
-
-    const script = document.createElement("script");
-    script.src = TV_SINGLE_QUOTE_SRC;
-    script.type = "text/javascript";
-    script.async = true;
-    script.text = JSON.stringify({
-      symbol: ticker.symbol,
-      width: "100%",
-      colorTheme: "dark",
-      theme: "dark",
-      isTransparent: true,
-      locale: "en",
-    });
-
-    container.append(widget, script);
+    container.append(widget);
     host.replaceChildren(container);
 
+    // Delay the vendor script so React Strict Mode's immediate unmount
+    // does not leave TradingView talking to a detached iframe.
+    const timer = window.setTimeout(() => {
+      if (cancelled) return;
+      const script = document.createElement("script");
+      script.src = TV_SINGLE_QUOTE_SRC;
+      script.type = "text/javascript";
+      script.async = true;
+      script.text = JSON.stringify({
+        symbol: ticker.symbol,
+        width: "100%",
+        colorTheme: "dark",
+        theme: "dark",
+        isTransparent: true,
+        locale: "en",
+      });
+      container.append(script);
+    }, 80);
+
     return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
       host.replaceChildren();
     };
   }, [ticker.symbol]);
