@@ -39,15 +39,15 @@ export function MacroCurrencyMatrix({ markets, bnm, cpo }: MacroCurrencyMatrixPr
       : null;
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d]">
-      <header className="shrink-0 border-b border-neutral-800 px-3 py-2">
+    <section className="flex h-auto min-w-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d] lg:h-full lg:min-h-0">
+      <header className="shrink-0 border-b border-neutral-800 p-3 sm:px-3 sm:py-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           Currency & Commodity
         </h3>
         <p className="mt-0.5 text-[10px] text-neutral-500">DXY · USD/MYR · FCPO · MGS–UST spread</p>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 lg:flex-1 lg:overflow-y-auto">
         <div className="grid grid-cols-2 gap-px bg-neutral-800">
         <MatrixCard
           label="US Dollar Index"
@@ -105,15 +105,19 @@ function MatrixCard({
   valueClass?: string;
 }) {
   return (
-    <article className="bg-[#0d0d0d] px-3 py-2.5">
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-400">{label}</p>
+    <article className="min-w-0 overflow-hidden bg-[#0d0d0d] p-3 sm:p-5 lg:px-3 lg:py-2.5">
+      <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
+        <p className="min-w-0 text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-neutral-400">
+          {label}
+        </p>
         {change != null ? (
-          <span className={`font-mono text-[9px] ${changeTone}`}>{formatPct(change)}</span>
+          <span className={`shrink-0 font-mono text-[9px] leading-tight ${changeTone}`}>{formatPct(change)}</span>
         ) : null}
       </div>
-      <p className={`mt-1 font-mono text-[18px] leading-none ${valueClass}`}>{value}</p>
-      <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-neutral-600">{subvalue ?? hint}</p>
+      <p className={`mt-1 font-mono text-[18px] leading-tight break-all tabular-nums ${valueClass}`}>{value}</p>
+      <p className="mt-1 font-mono text-[9px] leading-tight uppercase tracking-wider break-words text-neutral-600">
+        {subvalue ?? hint}
+      </p>
       {subvalue ? (
         <p className="mt-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-700">{hint}</p>
       ) : null}

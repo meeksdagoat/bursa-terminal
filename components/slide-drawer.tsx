@@ -51,7 +51,7 @@ export function SlideDrawer({
         : "inset-y-0 right-0 w-[min(340px,90vw)] border-l";
 
   return (
-    <div className="fixed inset-0 z-50">
+    <div className="fixed inset-0 z-[80]" data-drawer-open="">
       <button
         type="button"
         aria-label="Close drawer"

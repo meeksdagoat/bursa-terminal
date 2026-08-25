@@ -180,7 +180,7 @@ export function HeaderBar({
                 href={item.href}
                 onClick={() => setMenuOpen(false)}
                 aria-current={selected ? "page" : undefined}
-                className={`flex min-h-11 items-center border-b border-line px-4 text-[12px] font-semibold uppercase tracking-[0.14em] ${
+                className={`flex min-h-11 items-center border-b border-line px-4 py-3 text-[12px] font-semibold uppercase tracking-[0.14em] ${
                   selected ? "bg-gain/15 text-gain" : "text-neutral-300"
                 }`}
               >
@@ -189,7 +189,7 @@ export function HeaderBar({
             );
           })}
         </nav>
-        <div className="grid grid-cols-2 gap-px border-t border-line bg-line">
+        <div className="hidden grid-cols-2 gap-px border-t border-line bg-line md:grid">
           <MacroTiles bnm={bnm} index={index} ticks={ticks} stacked />
         </div>
       </SlideDrawer>

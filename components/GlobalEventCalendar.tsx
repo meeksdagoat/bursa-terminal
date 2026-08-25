@@ -26,14 +26,16 @@ export function GlobalEventCalendar() {
 
   return (
     <div className="flex h-full min-h-[200px] min-w-0 flex-col overflow-hidden bg-panel">
-      <div className="flex shrink-0 items-start justify-between gap-3 border-b border-line px-3 py-2">
-        <div>
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-line p-3 sm:px-3 sm:py-2">
+        <div className="min-w-0">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
             Global Event Calendar
           </h2>
-          <p className="mt-0.5 text-[11px] text-neutral-500">FOMC · US CPI · ECB · BOJ · PBOC LPR</p>
+          <p className="mt-0.5 text-[11px] leading-snug text-neutral-500">
+            FOMC · US CPI · ECB · BOJ · PBOC LPR
+          </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <span className="rounded border border-emerald-800/50 bg-emerald-950/60 px-2 py-0.5 font-mono text-[9px] uppercase tracking-wider text-emerald-400">
             {MYT_LABEL}
           </span>
@@ -49,10 +51,10 @@ export function GlobalEventCalendar() {
         </div>
       </div>
 
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-hidden p-3">
-        <div className="grid h-full min-h-0 grid-cols-1 gap-4 lg:grid-cols-12">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3 sm:p-5 lg:overflow-hidden lg:p-3">
+        <div className="grid min-h-0 grid-cols-1 gap-3 sm:gap-4 lg:h-full lg:grid-cols-12">
           <section
-            className="order-2 min-h-0 overflow-y-auto lg:order-1 lg:col-span-7"
+            className="order-2 min-h-0 min-w-0 lg:order-1 lg:col-span-7 lg:overflow-y-auto"
             aria-label="Upcoming macro events"
           >
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -70,15 +72,17 @@ export function GlobalEventCalendar() {
             ) : (
               <ul className="divide-y divide-neutral-800 border border-neutral-800 bg-[#0d0d0d]">
                 {visible.map((event) => (
-                  <li key={event.id} className="px-2.5 py-2">
-                    <div className="flex items-start justify-between gap-3">
+                  <li key={event.id} className="min-w-0 px-2.5 py-2 sm:px-3">
+                    <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                       <div className="min-w-0">
-                        <p className="truncate text-[11px] text-neutral-200">{event.title}</p>
-                        <p className="font-mono text-[9px] uppercase tracking-wider text-neutral-600">
+                        <p className="text-[11px] leading-snug break-words text-neutral-200">
+                          {event.title}
+                        </p>
+                        <p className="mt-0.5 font-mono text-[9px] uppercase tracking-wider text-neutral-600">
                           {event.source} · {formatKlDate(eventCalendarDate(event))}
                         </p>
                       </div>
-                      <div className="flex shrink-0 flex-col items-end gap-1">
+                      <div className="flex flex-wrap items-center gap-1 sm:flex-col sm:items-end">
                         {event.myt ? (
                           <span className={MYT_TIME_BADGE_CLASS} title={event.myt.label}>
                             {event.myt.badge}
@@ -113,7 +117,7 @@ export function GlobalEventCalendar() {
             )}
           </section>
 
-          <div className="order-1 min-h-0 overflow-hidden lg:order-2 lg:col-span-5">
+          <div className="order-1 min-h-0 min-w-0 overflow-x-hidden lg:order-2 lg:col-span-5 lg:h-full lg:overflow-hidden">
             <GlobalMacroCalendarWidget
               events={catalog}
               selectedDate={selectedDate}

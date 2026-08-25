@@ -20,15 +20,15 @@ export function GlobalPolicyMatrix({ rates, opr, malaysiaCpi }: GlobalPolicyMatr
   const rows = buildPolicyRows({ rates, opr, malaysiaCpi });
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d]">
-      <header className="shrink-0 border-b border-neutral-800 px-3 py-2">
+    <section className="flex h-auto min-w-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d] lg:h-full lg:min-h-0">
+      <header className="shrink-0 border-b border-neutral-800 p-3 sm:px-3 sm:py-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           Inflation & Policy Spread
         </h3>
         <p className="mt-0.5 text-[10px] text-neutral-500">Real rate = policy − CPI YoY</p>
       </header>
 
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <div className="min-h-0 lg:flex-1 lg:overflow-y-auto">
         <table className="w-full border-collapse text-left">
           <thead className="sr-only">
             <tr>
@@ -43,10 +43,10 @@ export function GlobalPolicyMatrix({ rates, opr, malaysiaCpi }: GlobalPolicyMatr
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-neutral-800 last:border-b-0">
-                <td className="px-3 py-2">
-                  <div className="flex items-start justify-between gap-2">
+                <td className="p-3 sm:px-3 sm:py-2">
+                  <div className="flex min-w-0 items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-[11px] text-neutral-200">{row.region}</p>
+                      <p className="text-[11px] leading-snug text-neutral-200">{row.region}</p>
                       <p className="font-mono text-[8px] uppercase tracking-wider text-neutral-600">
                         {row.policyLabel}
                       </p>
@@ -57,7 +57,7 @@ export function GlobalPolicyMatrix({ rates, opr, malaysiaCpi }: GlobalPolicyMatr
                       {row.stance}
                     </span>
                   </div>
-                  <dl className="mt-1.5 grid grid-cols-4 gap-1">
+                  <dl className="mt-1.5 grid grid-cols-2 gap-1 sm:grid-cols-4">
                     <Metric label="Policy" value={formatOpr(row.policyRate)} />
                     <Metric label="CPI YoY" value={formatOpr(row.cpiYoy)} />
                     <Metric
@@ -99,7 +99,7 @@ function Metric({
   return (
     <div>
       <dt className="font-mono text-[7px] uppercase tracking-[0.14em] text-neutral-600">{label}</dt>
-      <dd className={`font-mono text-[11px] leading-tight ${tone}`}>{value}</dd>
+      <dd className={`font-mono text-[11px] leading-tight break-words ${tone}`}>{value}</dd>
     </div>
   );
 }

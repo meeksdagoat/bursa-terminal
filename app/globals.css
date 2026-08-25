@@ -28,6 +28,15 @@ html {
   overscroll-behavior-y: none;
 }
 
+@media (min-width: 1024px) {
+  html:has([data-app-shell]),
+  body:has([data-app-shell]) {
+    height: 100%;
+    max-height: 100vh;
+    overflow: hidden;
+  }
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -45,17 +54,25 @@ body {
   }
 }
 
-.scrollbar-none {
+.scrollbar-none,
+.no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.scrollbar-none::-webkit-scrollbar {
+.scrollbar-none::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
 .modal-overscroll {
   overscroll-behavior: contain;
+}
+
+/* Next.js dev indicator sits above most overlays and collides with drawers. */
+body:has([data-drawer-open]) nextjs-portal,
+body:has([data-drawer-open]) [data-next-badge-root] {
+  display: none !important;
 }
 
 .modal-ticker-scroll {

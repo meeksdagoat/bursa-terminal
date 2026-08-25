@@ -133,65 +133,66 @@ export function GlobalMacroCalendarWidget({
 
   return (
     <section
-      className="flex h-full min-h-0 flex-col border border-neutral-800 bg-[#0d0d0d]"
+      className="flex min-h-[22rem] min-w-0 flex-col border border-neutral-800 bg-[#0d0d0d] lg:h-full lg:min-h-0"
       aria-label="Macro event month calendar"
     >
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-2.5 py-2">
-        <button
-          type="button"
-          onClick={() => setCursor((cursor) => shiftMonth(cursor.year, cursor.month, -1))}
-          className="inline-flex h-9 w-9 items-center justify-center border border-neutral-800 font-mono text-[12px] text-neutral-400 hover:border-amber-500/50 hover:text-amber-300 lg:h-7 lg:w-7"
-          aria-label="Previous month"
-        >
-          ‹
-        </button>
-        <p className="min-w-0 truncate text-center text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-200">
-          {formatMonthYear(year, month)}
-        </p>
-        <button
-          type="button"
-          onClick={() => setCursor((cursor) => shiftMonth(cursor.year, cursor.month, 1))}
-          className="inline-flex h-9 w-9 items-center justify-center border border-neutral-800 font-mono text-[12px] text-neutral-400 hover:border-amber-500/50 hover:text-amber-300 lg:h-7 lg:w-7"
-          aria-label="Next month"
-        >
-          ›
-        </button>
-      </div>
-
-      <div className="flex shrink-0 flex-wrap gap-1 border-b border-neutral-800 px-2.5 py-1.5">
-        <button
-          type="button"
-          aria-pressed={thisMonth}
-          onClick={() => setCursor({ year: todayParts.year, month: todayParts.month })}
-          className={`min-h-8 rounded-sm border px-2 font-mono text-[9px] uppercase tracking-wider lg:min-h-0 lg:py-0.5 ${
-            thisMonth
-              ? "border-amber-500/70 bg-amber-500/15 text-amber-300"
-              : "border-neutral-800 text-neutral-500 hover:border-amber-500/40 hover:text-amber-300"
-          }`}
-        >
-          This month
-        </button>
-        <button
-          type="button"
-          aria-pressed={isNextMonth}
-          onClick={() => setCursor(nextMonth)}
-          className={`min-h-8 rounded-sm border px-2 font-mono text-[9px] uppercase tracking-wider lg:min-h-0 lg:py-0.5 ${
-            isNextMonth
-              ? "border-amber-500/70 bg-amber-500/15 text-amber-300"
-              : "border-neutral-800 text-neutral-500 hover:border-amber-500/40 hover:text-amber-300"
-          }`}
-        >
-          Next month
-        </button>
-        {selectedDate ? (
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-neutral-800 px-2 py-1.5 sm:px-2.5 sm:py-2">
+        <div className="flex w-full min-w-0 items-center gap-2 sm:w-auto">
           <button
             type="button"
-            onClick={onShowAll}
-            className="min-h-8 rounded-sm border border-neutral-700 px-2 font-mono text-[9px] uppercase tracking-wider text-neutral-300 hover:border-amber-500/40 hover:text-amber-300 lg:min-h-0 lg:py-0.5"
+            onClick={() => setCursor((cursor) => shiftMonth(cursor.year, cursor.month, -1))}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-neutral-800 font-mono text-[12px] text-neutral-400 hover:border-amber-500/50 hover:text-amber-300 lg:h-7 lg:w-7"
+            aria-label="Previous month"
           >
-            Show all
+            ‹
           </button>
-        ) : null}
+          <p className="min-w-0 flex-1 truncate text-center text-[12px] font-semibold uppercase tracking-[0.12em] text-neutral-200">
+            {formatMonthYear(year, month)}
+          </p>
+          <button
+            type="button"
+            onClick={() => setCursor((cursor) => shiftMonth(cursor.year, cursor.month, 1))}
+            className="inline-flex h-9 w-9 shrink-0 items-center justify-center border border-neutral-800 font-mono text-[12px] text-neutral-400 hover:border-amber-500/50 hover:text-amber-300 lg:h-7 lg:w-7"
+            aria-label="Next month"
+          >
+            ›
+          </button>
+        </div>
+        <div className="flex flex-wrap items-center gap-1">
+          <button
+            type="button"
+            aria-pressed={thisMonth}
+            onClick={() => setCursor({ year: todayParts.year, month: todayParts.month })}
+            className={`min-h-8 rounded-sm border px-2 font-mono text-[9px] uppercase tracking-wider lg:min-h-0 lg:py-0.5 ${
+              thisMonth
+                ? "border-amber-500/70 bg-amber-500/15 text-amber-300"
+                : "border-neutral-800 text-neutral-500 hover:border-amber-500/40 hover:text-amber-300"
+            }`}
+          >
+            This month
+          </button>
+          <button
+            type="button"
+            aria-pressed={isNextMonth}
+            onClick={() => setCursor(nextMonth)}
+            className={`min-h-8 rounded-sm border px-2 font-mono text-[9px] uppercase tracking-wider lg:min-h-0 lg:py-0.5 ${
+              isNextMonth
+                ? "border-amber-500/70 bg-amber-500/15 text-amber-300"
+                : "border-neutral-800 text-neutral-500 hover:border-amber-500/40 hover:text-amber-300"
+            }`}
+          >
+            Next month
+          </button>
+          {selectedDate ? (
+            <button
+              type="button"
+              onClick={onShowAll}
+              className="min-h-8 rounded-sm border border-neutral-700 px-2 font-mono text-[9px] uppercase tracking-wider text-neutral-300 hover:border-amber-500/40 hover:text-amber-300 lg:min-h-0 lg:py-0.5"
+            >
+              Show all
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid shrink-0 grid-cols-7 border-b border-neutral-800">
@@ -238,7 +239,7 @@ export function GlobalMacroCalendarWidget({
               aria-pressed={selected}
               aria-label={`${cell.iso} · ${eventLabel}`}
               title={count > 0 ? `${cell.iso} · ${eventLabel}` : cell.iso}
-              className={`relative flex min-h-0 flex-col items-center justify-between border border-neutral-800 px-0.5 py-0.5 transition-colors ${
+              className={`relative flex min-h-0 min-w-0 flex-col items-center justify-between overflow-hidden border border-neutral-800 px-0.5 py-0.5 transition-colors ${
                 selected
                   ? "border-amber-500/80 bg-amber-500/10"
                   : cell.isToday
@@ -260,7 +261,7 @@ export function GlobalMacroCalendarWidget({
                 {cell.day}
               </span>
               {times.length > 0 ? (
-                <span className="flex max-w-full flex-col items-center gap-0.5">
+                <span className="hidden max-w-full flex-col items-center gap-0.5 sm:flex">
                   {cell.events.slice(0, 2).map((event) =>
                     event.myt ? (
                       <span

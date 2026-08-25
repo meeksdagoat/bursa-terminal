@@ -23,7 +23,7 @@ type GlobalEconomyDeskProps = {
   headlinesLoading: boolean;
 };
 
-type GlobalTab = "banks" | "markets" | "news";
+type GlobalTab = "banks" | "markets" | "news" | "calendar";
 type TabletDrawer = "banks" | "news" | null;
 
 export function GlobalEconomyDesk({
@@ -42,7 +42,7 @@ export function GlobalEconomyDesk({
 
   const banks = (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-panel">
-      <div className="shrink-0 border-b border-line px-3 py-2">
+      <div className="shrink-0 border-b border-line p-3 sm:px-3 sm:py-2">
         <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           Central Banks
         </h2>
@@ -73,7 +73,7 @@ export function GlobalEconomyDesk({
 
   const marketBoard = (
     <div className="flex h-full min-h-[200px] min-w-0 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-line px-3 py-2">
+      <div className="shrink-0 border-b border-line p-3 sm:px-3 sm:py-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
             Global Economy
@@ -203,6 +203,7 @@ export function GlobalEconomyDesk({
         onTab={setTab}
         panes={[
           { id: "markets", label: "Markets" },
+          { id: "calendar", label: "Calendar" },
           { id: "banks", label: "Banks" },
           { id: "news", label: "News" },
         ]}
@@ -212,11 +213,10 @@ export function GlobalEconomyDesk({
           banks
         ) : tab === "news" ? (
           news
+        ) : tab === "calendar" ? (
+          calendar
         ) : (
-          <div className="flex h-full min-h-0 flex-col overflow-hidden">
-            <div className="min-h-0 flex-[1.1] overflow-hidden">{marketBoard}</div>
-            <div className="min-h-0 flex-1 overflow-hidden border-t border-line">{calendar}</div>
-          </div>
+          marketBoard
         )}
       </div>
     </div>
@@ -233,14 +233,18 @@ function MobileTabs({
   panes: { id: GlobalTab; label: string }[];
 }) {
   return (
-    <div className="flex shrink-0 border-b border-line bg-panel">
+    <div
+      role="tablist"
+      className="no-scrollbar flex shrink-0 flex-nowrap overflow-x-auto overscroll-x-contain border-b border-line bg-panel touch-pan-x scrollbar-none"
+    >
       {panes.map((pane) => (
         <button
           key={pane.id}
           type="button"
+          role="tab"
           onClick={() => onTab(pane.id)}
           aria-pressed={tab === pane.id}
-          className={`min-h-11 flex-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] ${
+          className={`min-h-11 min-w-[4.75rem] flex-1 shrink-0 whitespace-nowrap px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.14em] ${
             tab === pane.id ? "bg-[#1a1a1a] text-amber-400" : "text-neutral-500"
           }`}
         >

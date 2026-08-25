@@ -40,23 +40,23 @@ export function GlobalEconomyTab({
       <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="shrink-0">
           <GlobalTickerCards />
-          <p className="px-3 py-2 font-mono text-[9px] uppercase tracking-wider text-neutral-700">
+          <p className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-neutral-700 sm:py-2">
             LIVE TAPE · TRADINGVIEW WEBSOCKET · FLASH ON TICK
           </p>
         </div>
 
-        <div className="grid min-h-[220px] flex-1 grid-cols-1 gap-4 overflow-y-auto p-3 lg:grid-cols-3">
-          <div className="min-h-0 min-w-0 overflow-y-auto">
+        <div className="grid min-h-0 grid-cols-1 gap-3 p-3 sm:p-5 lg:min-h-[220px] lg:flex-1 lg:grid-cols-3 lg:gap-4 lg:overflow-y-auto lg:p-3">
+          <div className="min-h-0 min-w-0">
             <MacroCurrencyMatrix markets={snapshot?.markets ?? []} bnm={bnm} cpo={cpo} />
           </div>
-          <div className="min-h-0 min-w-0 overflow-y-auto">
+          <div className="min-h-0 min-w-0">
             <GlobalPolicyMatrix
               rates={snapshot?.rates ?? []}
               opr={bnm?.opr ?? null}
               malaysiaCpi={malaysia?.cpi ?? null}
             />
           </div>
-          <div className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+          <div className="flex min-h-[180px] min-w-0 flex-col sm:min-h-[220px] lg:min-h-0 lg:overflow-hidden">
             <GlobalMarketHeatmap />
           </div>
         </div>

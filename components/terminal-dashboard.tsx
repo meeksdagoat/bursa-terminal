@@ -193,7 +193,10 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   );
 
   return (
-    <div className="flex h-dvh min-h-0 flex-col overflow-hidden touch-pan-y bg-terminal text-neutral-200">
+    <div
+      data-app-shell
+      className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-terminal text-neutral-200 max-lg:touch-pan-y lg:h-screen lg:max-h-screen lg:overflow-hidden"
+    >
       <HeaderBar
         bnm={bnm.data}
         index={quotes.data?.index ?? null}
@@ -296,23 +299,27 @@ function DesktopWorkspace({
     <PanelGroup
       autoSaveId="bursa-terminal-layout"
       direction="horizontal"
-      className="min-h-0 flex-1"
+      className="min-h-0 flex-1 overflow-hidden"
     >
-      <Panel id="watchlist" defaultSize={18} minSize={15} order={1} className="min-h-0">
+      <Panel id="watchlist" defaultSize={18} minSize={15} order={1} className="min-h-0 overflow-hidden">
         {watchlistPane}
       </Panel>
 
       <PanelSplitter />
 
-      <Panel id="main" defaultSize={57} minSize={40} order={2} className="min-h-0">
-        <PanelGroup autoSaveId="bursa-terminal-chart" direction="vertical" className="h-full">
-          <Panel id="chart" defaultSize={62} minSize={30} className="min-h-0">
+      <Panel id="main" defaultSize={57} minSize={40} order={2} className="min-h-0 overflow-hidden">
+        <PanelGroup
+          autoSaveId="bursa-terminal-chart"
+          direction="vertical"
+          className="h-full min-h-0 overflow-hidden"
+        >
+          <Panel id="chart" defaultSize={62} minSize={30} className="min-h-0 overflow-hidden">
             {chartPane}
           </Panel>
 
           <PanelSplitter direction="vertical" />
 
-          <Panel id="intel" defaultSize={38} minSize={20} className="min-h-0">
+          <Panel id="intel" defaultSize={38} minSize={20} className="min-h-0 overflow-hidden">
             {intelPane}
           </Panel>
         </PanelGroup>

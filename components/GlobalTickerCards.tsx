@@ -32,9 +32,13 @@ export function GlobalTickerCards() {
         </p>
       ) : null}
 
-      <div className="grid grid-cols-1 gap-2 p-2 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-2 gap-2 p-2 sm:grid-cols-2 sm:p-3 lg:grid-cols-3 lg:p-3 xl:grid-cols-5">
         {GLOBAL_TICKER_SPECS.map((spec) => (
-          <TickerCard key={spec.id} ticker={byId.get(spec.id) ?? null} fallbackLabel={spec.label} />
+          <TickerCard
+            key={spec.id}
+            ticker={byId.get(spec.id) ?? null}
+            fallbackLabel={spec.label}
+          />
         ))}
       </div>
     </div>
@@ -83,11 +87,11 @@ function TickerCard({
 
   return (
     <article
-      className={`border px-3 py-2.5 transition-colors duration-300 ${flashClass}`}
+      className={`flex min-w-0 flex-col gap-2 overflow-hidden border p-3 transition-colors duration-300 last:col-span-2 lg:last:col-span-1 ${flashClass}`}
       aria-label={`${ticker?.label ?? fallbackLabel} live quote`}
     >
-      <div className="flex items-start justify-between gap-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+      <div className="flex min-w-0 items-center justify-between gap-2">
+        <p className="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-neutral-500">
           {ticker?.label ?? fallbackLabel}
         </p>
         <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[8px] tracking-wider text-emerald-400">
@@ -99,13 +103,22 @@ function TickerCard({
         </span>
       </div>
 
-      <p className={`mt-1.5 font-mono text-2xl leading-none tabular-nums ${priceTone}`} aria-live="polite">
+      <p
+        className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-2xl font-bold leading-none tracking-tight tabular-nums xl:text-xl 2xl:text-2xl ${priceTone}`}
+        aria-live="polite"
+        title={formatPrint(ticker)}
+      >
         {formatPrint(ticker)}
       </p>
 
-      <p className={`mt-1.5 text-xs font-mono ${changeTone}`}>
-        {ticker?.symbol ?? "—"} · {ticker?.unit ?? "—"} · {formatPct(change)}
-      </p>
+      <div
+        className={`flex min-w-0 flex-col gap-0.5 font-mono text-[10px] leading-tight sm:flex-row sm:items-center sm:gap-2 sm:text-xs xl:flex-col xl:items-stretch xl:gap-0.5 xl:text-[10px] 2xl:flex-row 2xl:items-center 2xl:gap-2 2xl:text-xs ${changeTone}`}
+      >
+        <span className="min-w-0 truncate">
+          {ticker?.symbol ?? "—"} · {ticker?.unit ?? "—"}
+        </span>
+        <span className="shrink-0 tabular-nums">{formatPct(change)}</span>
+      </div>
     </article>
   );
 }

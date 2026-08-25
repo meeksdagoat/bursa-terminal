@@ -2,7 +2,6 @@
 
 import dynamic from "next/dynamic";
 import { memo, useMemo, useState } from "react";
-import { HScroll } from "@/components/h-scroll";
 import { Jargon } from "@/components/jargon-term";
 import { SignedPct } from "@/components/signed-change";
 import { TapHint } from "@/components/tap-hint";
@@ -45,6 +44,12 @@ const CHART_TYPE_LABEL: Record<ChartType, string> = {
   candlestick: "Candlestick",
   line: "Line",
   "heikin-ashi": "Heikin-Ashi",
+};
+
+const CHART_TYPE_SHORT: Record<ChartType, string> = {
+  candlestick: "Candle",
+  line: "Line",
+  "heikin-ashi": "HA",
 };
 
 const TOOLS: { id: DrawingTool; label: string; title: string }[] = [
@@ -108,123 +113,151 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
   }, [candles]);
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-panel">
-      <div className="flex flex-col gap-3 border-b border-line px-3 py-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
-        <div className="min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-[15px] font-semibold tracking-tight text-white">{row.name}</h2>
-            <span className="font-mono text-[11px] text-neutral-500">{row.symbol}</span>
-            {quote?.marketState ? (
-              <span className="font-mono text-[9px] text-neutral-600">{quote.marketState}</span>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => onToggleSave(row.symbol)}
-              aria-pressed={saved}
-              title={saved ? "Remove from watchlist" : "Save to watchlist"}
-              className={`min-h-11 rounded-sm border px-3 py-0.5 font-mono text-[10px] tracking-wider transition-colors md:min-h-0 md:px-1.5 md:text-[9px] ${
-                saved
-                  ? "border-gain/50 bg-gain/10 text-gain hover:border-loss/50 hover:text-loss"
-                  : "border-line text-neutral-500 hover:border-gain/40 hover:text-gain"
-              }`}
-            >
-              {saved ? "★ IN WATCHLIST" : "☆ SAVE"}
-            </button>
+    <section className="flex h-full min-h-0 flex-col overflow-hidden bg-panel">
+      <div className="border-b border-line">
+        <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-[15px] font-semibold tracking-tight text-white">{row.name}</h2>
+              <span className="font-mono text-[11px] text-neutral-500">{row.symbol}</span>
+              {quote?.marketState ? (
+                <span className="font-mono text-[9px] text-neutral-600">{quote.marketState}</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => onToggleSave(row.symbol)}
+                aria-pressed={saved}
+                title={saved ? "Remove from watchlist" : "Save to watchlist"}
+                className={`min-h-11 rounded-sm border px-3 py-0.5 font-mono text-[10px] tracking-wider transition-colors md:min-h-0 md:px-1.5 md:text-[9px] ${
+                  saved
+                    ? "border-gain/50 bg-gain/10 text-gain hover:border-loss/50 hover:text-loss"
+                    : "border-line text-neutral-500 hover:border-gain/40 hover:text-gain"
+                }`}
+              >
+                {saved ? "★ IN WATCHLIST" : "☆ SAVE"}
+              </button>
+            </div>
+
+            <div className="mt-0.5 flex items-baseline gap-2">
+              <span className={`rounded-sm px-1 font-mono text-[22px] leading-none text-white ${priceFlash}`}>
+                {formatPrice(quote?.price)}
+              </span>
+              <span className="text-[11px] text-neutral-500">{quote?.currency ?? "MYR"}</span>
+              <SignedPct value={quote?.changePct} className="font-mono text-[12px]" />
+              <span className="font-mono text-[9px] text-neutral-600">
+                LAST {formatKlTime(quote?.quoteTime)} MYT
+                {quote?.delayMinutes ? ` · ${quote.delayMinutes}M DELAY` : ""}
+              </span>
+            </div>
           </div>
 
-          <div className="mt-0.5 flex items-baseline gap-2">
-            <span className={`rounded-sm px-1 font-mono text-[22px] leading-none text-white ${priceFlash}`}>
-              {formatPrice(quote?.price)}
-            </span>
-            <span className="text-[11px] text-neutral-500">{quote?.currency ?? "MYR"}</span>
-            <SignedPct value={quote?.changePct} className="font-mono text-[12px]" />
-            <span className="font-mono text-[9px] text-neutral-600">
-              LAST {formatKlTime(quote?.quoteTime)} MYT
-              {quote?.delayMinutes ? ` · ${quote.delayMinutes}M DELAY` : ""}
-            </span>
+          <div className="flex min-w-0 flex-col items-start gap-1.5 sm:items-end">
+            <TapHint text={SHARIAH_SOURCE} title="Screening" align="right">
+              <span
+                className={`rounded-sm border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
+                  row.shariah
+                    ? "border-amber-400/50 bg-gain/15 text-gain shadow-[0_0_12px_rgba(34,197,94,0.15)]"
+                    : "border-neutral-600 bg-neutral-800 text-neutral-400"
+                }`}
+              >
+                {row.shariah ? "Shariah compliant" : "Non-Shariah"}
+              </span>
+            </TapHint>
+            <dl className="grid grid-cols-3 gap-px border border-line bg-line">
+              <Stat label="P/E" term="pe" value={formatRatio(quote?.pe)} />
+              <Stat label="Mkt Cap" term="marketCap" value={formatMarketCap(quote?.marketCap)} />
+              <Stat
+                label="Div Yld"
+                term="dividendYield"
+                value={quote?.dividendYieldPct != null ? `${quote.dividendYieldPct.toFixed(1)}%` : "—"}
+              />
+            </dl>
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col items-start gap-2 sm:items-end">
-          <TapHint text={SHARIAH_SOURCE} title="Screening" align="right">
-            <span
-              className={`rounded-sm border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
-                row.shariah
-                  ? "border-amber-400/50 bg-gain/15 text-gain shadow-[0_0_12px_rgba(34,197,94,0.15)]"
-                  : "border-neutral-600 bg-neutral-800 text-neutral-400"
-              }`}
-            >
-              {row.shariah ? "Shariah compliant" : "Non-Shariah"}
-            </span>
-          </TapHint>
-          <dl className="grid grid-cols-3 gap-px border border-line bg-line">
-            <Stat label="P/E" term="pe" value={formatRatio(quote?.pe)} />
-            <Stat label="Mkt Cap" term="marketCap" value={formatMarketCap(quote?.marketCap)} />
-            <Stat
-              label="Div Yld"
-              term="dividendYield"
-              value={quote?.dividendYieldPct != null ? `${quote.dividendYieldPct.toFixed(1)}%` : "—"}
-            />
-          </dl>
-        </div>
+        <WeekRangeBar
+          low={quote?.yearLow ?? null}
+          high={quote?.yearHigh ?? null}
+          last={quote?.price ?? null}
+        />
       </div>
 
-      <WeekRangeBar
-        low={quote?.yearLow ?? null}
-        high={quote?.yearHigh ?? null}
-        last={quote?.price ?? null}
-      />
+      <div className="flex items-center gap-2 border-b border-line px-2 py-1">
+        <div className="no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-none">
+          <div className="flex shrink-0 items-center" role="group" aria-label="Chart timeframe">
+            {CHART_TIMEFRAMES.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setTimeframe(key)}
+                className={`shrink-0 px-2 py-1 font-mono text-[11px] tracking-wider transition-colors sm:px-1.5 sm:py-0.5 sm:text-[10px] ${
+                  timeframe === key
+                    ? "bg-[#1f1f1f] text-amber-400"
+                    : "text-neutral-500 hover:text-neutral-300"
+                }`}
+              >
+                {key}
+              </button>
+            ))}
+          </div>
 
-      <div className="flex flex-wrap items-center gap-2 border-b border-line px-2 py-1.5">
-        <HScroll className="min-w-0 items-center gap-px">
-          {CHART_TIMEFRAMES.map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setTimeframe(key)}
-              className={`min-h-11 min-w-11 shrink-0 snap-start px-1.5 font-mono text-[11px] tracking-wider transition-colors md:min-h-0 md:min-w-0 md:py-0.5 md:text-[10px] ${
-                timeframe === key
-                  ? "bg-[#1f1f1f] text-amber-400"
-                  : "text-neutral-500 hover:text-neutral-300"
-              }`}
+          <span className="h-3.5 w-px shrink-0 bg-line" />
+
+          <div className="relative shrink-0 sm:hidden">
+            <label className="sr-only" htmlFor="chart-type-mobile">
+              Chart type
+            </label>
+            <select
+              id="chart-type-mobile"
+              value={chartType}
+              onChange={(event) => setChartType(event.target.value as ChartType)}
+              className="max-w-[5.75rem] appearance-none rounded-sm border border-line bg-[#0d0d0d] py-1 pr-5 pl-2 font-mono text-[11px] text-neutral-300"
             >
-              {key}
-            </button>
-          ))}
-        </HScroll>
-
-        <span className="hidden h-4 w-px bg-line sm:block" />
-
-        <HScroll className="min-w-0 items-center gap-px">
-          {CHART_TYPES.map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setChartType(key)}
-              className={`min-h-11 shrink-0 snap-start px-1.5 font-mono text-[10px] tracking-wider md:min-h-0 md:py-0.5 ${
-                chartType === key
-                  ? "bg-[#1f1f1f] text-amber-400"
-                  : "text-neutral-500 hover:text-neutral-300"
-              }`}
+              {CHART_TYPES.map((key) => (
+                <option key={key} value={key}>
+                  {CHART_TYPE_SHORT[key]}
+                </option>
+              ))}
+            </select>
+            <span
+              className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 font-mono text-[8px] text-neutral-500"
+              aria-hidden
             >
-              {CHART_TYPE_LABEL[key]}
-            </button>
-          ))}
-        </HScroll>
+              ▾
+            </span>
+          </div>
+
+          <div className="hidden shrink-0 items-center sm:flex" role="group" aria-label="Chart type">
+            {CHART_TYPES.map((key) => (
+              <button
+                key={key}
+                type="button"
+                onClick={() => setChartType(key)}
+                className={`shrink-0 px-2 py-1 font-mono text-[10px] tracking-wider sm:px-1.5 sm:py-0.5 ${
+                  chartType === key
+                    ? "bg-[#1f1f1f] text-amber-400"
+                    : "text-neutral-500 hover:text-neutral-300"
+                }`}
+              >
+                {CHART_TYPE_LABEL[key]}
+              </button>
+            ))}
+          </div>
+        </div>
 
         {rangeChangePct != null ? (
-          <span className="ml-auto inline-flex items-center gap-1 font-mono text-[9px] text-zinc-400">
+          <span className="inline-flex shrink-0 items-center gap-1 font-mono text-[11px] whitespace-nowrap text-zinc-400">
             {timeframe}
             <SignedPct value={rangeChangePct} />
           </span>
         ) : null}
       </div>
 
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 border-b border-line px-2 py-1">
+      <div className="no-scrollbar flex flex-nowrap items-center gap-x-3 overflow-x-auto overscroll-x-contain border-b border-line px-2 py-1 touch-pan-x scrollbar-none">
         {OVERLAY_TOGGLES.map((item) => (
           <label
             key={item.id}
-            className="flex min-h-11 cursor-pointer items-center gap-1 font-mono text-[9px] uppercase tracking-wider text-neutral-500 md:min-h-0"
+            className="flex shrink-0 cursor-pointer items-center gap-1 py-1 font-mono text-[9px] uppercase tracking-wider text-neutral-500"
           >
             <input
               type="checkbox"
@@ -239,7 +272,7 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
         ))}
       </div>
 
-        <div className="relative flex min-h-[180px] flex-1 overflow-hidden overscroll-none bg-[#0a0a0a] max-lg:h-[40vh] max-lg:min-h-[280px] max-lg:max-h-[380px] max-lg:flex-none">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden overscroll-none bg-[#0a0a0a] max-lg:h-[40vh] max-lg:min-h-[280px] max-lg:max-h-[380px] max-lg:flex-none">
         <div className="z-20 flex w-11 shrink-0 flex-col items-center gap-1 border-r border-line bg-[#101010] py-2 md:w-9">
           {TOOLS.map((tool) => (
             <button
@@ -292,13 +325,13 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
 
 function Stat({ label, term, value }: { label: string; term: JargonTerm; value: string }) {
   return (
-    <div className="min-w-[92px] bg-panel px-3 py-1.5">
+    <div className="min-w-0 bg-panel px-2 py-1 sm:min-w-[92px] sm:px-3 sm:py-1.5">
       <dt className="text-[9px] uppercase tracking-wider text-neutral-500">
-        <Jargon term={term} align="right">
+        <Jargon term={term} align="right" className="min-h-0! sm:min-h-0">
           {label}
         </Jargon>
       </dt>
-      <dd className="font-mono text-[12px] text-neutral-100">{value}</dd>
+      <dd className="font-mono text-[11px] text-neutral-100 sm:text-[12px]">{value}</dd>
     </div>
   );
 }
@@ -316,20 +349,22 @@ function WeekRangeBar({
   const pct = ready ? Math.min(100, Math.max(0, ((last - low) / (high - low)) * 100)) : 50;
 
   return (
-    <div className="flex items-center gap-3 border-b border-line px-3 py-1.5">
-      <span className="shrink-0 font-mono text-[9px] uppercase tracking-wider text-neutral-500">
-        <Jargon term="week52">52W</Jargon>
+    <div className="flex items-center gap-2 border-t border-line px-3 py-1">
+      <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+        <Jargon term="week52" className="min-h-0!">
+          52W
+        </Jargon>
       </span>
-      <span className="w-12 shrink-0 font-mono text-[10px] text-neutral-400">{formatPrice(low)}</span>
-      <div className="relative h-1.5 min-w-0 flex-1 rounded-sm bg-[#1f1f1f]">
+      <span className="w-10 shrink-0 font-mono text-[10px] text-neutral-400 sm:w-12">{formatPrice(low)}</span>
+      <div className="relative h-1 min-w-0 flex-1 rounded-sm bg-[#1f1f1f] sm:h-1.5">
         {ready ? (
           <span
-            className="absolute top-1/2 h-2.5 w-0.5 -translate-y-1/2 bg-amber-400"
+            className="absolute top-1/2 h-2 w-0.5 -translate-y-1/2 bg-amber-400 sm:h-2.5"
             style={{ left: `${pct}%` }}
           />
         ) : null}
       </div>
-      <span className="w-12 shrink-0 text-right font-mono text-[10px] text-neutral-400">
+      <span className="w-10 shrink-0 text-right font-mono text-[10px] text-neutral-400 sm:w-12">
         {formatPrice(high)}
       </span>
     </div>

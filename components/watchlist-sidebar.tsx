@@ -53,7 +53,7 @@ function WatchlistSidebarInner({
   const hidden = rows.length - visibleRows.length;
 
   return (
-    <aside className="flex h-full min-h-0 flex-col bg-panel">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden bg-panel">
       <div className="flex min-h-11 shrink-0 items-center justify-between border-b border-line px-2.5 md:h-7 md:min-h-0">
         <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           Watchlist
@@ -74,7 +74,7 @@ function WatchlistSidebarInner({
         </p>
       ) : null}
 
-      <ul className="custom-scrollbar max-h-[55%] shrink-0 divide-y divide-line overflow-y-auto">
+      <ul className="custom-scrollbar min-h-0 max-h-[55%] shrink-0 divide-y divide-line overflow-y-auto">
         {visibleRows.map((row) => {
           const active = row.symbol === selectedSymbol;
           return (

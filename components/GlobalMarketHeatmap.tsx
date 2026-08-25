@@ -57,8 +57,8 @@ export function GlobalMarketHeatmap() {
   }, []);
 
   return (
-    <section className="flex h-full min-h-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d]">
-      <header className="shrink-0 border-b border-neutral-800 px-3 py-2">
+    <section className="flex h-auto min-w-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d] lg:h-full lg:min-h-0">
+      <header className="shrink-0 border-b border-neutral-800 p-3 sm:px-3 sm:py-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           S&P 500 Heatmap
         </h3>
@@ -67,7 +67,7 @@ export function GlobalMarketHeatmap() {
       <div
         ref={hostRef}
         data-tv-heatmap
-        className="min-h-0 w-full flex-1 overflow-hidden bg-transparent [&_.tradingview-widget-container]:h-full [&_.tradingview-widget-container]:w-full [&_.tradingview-widget-container__widget]:h-full [&_iframe]:block [&_iframe]:h-full [&_iframe]:w-full"
+        className="min-h-[180px] w-full flex-1 overflow-hidden bg-transparent sm:min-h-[220px] [&_.tradingview-widget-container]:h-full [&_.tradingview-widget-container]:w-full [&_.tradingview-widget-container__widget]:h-full [&_iframe]:block [&_iframe]:h-full [&_iframe]:w-full"
         aria-label="S&P 500 sector heatmap"
       />
     </section>

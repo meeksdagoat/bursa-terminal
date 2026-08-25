@@ -83,9 +83,9 @@ export function GlobalEconomyView() {
         />
       </div>
 
-      <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line bg-panel px-3 py-1.5 font-mono text-[9px] text-neutral-600">
-        <span>GLOBAL MACRO · NY FED EFFR · ECB DFR · NATIVE TICKERS · TRADINGVIEW HEATMAP · GOOGLE NEWS WIRE</span>
-        <span className={quotes.error || economy.error ? "text-loss" : "text-gain"}>
+      <footer className="flex shrink-0 flex-col gap-0.5 border-t border-line bg-panel px-3 py-1.5 font-mono text-[9px] leading-tight text-neutral-600 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4 sm:gap-y-1">
+        <span className="min-w-0 break-words">GLOBAL MACRO · NY FED EFFR · ECB DFR · NATIVE TICKERS · TRADINGVIEW HEATMAP · GOOGLE NEWS WIRE</span>
+        <span className={`min-w-0 break-words ${quotes.error || economy.error ? "text-loss" : "text-gain"}`}>
           {quotes.error || economy.error ? "FEED DEGRADED" : quotes.data ? "SYS OK" : "CONNECTING"} ·
           LIVE TAPE · TRADINGVIEW WEBSOCKET · UPDATED {formatKlTime(quotes.updatedAt)} MYT
         </span>
