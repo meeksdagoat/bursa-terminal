@@ -7,7 +7,7 @@ import { HeaderBar } from "@/components/header-bar";
 import { MainNav } from "@/components/main-nav";
 import { formatKlTime } from "@/lib/format";
 import { feedStatusFromQuote } from "@/lib/market-status";
-import type { BnmPayload, GlobalEconomyPayload, HeadlinesPayload, QuotesPayload } from "@/lib/types";
+import type { BnmPayload, EconomyPayload, GlobalEconomyPayload, HeadlinesPayload, QuotesPayload } from "@/lib/types";
 import { findEntry, terminalHref, universe } from "@/lib/universe";
 import { useLiveData } from "@/lib/use-live-data";
 import { useShariahOnly } from "@/lib/use-shariah";
@@ -28,6 +28,7 @@ export function GlobalEconomyView() {
     HEADLINES_REFRESH_MS,
   );
   const economy = useLiveData<GlobalEconomyPayload>("/api/global-economy", BNM_REFRESH_MS);
+  const malaysia = useLiveData<EconomyPayload>("/api/economy", BNM_REFRESH_MS);
 
   const handleSearch = useCallback(
     (query: string) => {
@@ -74,6 +75,8 @@ export function GlobalEconomyView() {
         <GlobalEconomyDesk
           snapshot={economy.data}
           snapshotError={economy.error}
+          bnm={bnm.data}
+          malaysia={malaysia.data}
           headlines={headlines.data}
           headlinesError={headlines.error}
           headlinesLoading={headlines.loading}

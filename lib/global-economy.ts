@@ -1,6 +1,7 @@
 import "server-only";
 
-import type { GlobalEconomyPayload, PolicyRate } from "./types";
+import type { GlobalEconomyPayload, GlobalMarketQuote, PolicyRate } from "./types";
+import { fetchQuotes } from "./yahoo";
 
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -170,14 +171,97 @@ async function loadEcb(errors: string[]): Promise<PolicyRate> {
   }
 }
 
+/**
+ * Last published MGS 10-year yield. Yahoo has no free Bursa government-bond
+ * ticker, so the spread card uses this print until a public JSON feed exists.
+ */
+const MGS_10Y_LAST_PRINT: GlobalMarketQuote = {
+  id: "mgs10y",
+  symbol: "MGS 10Y",
+  label: "MGS 10Y Yield",
+  unit: "%",
+  price: 3.58,
+  changePct: null,
+  currency: "MYR",
+  asOf: "2026-08-22",
+  source: "last-print",
+};
+
+function emptyMarket(
+  id: string,
+  symbol: string,
+  label: string,
+  unit: string,
+): GlobalMarketQuote {
+  return {
+    id,
+    symbol,
+    label,
+    unit,
+    price: null,
+    changePct: null,
+    currency: null,
+    asOf: null,
+    source: "yahoo",
+  };
+}
+
+function tnxYield(price: number | null): number | null {
+  if (price == null || !Number.isFinite(price)) return null;
+  return price > 20 ? price / 10 : price;
+}
+
+async function loadMarkets(errors: string[]): Promise<GlobalMarketQuote[]> {
+  const dxy = emptyMarket("dxy", "DX-Y.NYB", "US Dollar Index", "idx");
+  const us10y = emptyMarket("us10y", "^TNX", "US 10Y Yield", "%");
+  const usdcny = emptyMarket("usdcny", "USDCNY=X", "USD/CNY", "CNY");
+
+  try {
+    const quotes = await fetchQuotes(["DX-Y.NYB", "^TNX", "USDCNY=X"]);
+    const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
+
+    const dxyQuote = bySymbol.get("DX-Y.NYB");
+    if (dxyQuote) {
+      dxy.price = dxyQuote.price;
+      dxy.changePct = dxyQuote.changePct;
+      dxy.currency = dxyQuote.currency;
+      dxy.asOf = dxyQuote.quoteTime;
+    }
+
+    const tnxQuote = bySymbol.get("^TNX");
+    if (tnxQuote) {
+      us10y.price = tnxYield(tnxQuote.price);
+      us10y.changePct = tnxQuote.changePct;
+      us10y.currency = tnxQuote.currency;
+      us10y.asOf = tnxQuote.quoteTime;
+    }
+
+    const cnyQuote = bySymbol.get("USDCNY=X");
+    if (cnyQuote) {
+      usdcny.price = cnyQuote.price;
+      usdcny.changePct = cnyQuote.changePct;
+      usdcny.currency = cnyQuote.currency;
+      usdcny.asOf = cnyQuote.quoteTime;
+    }
+  } catch (error) {
+    errors.push(error instanceof Error ? error.message : String(error));
+  }
+
+  return [dxy, us10y, usdcny, MGS_10Y_LAST_PRINT];
+}
+
 export async function getGlobalEconomySnapshot(): Promise<GlobalEconomyPayload> {
   const errors: string[] = [];
-  const [fed, ecb] = await Promise.all([loadFed(errors), loadEcb(errors)]);
+  const [fed, ecb, markets] = await Promise.all([
+    loadFed(errors),
+    loadEcb(errors),
+    loadMarkets(errors),
+  ]);
 
   return {
     asOf: new Date().toISOString(),
     rates: [fed, ecb, fromFallback("boj"), fromFallback("pboc")],
-    markets: [],
+    markets,
     errors,
   };
 }

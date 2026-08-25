@@ -210,6 +210,7 @@ export type GlobalMarketQuote = {
   changePct: number | null;
   currency: string | null;
   asOf: string | null;
+  source?: string;
 };
 
 export type GlobalEconomyPayload = {

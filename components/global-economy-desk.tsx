@@ -3,21 +3,23 @@
 import { useState } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { GLOBAL_ECONOMY_TAGS } from "@/lib/categories";
+import { GlobalEconomyTab } from "@/components/GlobalEconomyTab";
+import { HeadlineList } from "@/components/headline-list";
 import { Indicator } from "@/components/economy-desk";
 import { Eli5Block } from "@/components/eli5-summary";
-import { HeadlineList } from "@/components/headline-list";
 import { PanelSplitter } from "@/components/panel-resize-handle";
 import { SlideDrawer } from "@/components/slide-drawer";
-import { TradingViewTickers } from "@/components/tradingview-tickers";
 import { upcomingGlobalEvents } from "@/lib/global-calendar";
 import { summariseMacroEvent } from "@/lib/eli5";
 import { formatKlDate, formatOpr } from "@/lib/format";
-import type { GlobalEconomyPayload, HeadlinesPayload } from "@/lib/types";
+import type { BnmPayload, EconomyPayload, GlobalEconomyPayload, HeadlinesPayload } from "@/lib/types";
 import { useBreakpoint } from "@/lib/use-media-query";
 
 type GlobalEconomyDeskProps = {
   snapshot: GlobalEconomyPayload | null;
   snapshotError: string | null;
+  bnm: BnmPayload | null;
+  malaysia: EconomyPayload | null;
   headlines: HeadlinesPayload | null;
   headlinesError: string | null;
   headlinesLoading: boolean;
@@ -29,6 +31,8 @@ type TabletDrawer = "banks" | "news" | null;
 export function GlobalEconomyDesk({
   snapshot,
   snapshotError,
+  bnm,
+  malaysia,
   headlines,
   headlinesError,
   headlinesLoading,
@@ -91,17 +95,12 @@ export function GlobalEconomyDesk({
       </div>
 
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto bg-[#0a0a0a]">
-        {snapshotError ? (
-          <p className="border-b border-neutral-800 px-3 py-1.5 font-mono text-[10px] text-loss">
-            MACRO FEED · {snapshotError}
-          </p>
-        ) : null}
-
-        <TradingViewTickers />
-
-        <p className="px-3 py-2 font-mono text-[9px] uppercase tracking-wider text-neutral-700">
-          STREAMING LIVE • TRADINGVIEW WEBSOCKET
-        </p>
+        <GlobalEconomyTab
+          snapshot={snapshot}
+          snapshotError={snapshotError}
+          bnm={bnm}
+          malaysia={malaysia}
+        />
       </div>
     </div>
   );
@@ -157,11 +156,11 @@ export function GlobalEconomyDesk({
 
   const mainSplit = (
     <PanelGroup autoSaveId="bursa-global-economy-chart" direction="vertical" className="h-full">
-      <Panel id="global-markets" defaultSize={58} minSize={30} className="min-h-0">
+      <Panel id="global-markets" defaultSize={68} minSize={36} className="min-h-0">
         {marketBoard}
       </Panel>
       <PanelSplitter direction="vertical" />
-      <Panel id="global-calendar" defaultSize={42} minSize={20} className="min-h-0">
+      <Panel id="global-calendar" defaultSize={32} minSize={18} className="min-h-0">
         {calendar}
       </Panel>
     </PanelGroup>
