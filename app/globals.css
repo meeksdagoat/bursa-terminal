@@ -58,6 +58,12 @@ body {
   overscroll-behavior: contain;
 }
 
+.modal-ticker-scroll {
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;

@@ -48,7 +48,7 @@ export function VirtualList({
   const offset = start * itemHeight;
 
   return (
-    <div ref={scrollerRef} onScroll={onScroll} className={className}>
+    <div ref={scrollerRef} onScroll={onScroll} className={`min-h-0 ${className}`.trim()}>
       <div style={{ height: count * itemHeight, position: "relative" }}>
         <div style={{ transform: `translateY(${offset}px)` }}>
           {Array.from({ length: Math.max(0, end - start) }, (_, index) => renderItem(start + index))}

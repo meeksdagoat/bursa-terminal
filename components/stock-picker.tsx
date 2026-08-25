@@ -41,7 +41,7 @@ export function StockPicker({
   }, [query, shariahOnly]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/75 md:items-start md:p-4 md:pt-[8vh]">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
       <button
         type="button"
         aria-label="Close ticker browser"
@@ -53,28 +53,28 @@ export function StockPicker({
         role="dialog"
         aria-modal="true"
         aria-label="Bursa Malaysia ticker browser"
-        className="relative flex max-h-[88dvh] w-full flex-col rounded-t-lg border border-line bg-panel shadow-2xl modal-overscroll md:max-h-[78vh] md:w-[min(600px,94vw)] md:rounded-none"
+        className="relative z-10 flex max-h-[85vh] w-full min-h-0 flex-col overflow-hidden rounded-lg border border-neutral-800 bg-[#0d0d0d] shadow-2xl md:w-[min(600px,94vw)]"
+        onWheel={(event) => event.stopPropagation()}
       >
-        <div className="flex min-h-11 shrink-0 items-center justify-between border-b border-line px-2.5 md:h-8 md:min-h-0">
-          <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
-            Bursa Universe
-          </h2>
-          <div className="flex items-center gap-3">
-            <span className="font-mono text-[9px] text-neutral-600">
-              {saved.size} SAVED ·{" "}
-              {shariahOnly ? `${results.length} SHARIAH` : `${universe.length} TICKERS`}
-            </span>
-            <button
-              type="button"
-              onClick={onClose}
-              className="inline-flex min-h-11 items-center px-2 font-mono text-[11px] text-neutral-500 hover:text-gain md:min-h-0 md:text-[10px]"
-            >
-              CLOSE
-            </button>
+        <div className="flex-shrink-0 border-b border-neutral-800 bg-[#0d0d0d] p-4">
+          <div className="mb-3 flex min-h-11 items-center justify-between md:min-h-0">
+            <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
+              Bursa Universe
+            </h2>
+            <div className="flex items-center gap-3">
+              <span className="font-mono text-[9px] text-neutral-600">
+                {saved.size} SAVED ·{" "}
+                {shariahOnly ? `${results.length} SHARIAH` : `${universe.length} TICKERS`}
+              </span>
+              <button
+                type="button"
+                onClick={onClose}
+                className="inline-flex min-h-11 items-center px-2 font-mono text-[11px] text-neutral-500 hover:text-gain md:min-h-0 md:text-[10px]"
+              >
+                CLOSE
+              </button>
+            </div>
           </div>
-        </div>
-
-        <div className="shrink-0 border-b border-line p-2">
           <label className="sr-only" htmlFor="universe-search">
             Search the Bursa universe
           </label>
@@ -89,7 +89,7 @@ export function StockPicker({
           />
         </div>
 
-        <div className="min-h-0 flex-1">
+        <div className="modal-ticker-scroll flex min-h-0 flex-1 flex-col divide-y divide-neutral-800/50 overflow-y-auto overscroll-contain">
           {results.length === 0 ? (
             <p className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">
               NO {shariahOnly ? "SHARIAH-COMPLIANT " : ""}TICKER MATCHES “{query}”
@@ -98,7 +98,7 @@ export function StockPicker({
             <VirtualList
               count={results.length}
               itemHeight={52}
-              className="h-full overflow-auto overscroll-contain"
+              className="modal-ticker-scroll min-h-0 flex-1 overflow-y-auto overscroll-contain"
               renderItem={(index) => {
                 const entry = results[index];
                 const isSaved = saved.has(entry.symbol);
@@ -149,7 +149,7 @@ export function StockPicker({
           )}
         </div>
 
-        <div className="flex min-h-11 shrink-0 items-center justify-between border-t border-line px-2.5 font-mono text-[9px] text-neutral-600 pb-[env(safe-area-inset-bottom)] md:h-7 md:min-h-0 md:pb-0">
+        <div className="z-10 flex min-h-11 flex-shrink-0 items-center justify-between border-t border-neutral-800 bg-[#0d0d0d] p-3 font-mono text-[9px] text-neutral-600 pb-[max(0.75rem,env(safe-area-inset-bottom))] md:min-h-0">
           <span className="hidden sm:inline">CLICK A ROW TO CHART · SAVE TO PIN IT TO THE WATCHLIST</span>
           <span className="sm:hidden">TAP A ROW TO CHART</span>
           <button
