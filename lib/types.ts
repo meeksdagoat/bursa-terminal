@@ -210,12 +210,34 @@ export type GlobalMarketQuote = {
   changePct: number | null;
   currency: string | null;
   asOf: string | null;
+  source?: string;
 };
 
 export type GlobalEconomyPayload = {
   asOf: string;
   rates: PolicyRate[];
   markets: GlobalMarketQuote[];
+  errors: string[];
+};
+
+export type GlobalTickerKind = "yield" | "index" | "commodity";
+
+export type GlobalTickerQuote = {
+  id: string;
+  label: string;
+  symbol: string;
+  unit: string;
+  kind: GlobalTickerKind;
+  price: number | null;
+  changePct: number | null;
+  currency: string | null;
+  asOf: string | null;
+};
+
+export type GlobalTickersPayload = {
+  source: "tradingview" | "yahoo";
+  asOf: string;
+  tickers: GlobalTickerQuote[];
   errors: string[];
 };
 

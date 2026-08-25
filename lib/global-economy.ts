@@ -1,7 +1,7 @@
 import "server-only";
 
-import { fetchQuotes } from "./yahoo";
 import type { GlobalEconomyPayload, GlobalMarketQuote, PolicyRate } from "./types";
+import { fetchQuotes } from "./yahoo";
 
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -64,14 +64,6 @@ const RATE_FALLBACKS: RateFallback[] = [
   },
 ];
 
-const MARKET_SPECS = [
-  { id: "tnx", symbol: "^TNX", label: "US 10-Year Yield", unit: "%", kind: "yield" },
-  { id: "spx", symbol: "^GSPC", label: "S&P 500", unit: "pts", kind: "index" },
-  { id: "ndx", symbol: "^NDX", label: "Nasdaq 100", unit: "pts", kind: "index" },
-  { id: "brent", symbol: "BZ=F", label: "Brent Crude", unit: "USD/bbl", kind: "price" },
-  { id: "gold", symbol: "GC=F", label: "Gold", unit: "USD/oz", kind: "price" },
-] as const;
-
 function num(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -97,11 +89,6 @@ function fromFallback(id: PolicyRate["id"]): PolicyRate {
     asOf: row.asOf,
     source: row.source,
   };
-}
-
-function yieldPct(price: number | null): number | null {
-  if (price == null) return null;
-  return price > 20 ? price / 10 : price;
 }
 
 function ecbObservationDate(payload: Record<string, unknown> | null): string | null {
@@ -184,48 +171,92 @@ async function loadEcb(errors: string[]): Promise<PolicyRate> {
   }
 }
 
+/**
+ * Last published MGS 10-year yield. Yahoo has no free Bursa government-bond
+ * ticker, so the spread card uses this print until a public JSON feed exists.
+ */
+const MGS_10Y_LAST_PRINT: GlobalMarketQuote = {
+  id: "mgs10y",
+  symbol: "MGS 10Y",
+  label: "MGS 10Y Yield",
+  unit: "%",
+  price: 3.58,
+  changePct: null,
+  currency: "MYR",
+  asOf: "2026-08-22",
+  source: "last-print",
+};
+
+function emptyMarket(
+  id: string,
+  symbol: string,
+  label: string,
+  unit: string,
+): GlobalMarketQuote {
+  return {
+    id,
+    symbol,
+    label,
+    unit,
+    price: null,
+    changePct: null,
+    currency: null,
+    asOf: null,
+    source: "yahoo",
+  };
+}
+
+function tnxYield(price: number | null): number | null {
+  if (price == null || !Number.isFinite(price)) return null;
+  return price > 20 ? price / 10 : price;
+}
+
 async function loadMarkets(errors: string[]): Promise<GlobalMarketQuote[]> {
+  const dxy = emptyMarket("dxy", "DX-Y.NYB", "US Dollar Index", "idx");
+  const us10y = emptyMarket("us10y", "^TNX", "US 10Y Yield", "%");
+  const usdcny = emptyMarket("usdcny", "USDCNY=X", "USD/CNY", "CNY");
+
   try {
-    const quotes = await fetchQuotes(MARKET_SPECS.map((spec) => spec.symbol));
+    const quotes = await fetchQuotes(["DX-Y.NYB", "^TNX", "USDCNY=X"]);
     const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
 
-    return MARKET_SPECS.map((spec) => {
-      const quote =
-        bySymbol.get(spec.symbol) ??
-        quotes.find(
-          (row) => row.symbol.replace("^", "") === spec.symbol.replace("^", ""),
-        ) ??
-        null;
-      const raw = quote?.price ?? null;
-      return {
-        id: spec.id,
-        symbol: spec.symbol,
-        label: spec.label,
-        unit: spec.unit,
-        price: spec.kind === "yield" ? yieldPct(raw) : raw,
-        changePct: quote?.changePct ?? null,
-        currency: quote?.currency ?? null,
-        asOf: quote?.quoteTime ?? null,
-      };
-    });
+    const dxyQuote = bySymbol.get("DX-Y.NYB");
+    if (dxyQuote) {
+      dxy.price = dxyQuote.price;
+      dxy.changePct = dxyQuote.changePct;
+      dxy.currency = dxyQuote.currency;
+      dxy.asOf = dxyQuote.quoteTime;
+    }
+
+    const tnxQuote = bySymbol.get("^TNX");
+    if (tnxQuote) {
+      us10y.price = tnxYield(tnxQuote.price);
+      us10y.changePct = tnxQuote.changePct;
+      us10y.currency = tnxQuote.currency;
+      us10y.asOf = tnxQuote.quoteTime;
+    }
+
+    const cnyQuote = bySymbol.get("USDCNY=X");
+    if (cnyQuote) {
+      usdcny.price = cnyQuote.price;
+      usdcny.changePct = cnyQuote.changePct;
+      usdcny.currency = cnyQuote.currency;
+      usdcny.asOf = cnyQuote.quoteTime;
+    }
   } catch (error) {
     errors.push(error instanceof Error ? error.message : String(error));
-    return MARKET_SPECS.map((spec) => ({
-      id: spec.id,
-      symbol: spec.symbol,
-      label: spec.label,
-      unit: spec.unit,
-      price: null,
-      changePct: null,
-      currency: null,
-      asOf: null,
-    }));
   }
+
+  return [dxy, us10y, usdcny, MGS_10Y_LAST_PRINT];
 }
 
 export async function getGlobalEconomySnapshot(): Promise<GlobalEconomyPayload> {
   const errors: string[] = [];
-  const [fed, ecb, markets] = await Promise.all([loadFed(errors), loadEcb(errors), loadMarkets(errors)]);
+  const [fed, ecb, markets] = await Promise.all([
+    loadFed(errors),
+    loadEcb(errors),
+    loadMarkets(errors),
+  ]);
 
   return {
     asOf: new Date().toISOString(),

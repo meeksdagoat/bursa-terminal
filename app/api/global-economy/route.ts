@@ -8,7 +8,7 @@ const TTL_MS = 10 * 60 * 1000;
 
 export async function GET() {
   try {
-    const payload = await cached("global-economy:v1", TTL_MS, getGlobalEconomySnapshot);
+    const payload = await cached("global-economy:v3", TTL_MS, getGlobalEconomySnapshot);
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Unknown error";

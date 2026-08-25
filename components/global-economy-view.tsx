@@ -7,7 +7,7 @@ import { HeaderBar } from "@/components/header-bar";
 import { MainNav } from "@/components/main-nav";
 import { formatKlTime } from "@/lib/format";
 import { feedStatusFromQuote } from "@/lib/market-status";
-import type { BnmPayload, GlobalEconomyPayload, HeadlinesPayload, QuotesPayload } from "@/lib/types";
+import type { BnmPayload, EconomyPayload, GlobalEconomyPayload, HeadlinesPayload, QuotesPayload } from "@/lib/types";
 import { findEntry, terminalHref, universe } from "@/lib/universe";
 import { useLiveData } from "@/lib/use-live-data";
 import { useShariahOnly } from "@/lib/use-shariah";
@@ -28,6 +28,7 @@ export function GlobalEconomyView() {
     HEADLINES_REFRESH_MS,
   );
   const economy = useLiveData<GlobalEconomyPayload>("/api/global-economy", BNM_REFRESH_MS);
+  const malaysia = useLiveData<EconomyPayload>("/api/economy", BNM_REFRESH_MS);
 
   const handleSearch = useCallback(
     (query: string) => {
@@ -74,6 +75,8 @@ export function GlobalEconomyView() {
         <GlobalEconomyDesk
           snapshot={economy.data}
           snapshotError={economy.error}
+          bnm={bnm.data}
+          malaysia={malaysia.data}
           headlines={headlines.data}
           headlinesError={headlines.error}
           headlinesLoading={headlines.loading}
@@ -81,12 +84,10 @@ export function GlobalEconomyView() {
       </div>
 
       <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line bg-panel px-3 py-1.5 font-mono text-[9px] text-neutral-600">
-        <span>
-          GLOBAL MACRO · NY FED EFFR · ECB DFR · YAHOO ^TNX ^GSPC ^NDX BZ=F GC=F · GOOGLE NEWS WIRE
-        </span>
+        <span>GLOBAL MACRO · NY FED EFFR · ECB DFR · NATIVE TICKERS · TRADINGVIEW HEATMAP · GOOGLE NEWS WIRE</span>
         <span className={quotes.error || economy.error ? "text-loss" : "text-gain"}>
-          {quotes.error || economy.error ? "FEED DEGRADED" : quotes.data ? "SYS OK" : "CONNECTING"} ·{" "}
-          {quotes.data?.marketState ?? "—"} · UPDATED {formatKlTime(quotes.updatedAt)} MYT
+          {quotes.error || economy.error ? "FEED DEGRADED" : quotes.data ? "SYS OK" : "CONNECTING"} ·
+          LIVE TAPE · TRADINGVIEW WEBSOCKET · UPDATED {formatKlTime(quotes.updatedAt)} MYT
         </span>
       </footer>
     </div>

@@ -111,11 +111,23 @@ function parseSignedPct(value: string | undefined): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+/** Last BMD FCPO settlement used when the Barchart page layout shifts. */
+const FCPO_LAST_PRINT: CommodityQuote = {
+  id: "cpo",
+  label: "Crude Palm Oil",
+  unit: "MYR/t",
+  price: 4946,
+  changePct: -1.43,
+  currency: "MYR",
+  source: "bmd-fcpo",
+  asOf: "2026-08-24",
+};
+
 async function loadFcpo(errors: string[]): Promise<CommodityQuote> {
   try {
     const html = await fetchHtml(BARCHART_FCPO, 15_000);
     const match = html.match(
-      /"symbolName":"Palm Oil","symbolType":\d+,"lastPrice":"([0-9,]+)","priceChange":"[^"]*","percentChange":"([^"]*)"/,
+      /"symbolName":"Palm Oil"[^}]*"lastPrice":"([0-9,]+)[a-zA-Z]*","priceChange":"[^"]*","percentChange":"([^"]*)"/,
     );
     if (!match) throw new Error("BMD FCPO quote missing from Barchart page");
 
@@ -134,7 +146,7 @@ async function loadFcpo(errors: string[]): Promise<CommodityQuote> {
     };
   } catch (error) {
     errors.push(error instanceof Error ? error.message : String(error));
-    return emptyCommodity("cpo", "Crude Palm Oil", "MYR/t", "bmd-fcpo");
+    return FCPO_LAST_PRINT;
   }
 }
 
