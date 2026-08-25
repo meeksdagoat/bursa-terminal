@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, ReactNode, useState } from "react";
+import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { ConnectionStatus } from "@/components/connection-status";
-import { HScroll } from "@/components/h-scroll";
 import { Jargon } from "@/components/jargon-term";
 import { NAV_ITEMS, type NavActive } from "@/components/main-nav";
 import { SlideDrawer } from "@/components/slide-drawer";
+import { TickerSearchField } from "@/components/ticker-search";
 import {
   changeClass,
   formatFx,
@@ -50,6 +50,8 @@ export function HeaderBar({
   actions,
 }: HeaderBarProps) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+  const mobileSearchRef = useRef<HTMLInputElement>(null);
   const status =
     feedStatus ??
     feedStatusFromQuote(index, { connected: index != null, loading: index == null });
@@ -58,76 +60,110 @@ export function HeaderBar({
     event.preventDefault();
     const submitted = String(new FormData(event.currentTarget).get("ticker") ?? "");
     onSearch(submitted);
+    setSearchOpen(false);
   }
 
+  useEffect(() => {
+    if (!searchOpen) return;
+    mobileSearchRef.current?.focus();
+  }, [searchOpen]);
+
   const placeholder = searchPlaceholder ?? "Search ticker — Maybank 1155.KL";
+  const showShariahToggle = active === "market";
+  const showDelayedBadge = active === "market" || active === "my-economy";
 
   return (
-    <header className="shrink-0 border-b border-line bg-panel">
-      <div className="flex min-h-12 items-center gap-2 px-3 py-1.5 md:h-12 md:gap-4 md:py-0">
-        <button
-          type="button"
-          className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-line text-neutral-300 lg:hidden"
-          aria-expanded={menuOpen}
-          aria-controls="app-nav-drawer"
-          aria-label="Open navigation and market indicators"
-          onClick={() => setMenuOpen(true)}
+    <header className="w-full shrink-0 overflow-hidden border-b border-neutral-800 bg-[#0d0d0d]">
+      <div className="flex w-full min-h-[56px] items-center justify-between gap-2 overflow-hidden px-3 md:gap-4">
+        <div className="flex shrink-0 items-center gap-2 md:gap-4">
+          <button
+            type="button"
+            className="inline-flex min-h-11 min-w-11 shrink-0 items-center justify-center border border-neutral-800 text-neutral-300 lg:hidden"
+            aria-expanded={menuOpen}
+            aria-controls="app-nav-drawer"
+            aria-label="Open navigation and market indicators"
+            onClick={() => setMenuOpen(true)}
+          >
+            <span aria-hidden className="flex flex-col gap-1">
+              <span className="block h-px w-4 bg-current" />
+              <span className="block h-px w-4 bg-current" />
+              <span className="block h-px w-4 bg-current" />
+            </span>
+          </button>
+
+          <Link
+            href="/"
+            title="Home"
+            className="flex min-h-11 flex-shrink-0 items-center gap-1.5 whitespace-nowrap border-r border-neutral-800 pr-2 md:min-h-0 md:items-baseline md:gap-2 md:pr-3"
+          >
+            <span className="text-[13px] font-semibold tracking-[0.08em] text-white md:tracking-[0.18em]">
+              BURSA
+            </span>
+            <span className="text-[13px] font-semibold tracking-[0.08em] text-gain md:tracking-[0.18em]">
+              TERMINAL
+            </span>
+          </Link>
+
+          {nav}
+        </div>
+
+        <form
+          onSubmit={handleSubmit}
+          className="hidden w-48 shrink-0 items-center gap-1 md:flex lg:w-64"
         >
-          <span aria-hidden className="flex flex-col gap-1">
-            <span className="block h-px w-4 bg-current" />
-            <span className="block h-px w-4 bg-current" />
-            <span className="block h-px w-4 bg-current" />
-          </span>
-        </button>
-
-        <Link
-          href="/"
-          title="Home"
-          className="flex min-h-11 shrink-0 items-center gap-2 border-r border-line pr-3 md:min-h-0 md:items-baseline"
-        >
-          <span className="text-[13px] font-semibold tracking-[0.18em] text-white">BURSA</span>
-          <span className="text-[13px] font-semibold tracking-[0.18em] text-gain">TERMINAL</span>
-        </Link>
-
-        {nav}
-
-        <form onSubmit={handleSubmit} className="hidden min-w-0 max-w-md flex-1 items-center gap-1 md:flex">
-          <SearchField id="ticker-search" placeholder={placeholder} />
-          <kbd className="hidden shrink-0 border border-line px-1 py-0.5 font-mono text-[8px] text-neutral-600 lg:inline">
+          <TickerSearchField id="ticker-search" placeholder="Search a ticker..." onSearch={onSearch} />
+          <kbd className="hidden flex-shrink-0 whitespace-nowrap border border-neutral-800 px-1 py-0.5 font-mono text-[8px] text-neutral-600 lg:inline">
             Ctrl+K
           </kbd>
         </form>
 
-        <ShariahToggle />
+        <div className="ml-auto flex min-w-0 items-center justify-end gap-2 overflow-hidden md:gap-4 lg:ml-0 lg:flex-1">
+          <button
+            type="button"
+            className="inline-flex min-h-11 min-w-11 flex-shrink-0 items-center justify-center border border-neutral-800 text-neutral-300 md:hidden"
+            aria-expanded={searchOpen}
+            aria-controls="ticker-search-mobile-panel"
+            aria-label={searchOpen ? "Close ticker search" : "Search tickers"}
+            onClick={() => setSearchOpen((open) => !open)}
+          >
+            <SearchIcon />
+          </button>
 
-        <span className="hidden md:inline-flex">
-          <ConnectionStatus status={status} latencyMs={latencyMs} />
-        </span>
-        <span className="md:hidden">
-          <ConnectionStatus status={status} compact latencyMs={latencyMs} />
-        </span>
+          {showShariahToggle ? <ShariahToggle /> : null}
 
-        {actions}
+          {showDelayedBadge ? (
+            <>
+              <span className="hidden flex-shrink-0 whitespace-nowrap lg:inline-flex">
+                <ConnectionStatus status={status} latencyMs={latencyMs} />
+              </span>
+              <span className="inline-flex flex-shrink-0 whitespace-nowrap lg:hidden">
+                <ConnectionStatus status={status} compact latencyMs={latencyMs} />
+              </span>
+            </>
+          ) : null}
 
-        <div className="ml-auto hidden items-stretch divide-x divide-line border border-line lg:flex">
-          <MacroTiles bnm={bnm} index={index} ticks={ticks} />
+          {actions ? <div className="hidden flex-shrink-0 xl:block">{actions}</div> : null}
+
+          <div className="hidden min-w-0 max-w-[min(100%,42rem)] flex-1 items-stretch divide-x divide-neutral-800 overflow-x-auto border border-neutral-800 scrollbar-none md:flex">
+            <MacroTiles bnm={bnm} index={index} ticks={ticks} />
+          </div>
         </div>
       </div>
 
       <form
+        id="ticker-search-mobile-panel"
         onSubmit={handleSubmit}
-        className="flex items-center gap-1 border-t border-line px-3 py-2 md:hidden"
+        className={`${searchOpen ? "flex" : "hidden"} items-center gap-1 border-t border-neutral-800 px-3 py-2 md:hidden`}
       >
-        <SearchField id="ticker-search-mobile" placeholder={placeholder} />
+        <TickerSearchField
+          id="ticker-search-mobile"
+          placeholder={placeholder}
+          inputRef={mobileSearchRef}
+          mobile
+          onSearch={onSearch}
+          onPicked={() => setSearchOpen(false)}
+        />
       </form>
-
-      <HScroll
-        snap
-        className="border-t border-line lg:hidden"
-        aria-label="Market indicators"
-      >
-        <MacroTiles bnm={bnm} index={index} ticks={ticks} snap />
-      </HScroll>
 
       <SlideDrawer
         open={menuOpen}
@@ -162,39 +198,15 @@ export function HeaderBar({
   );
 }
 
-function SearchField({ id, placeholder }: { id: string; placeholder: string }) {
+function SearchIcon() {
   return (
-    <>
-      <label className="sr-only" htmlFor={id}>
-        Search tickers
-      </label>
-      <div className="relative min-w-0 flex-1">
-        <input
-          id={id}
-          name="ticker"
-          type="search"
-          placeholder={placeholder}
-          className="h-11 w-full rounded-sm border border-line bg-[#0a0a0a] px-2.5 pr-10 font-mono text-base text-neutral-200 outline-none placeholder:text-neutral-600 focus:border-gain/50 md:h-7 md:text-[11px]"
-        />
-        <kbd className="pointer-events-none absolute right-1.5 top-1/2 -translate-y-1/2 border border-line px-1 font-mono text-[8px] text-neutral-600">
-          /
-        </kbd>
-      </div>
-      <button
-        type="submit"
-        className="h-11 shrink-0 border border-line bg-[#1a1a1a] px-3 font-mono text-[11px] tracking-wider text-neutral-400 hover:text-gain md:h-7 md:px-2 md:text-[9px]"
-      >
-        GO
-      </button>
-    </>
+    <svg viewBox="0 0 16 16" className="h-4 w-4" fill="none" aria-hidden>
+      <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.4" />
+      <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
+    </svg>
   );
 }
 
-/**
- * Owns its own state rather than taking props: every page renders the header,
- * and reading the shared store here is what makes the setting survive
- * navigation without threading it through each route.
- */
 function ShariahToggle() {
   const { shariahOnly, setShariahOnly } = useShariahFilter();
 
@@ -209,10 +221,10 @@ function ShariahToggle() {
           ? "Showing Shariah-compliant names only"
           : "Show Shariah-compliant names only — hides conventional banks, insurers, gaming and brewers"
       }
-      className={`flex min-h-11 shrink-0 items-center gap-1.5 rounded-sm border px-2 py-1 transition-colors md:min-h-0 ${
+      className={`flex min-h-11 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 py-1 transition-colors md:min-h-0 md:px-2 ${
         shariahOnly
           ? "border-gain/50 bg-gain/10 text-gain"
-          : "border-line text-neutral-500 hover:border-neutral-600 hover:text-neutral-300"
+          : "border-neutral-800 text-neutral-500 hover:border-neutral-600 hover:text-neutral-300"
       }`}
     >
       <span className="hidden font-mono text-[9px] uppercase tracking-wider lg:inline">
@@ -221,7 +233,7 @@ function ShariahToggle() {
       <span className="font-mono text-[9px] uppercase tracking-wider lg:hidden">🌙</span>
       <span
         aria-hidden
-        className={`relative h-3 w-6 rounded-full transition-colors ${
+        className={`relative hidden h-3 w-6 rounded-full transition-colors md:block ${
           shariahOnly ? "bg-gain/40" : "bg-[#2a2a2a]"
         }`}
       >
@@ -253,13 +265,14 @@ function MacroTiles({
     (rate) => rate.pair === "USD/MYR" || rate.pair === "SGD/MYR" || rate.pair === "EUR/MYR",
   );
   const tileClass = snap ? "snap-start" : stacked ? "bg-panel" : "";
+  const secondaryClass = stacked ? tileClass : `${tileClass} max-lg:hidden`.trim();
 
   return (
     <>
       {fx.map((rate) => (
         <Tile
           key={rate.pair}
-          className={tileClass}
+          className={rate.pair === "USD/MYR" || stacked ? tileClass : secondaryClass}
           label={rate.pair}
           note={`BNM ${bnm?.session ?? ""} · ${formatKlDate(rate.date)}`}
           value={formatFx(rate.rate)}
@@ -270,14 +283,15 @@ function MacroTiles({
       {!bnm ? (
         <>
           <Tile className={tileClass} label="USD/MYR" note="BNM" value="—" changePct={null} />
-          <Tile className={tileClass} label="SGD/MYR" note="BNM" value="—" changePct={null} />
+          <Tile className={secondaryClass} label="SGD/MYR" note="BNM" value="—" changePct={null} />
+          <Tile className={secondaryClass} label="EUR/MYR" note="BNM" value="—" changePct={null} />
         </>
       ) : null}
 
-      <IndexTile index={index} ticks={ticks} className={tileClass} />
+      <IndexTile index={index} ticks={ticks} className={secondaryClass} />
 
       <Tile
-        className={tileClass}
+        className={secondaryClass}
         label="BNM OPR"
         term="opr"
         note={opr?.effectiveDate ? `eff. ${formatKlDate(opr.effectiveDate)}` : "BNM"}
@@ -333,7 +347,7 @@ type TileProps = {
 function Tile({ label, note, value, changePct, badge, term, flash, className = "" }: TileProps) {
   return (
     <div
-      className={`flex min-h-11 min-w-[148px] shrink-0 flex-col justify-center px-3 py-1.5 ${flash ?? ""} ${className}`}
+      className={`flex min-h-11 min-w-[120px] shrink-0 flex-col justify-center px-2 py-1.5 lg:px-3 ${flash ?? ""} ${className}`}
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[9px] font-medium uppercase tracking-wider text-neutral-500">

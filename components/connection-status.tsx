@@ -65,12 +65,15 @@ type ConnectionStatusProps = {
 
 function ConnectionStatusInner({ status, compact, latencyMs }: ConnectionStatusProps) {
   const look = COPY[status];
-  const showLatency = latencyMs != null && (status === "live" || status === "delayed" || status === "closed");
+  const showLatency =
+    !compact &&
+    latencyMs != null &&
+    (status === "live" || status === "delayed" || status === "closed");
 
   return (
     <span
       title={look.label}
-      className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 md:min-h-0 ${look.border}`}
+      className={`inline-flex min-h-11 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-1.5 py-0.5 md:min-h-0 md:px-2 ${look.border}`}
     >
       <span className="relative flex h-1.5 w-1.5">
         {look.pulse ? (

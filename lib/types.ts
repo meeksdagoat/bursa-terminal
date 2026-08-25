@@ -6,6 +6,8 @@ export type UniverseEntry = {
   name: string;
   sector: string;
   shariah: boolean;
+  /** Board mnemonics and legal names that do not appear in the short listing name. */
+  aliases: string[];
 };
 
 export type WatchlistRow = UniverseEntry & {
@@ -67,7 +69,7 @@ export type OprSnapshot = {
 };
 
 export type BnmPayload = {
-  source: "bnm";
+  source: "bnm" | "open-er";
   session: string;
   asOf: string;
   rates: FxRate[];

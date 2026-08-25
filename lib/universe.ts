@@ -263,12 +263,49 @@ const SEED: UniverseSeed[] = [
   ["6491", "Kumpulan Fima", "Conglomerate", true],
 ];
 
+/**
+ * Mnemonics and legal names used on the tape / in filings that the short
+ * listing name does not contain (MAYBANK, PBBANK, Malayan Banking Berhad).
+ */
+const TICKER_ALIASES: Record<string, string[]> = {
+  "1155": ["MAYBANK", "MAY", "Malayan Banking", "Malayan Banking Berhad"],
+  "1295": ["PBBANK", "PBK", "Public Bank Berhad"],
+  "1023": ["CIMB", "CIMBG", "CIMB Group Holdings"],
+  "1066": ["RHBBANK", "RHB"],
+  "5819": ["HLBANK", "Hong Leong Bank"],
+  "1015": ["AMBANK", "AMMB"],
+  "2488": ["ABMB", "Alliance Bank"],
+  "5185": ["AFFIN"],
+  "5347": ["TENAGA", "TNB", "Tenaga Nasional"],
+  "5183": ["PCHEM", "PETCHEM", "Petronas Chemicals"],
+  "5681": ["PETDAG", "Petronas Dagangan"],
+  "6033": ["PETGAS", "Petronas Gas"],
+  "3182": ["GENTING"],
+  "4715": ["GENM", "Genting Malaysia"],
+  "6012": ["MAXIS"],
+  "4863": ["TM", "Telekom Malaysia"],
+  "1961": ["IOICORP", "IOI"],
+  "2445": ["KLK"],
+  "4197": ["SIME"],
+  "5285": ["SDG", "SD Guthrie"],
+  "3816": ["MISC"],
+  "4065": ["PPB"],
+  "0166": ["INARI"],
+  "0138": ["MYEG", "Zetrix"],
+  "5099": ["CAPITALA", "AIRASIA"],
+  "5225": ["IHH"],
+  "8869": ["PMETAL", "Press Metal"],
+  "5398": ["GAMUDA"],
+  "6888": ["AXIATA"],
+};
+
 export const universe: UniverseEntry[] = SEED.map(([code, name, sector, shariah]) => ({
   symbol: `${code}.KL`,
   code,
   name,
   sector,
   shariah,
+  aliases: TICKER_ALIASES[code] ?? [],
 }));
 
 export const universeSymbols = universe.map((entry) => entry.symbol);
@@ -309,9 +346,26 @@ export function terminalHref(symbol?: string): string {
   return symbol ? `/terminal?symbol=${encodeURIComponent(symbol)}` : "/terminal";
 }
 
+function searchFields(entry: UniverseEntry): string[] {
+  return [
+    entry.code,
+    entry.name,
+    entry.symbol,
+    ...entry.aliases,
+  ].map((value) => value.toLowerCase().replace(/\.kl$/, ""));
+}
+
+function rankMatch(fields: string[], needle: string): number {
+  if (fields.some((field) => field === needle)) return 0;
+  if (fields[0] === needle || fields[0].startsWith(needle)) return 1;
+  if (fields.some((field) => field.startsWith(needle))) return 2;
+  if (fields.some((field) => field.includes(needle))) return 3;
+  return -1;
+}
+
 /**
- * Ranked lookup across ticker code, company name and sector. An empty query
- * returns the head of the universe so the picker opens with content.
+ * Ranked lookup across ticker code, company name, aliases and sector. An empty
+ * query returns the head of the universe so the picker opens with content.
  */
 export function searchUniverse(query: string, limit = 250): UniverseEntry[] {
   const needle = query.trim().toLowerCase().replace(/\.kl$/, "");
@@ -320,22 +374,8 @@ export function searchUniverse(query: string, limit = 250): UniverseEntry[] {
   const matches: Array<{ entry: UniverseEntry; score: number }> = [];
 
   for (const entry of universe) {
-    const name = entry.name.toLowerCase();
-    const code = entry.code.toLowerCase();
-
-    const score =
-      code === needle || name === needle
-        ? 0
-        : code.startsWith(needle)
-          ? 1
-          : name.startsWith(needle)
-            ? 2
-            : name.includes(needle)
-              ? 3
-              : entry.sector.toLowerCase().startsWith(needle)
-                ? 4
-                : -1;
-
+    let score = rankMatch(searchFields(entry), needle);
+    if (score < 0 && entry.sector.toLowerCase().startsWith(needle)) score = 4;
     if (score >= 0) matches.push({ entry, score });
   }
 
