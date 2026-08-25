@@ -15,7 +15,8 @@ type GlobalEconomyTabProps = {
 
 /**
  * Central Global Economy workbench: live tickers on top, then the macro
- * matrix / policy table / S&P heatmap row above the calendar.
+ * matrix / policy table / S&P heatmap row. The two-column event calendar
+ * (`GlobalEventCalendar`) sits in the desk panel beneath this board.
  */
 export function GlobalEconomyTab({
   snapshot,

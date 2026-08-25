@@ -4,13 +4,11 @@ import { useState } from "react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { GLOBAL_ECONOMY_TAGS } from "@/lib/categories";
 import { GlobalEconomyTab } from "@/components/GlobalEconomyTab";
+import { GlobalEventCalendar } from "@/components/GlobalEventCalendar";
 import { HeadlineList } from "@/components/headline-list";
 import { Indicator } from "@/components/economy-desk";
-import { Eli5Block } from "@/components/eli5-summary";
 import { PanelSplitter } from "@/components/panel-resize-handle";
 import { SlideDrawer } from "@/components/slide-drawer";
-import { upcomingGlobalEvents } from "@/lib/global-calendar";
-import { summariseMacroEvent } from "@/lib/eli5";
 import { formatKlDate, formatOpr } from "@/lib/format";
 import type { BnmPayload, EconomyPayload, GlobalEconomyPayload, HeadlinesPayload } from "@/lib/types";
 import { useBreakpoint } from "@/lib/use-media-query";
@@ -41,7 +39,6 @@ export function GlobalEconomyDesk({
   const [tab, setTab] = useState<GlobalTab>("markets");
   const [drawer, setDrawer] = useState<TabletDrawer>(null);
   const rates = snapshot?.rates ?? [];
-  const events = upcomingGlobalEvents();
 
   const banks = (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-panel">
@@ -105,43 +102,7 @@ export function GlobalEconomyDesk({
     </div>
   );
 
-  const calendar = (
-    <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-panel">
-      <div className="shrink-0 border-b border-line px-3 py-2">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
-          Global Event Calendar
-        </h2>
-        <p className="mt-0.5 text-[11px] text-neutral-500">FOMC · US CPI · ECB · BOJ · PBOC LPR</p>
-      </div>
-      <ul className="custom-scrollbar min-h-0 flex-1 divide-y divide-neutral-800 overflow-y-auto">
-        {events.map((event) => (
-          <li key={event.id} className="px-2.5 py-2">
-            <div className="flex items-center justify-between gap-3">
-              <div className="min-w-0">
-                <p className="truncate text-[11px] text-neutral-200">{event.title}</p>
-                <p className="font-mono text-[9px] uppercase tracking-wider text-neutral-600">
-                  {event.source} · {formatKlDate(event.date)}
-                </p>
-              </div>
-              <span className="shrink-0 rounded-sm border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-amber-300">
-                {event.badge}
-              </span>
-            </div>
-            <Eli5Block
-              build={() =>
-                summariseMacroEvent({
-                  title: event.title,
-                  source: event.source,
-                  when: `${formatKlDate(event.date)} · ${event.badge}`,
-                })
-              }
-              subject={event.title}
-            />
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
+  const calendar = <GlobalEventCalendar />;
 
   const news = (
     <HeadlineList
@@ -156,11 +117,11 @@ export function GlobalEconomyDesk({
 
   const mainSplit = (
     <PanelGroup autoSaveId="bursa-global-economy-chart" direction="vertical" className="h-full">
-      <Panel id="global-markets" defaultSize={68} minSize={36} className="min-h-0">
+      <Panel id="global-markets" defaultSize={60} minSize={32} className="min-h-0">
         {marketBoard}
       </Panel>
       <PanelSplitter direction="vertical" />
-      <Panel id="global-calendar" defaultSize={32} minSize={18} className="min-h-0">
+      <Panel id="global-calendar" defaultSize={40} minSize={24} className="min-h-0">
         {calendar}
       </Panel>
     </PanelGroup>
