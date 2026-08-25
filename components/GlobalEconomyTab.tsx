@@ -14,8 +14,11 @@ type GlobalEconomyTabProps = {
 };
 
 /**
- * Central Global Economy workbench: live tickers on top, then the macro
- * matrix / policy table / S&P heatmap row. The two-column event calendar
+ * Central Global Economy workbench.
+ *
+ * The tape is native React cards (`GlobalTickerCards`) — TradingView
+ * single-quote iframes are not imported or rendered here. The S&P heatmap
+ * iframe below is a separate dark widget. The two-column event calendar
  * (`GlobalEventCalendar`) sits in the desk panel beneath this board.
  */
 export function GlobalEconomyTab({

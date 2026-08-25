@@ -16,12 +16,16 @@ function formatPrint(ticker: GlobalTickerQuote | null): string {
   return formatPrice(ticker.price);
 }
 
+/**
+ * Native Global Economy tape. Dark DOM cards only — never mounts TradingView
+ * quote iframes or white-background widgets.
+ */
 export function GlobalTickerCards() {
   const feed = useTradingViewTickers();
   const byId = new Map(feed.data.tickers.map((row) => [row.id, row]));
 
   return (
-    <div>
+    <div data-tape="native">
       {feed.error ? (
         <p className="border-b border-neutral-800 px-3 py-1.5 font-mono text-[10px] text-loss">
           TICKER FEED · {feed.error}
