@@ -1,5 +1,6 @@
 "use client";
 
+import { NewsFeedSkeleton } from "@/components/skeleton";
 import { formatKlStamp } from "@/lib/format";
 import { classifyEventSentiment, EVENT_SENTIMENT_BADGE, EVENT_SENTIMENT_LABEL } from "@/lib/event-classify";
 import type { AnnouncementCategory, BursaAnnouncement, BursaAnnouncementsPayload } from "@/lib/types";
@@ -43,6 +44,9 @@ export function BursaAnnouncementsPanel({ symbol, companyName }: BursaAnnounceme
           : "BURSA FILINGS · LIVE"}{" "}
         · {symbol}
       </p>
+      {pending && items.length === 0 && !error ? (
+        <NewsFeedSkeleton rows={6} />
+      ) : (
       <ul className="divide-y divide-line">
         {visible.map((item) => (
           <AnnouncementRow key={item.id} item={item} />
@@ -51,12 +55,11 @@ export function BursaAnnouncementsPanel({ symbol, companyName }: BursaAnnounceme
           <li className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">
             {error
               ? `ANNOUNCEMENTS FEED UNAVAILABLE · ${error}`
-              : pending
-                ? `LOADING ${companyName.toUpperCase()} ANNOUNCEMENTS…`
-                : `NO RECENT ANNOUNCEMENTS FOR ${companyName.toUpperCase()}`}
+              : `NO RECENT ANNOUNCEMENTS FOR ${companyName.toUpperCase()}`}
           </li>
         ) : null}
       </ul>
+      )}
       <ShowMoreBar remaining={items.length - visible.length} onClick={() => setLimit((n) => n + 24)} />
     </div>
   );
@@ -65,24 +68,26 @@ export function BursaAnnouncementsPanel({ symbol, companyName }: BursaAnnounceme
 function AnnouncementRow({ item }: { item: BursaAnnouncement }) {
   const sentiment = classifyEventSentiment(item.title, item.category);
   const body = (
-    <div className="px-2.5 py-2">
-      <div className="flex items-start gap-2">
-        <span className="w-[44px] shrink-0 pt-0.5 font-mono text-[10px] text-neutral-500">
+    <div className="flex flex-col gap-2 px-2.5 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="shrink-0 font-mono text-[10px] text-zinc-400">
           {formatKlStamp(item.publishedAt)}
         </span>
         <span
-          className={`mt-0.5 shrink-0 whitespace-nowrap rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${EVENT_SENTIMENT_BADGE[sentiment]}`}
+          className={`shrink-0 whitespace-nowrap rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${EVENT_SENTIMENT_BADGE[sentiment]}`}
         >
           {EVENT_SENTIMENT_LABEL[sentiment]}
         </span>
         <span
-          className={`mt-0.5 shrink-0 whitespace-nowrap rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${BADGE[item.category]}`}
+          className={`shrink-0 whitespace-nowrap rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${BADGE[item.category]}`}
         >
           {item.category}
         </span>
-        <span className="min-w-0 text-[12px] font-medium leading-snug text-neutral-100">{item.title}</span>
       </div>
-      <p className="mt-0.5 pl-[62px] font-mono text-[9px] uppercase tracking-wider text-neutral-600">
+      <p className="line-clamp-2 min-w-0 overflow-hidden text-[12px] font-medium leading-snug text-neutral-100" title={item.title}>
+        {item.title}
+      </p>
+      <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-400">
         {item.source}
         {item.url ? " ↗" : ""}
       </p>
@@ -98,6 +103,7 @@ function AnnouncementRow({ item }: { item: BursaAnnouncement }) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`${item.title} — open filing`}
+        title={item.title}
         className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
       />
       <div className="pointer-events-none relative z-10">{body}</div>

@@ -2,7 +2,8 @@
 
 import { memo } from "react";
 import { HScroll } from "@/components/h-scroll";
-import { changeClass, formatPct, formatPrice } from "@/lib/format";
+import { SignedPct } from "@/components/signed-change";
+import { formatPrice } from "@/lib/format";
 import type { WatchlistRow } from "@/lib/types";
 import { usePriceFlash } from "@/lib/use-price-flash";
 import type { TickPulse } from "@/lib/use-market-data";
@@ -74,9 +75,7 @@ function RibbonItem({
     >
       <span className="text-[10px] uppercase tracking-wider text-neutral-500">{row.code}</span>
       <span className="text-[11px] text-neutral-100">{formatPrice(row.quote?.price)}</span>
-      <span className={`text-[10px] ${changeClass(row.quote?.changePct)}`}>
-        {formatPct(row.quote?.changePct)}
-      </span>
+      <SignedPct value={row.quote?.changePct} className="text-[10px]" />
     </button>
   );
 }

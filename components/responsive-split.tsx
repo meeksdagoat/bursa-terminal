@@ -30,12 +30,12 @@ export function ResponsiveSplit({ autoSaveId, left, right }: ResponsiveSplitProp
 
   if (breakpoint === "desktop") {
     return (
-      <PanelGroup autoSaveId={autoSaveId} direction="horizontal" className="min-h-0 flex-1">
+      <PanelGroup autoSaveId={autoSaveId} direction="horizontal" className="min-h-0 flex-1 overflow-hidden">
         <Panel
           id={left.id}
           defaultSize={left.defaultSize ?? 50}
           minSize={left.minSize ?? 25}
-          className="min-h-0"
+          className="min-h-0 overflow-hidden"
         >
           {left.content}
         </Panel>
@@ -44,7 +44,7 @@ export function ResponsiveSplit({ autoSaveId, left, right }: ResponsiveSplitProp
           id={right.id}
           defaultSize={right.defaultSize ?? 50}
           minSize={right.minSize ?? 25}
-          className="min-h-0"
+          className="min-h-0 overflow-hidden"
         >
           {right.content}
         </Panel>

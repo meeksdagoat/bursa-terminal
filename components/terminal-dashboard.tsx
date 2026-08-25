@@ -322,7 +322,7 @@ function DesktopWorkspace({
 
       {/* Remounting per scope and ticker resets the tag filter, which is
           meaningless once the underlying set of headlines changes. */}
-      <Panel id="news" defaultSize={25} minSize={20} order={3} className="min-h-0">
+      <Panel id="news" defaultSize={25} minSize={20} order={3} className="min-h-0 overflow-hidden">
         {newsPane}
       </Panel>
     </PanelGroup>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { formatEventHeadline, formatKlFullDate } from "@/lib/format";
+import { EventTimelineSkeleton } from "@/components/skeleton";
 import {
   EVENT_SENTIMENT_BADGE,
   EVENT_SENTIMENT_LABEL,
@@ -69,11 +70,7 @@ export function MajorEvents({ symbol, companyName }: MajorEventsProps) {
     return <p className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">EVENTS FEED UNAVAILABLE · {error}</p>;
   }
   if (pending) {
-    return (
-      <p className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">
-        LOADING {companyName.toUpperCase()} EVENT TIMELINE…
-      </p>
-    );
+    return <EventTimelineSkeleton />;
   }
 
   return (

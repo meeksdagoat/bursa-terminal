@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import { memo, useMemo, useState } from "react";
 import { HScroll } from "@/components/h-scroll";
 import { Jargon } from "@/components/jargon-term";
+import { SignedPct } from "@/components/signed-change";
 import { TapHint } from "@/components/tap-hint";
 import {
   EMPTY_OVERLAYS,
@@ -11,10 +12,8 @@ import {
   type DrawingTool,
 } from "@/lib/chart-ui";
 import {
-  changeClass,
   formatKlTime,
   formatMarketCap,
-  formatPct,
   formatPrice,
   formatRatio,
 } from "@/lib/format";
@@ -138,9 +137,7 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
               {formatPrice(quote?.price)}
             </span>
             <span className="text-[11px] text-neutral-500">{quote?.currency ?? "MYR"}</span>
-            <span className={`font-mono text-[12px] ${changeClass(quote?.changePct)}`}>
-              {formatPct(quote?.changePct)}
-            </span>
+            <SignedPct value={quote?.changePct} className="font-mono text-[12px]" />
             <span className="font-mono text-[9px] text-neutral-600">
               LAST {formatKlTime(quote?.quoteTime)} MYT
               {quote?.delayMinutes ? ` · ${quote.delayMinutes}M DELAY` : ""}
@@ -216,8 +213,9 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
         </HScroll>
 
         {rangeChangePct != null ? (
-          <span className={`ml-auto font-mono text-[9px] ${changeClass(rangeChangePct)}`}>
-            {timeframe} {formatPct(rangeChangePct)}
+          <span className="ml-auto inline-flex items-center gap-1 font-mono text-[9px] text-zinc-400">
+            {timeframe}
+            <SignedPct value={rangeChangePct} />
           </span>
         ) : null}
       </div>

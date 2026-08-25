@@ -113,11 +113,17 @@ export function formatYield(value: number | null | undefined): string {
   return `${pct.toFixed(2)}%`;
 }
 
+/** High-contrast P&L text against the dark terminal background. */
 export function changeClass(value: number | null | undefined): string {
-  if (!isNumber(value)) return "text-neutral-500";
-  if (value > 0) return "text-gain";
-  if (value < 0) return "text-loss";
-  return "text-neutral-400";
+  if (!isNumber(value)) return "text-zinc-400";
+  if (value > 0) return "text-emerald-400";
+  if (value < 0) return "text-rose-400";
+  return "text-zinc-400";
+}
+
+export function changeArrow(value: number | null | undefined): "▲" | "▼" | null {
+  if (!isNumber(value) || value === 0) return null;
+  return value > 0 ? "▲" : "▼";
 }
 
 /**

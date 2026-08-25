@@ -1,7 +1,8 @@
 "use client";
 
 import { memo, useMemo } from "react";
-import { changeClass, formatPct, formatPrice } from "@/lib/format";
+import { SignedPct } from "@/components/signed-change";
+import { formatPrice } from "@/lib/format";
 import { sectorPerformance } from "@/lib/sectors";
 import type { SectorPerformance, WatchlistRow } from "@/lib/types";
 import type { TickPulse } from "@/lib/use-market-data";
@@ -73,7 +74,7 @@ function WatchlistSidebarInner({
         </p>
       ) : null}
 
-      <ul className="max-h-[55%] shrink-0 divide-y divide-line overflow-auto">
+      <ul className="custom-scrollbar max-h-[55%] shrink-0 divide-y divide-line overflow-y-auto">
         {visibleRows.map((row) => {
           const active = row.symbol === selectedSymbol;
           return (
@@ -113,13 +114,11 @@ function WatchlistSidebarInner({
         </span>
       </div>
 
-      <ul className="min-h-0 flex-1 divide-y divide-line overflow-auto">
+      <ul className="custom-scrollbar min-h-0 flex-1 divide-y divide-line overflow-y-auto">
         {visibleSectors.map((sector) => (
           <li key={sector.name} className="flex items-center justify-between px-2.5 py-1.5">
             <span className="text-[11px] text-neutral-300">{sector.name}</span>
-            <span className={`font-mono text-[10px] ${changeClass(sector.changePct)}`}>
-              {formatPct(sector.changePct)}
-            </span>
+            <SignedPct value={sector.changePct} className="font-mono text-[10px]" />
           </li>
         ))}
         {visibleSectors.length === 0 ? (
@@ -162,9 +161,7 @@ function WatchlistRowItem({
           </div>
           <div className="flex items-baseline justify-between">
             <span className="font-mono text-[9px] text-neutral-500">{row.symbol}</span>
-            <span className={`font-mono text-[10px] ${changeClass(row.quote?.changePct)}`}>
-              {formatPct(row.quote?.changePct)}
-            </span>
+            <SignedPct value={row.quote?.changePct} className="font-mono text-[10px]" />
           </div>
         </div>
       </button>

@@ -1,6 +1,7 @@
 "use client";
 
 import { Eli5Block } from "@/components/eli5-summary";
+import { NewsFeedSkeleton } from "@/components/skeleton";
 import { summariseFiling } from "@/lib/eli5";
 import { formatKlStamp } from "@/lib/format";
 import type { Filing, FilingCategory, FilingsPayload } from "@/lib/types";
@@ -26,7 +27,10 @@ export function FilingsPanel({ payload, error, loading, companyName }: FilingsPa
   const items = payload?.items ?? [];
 
   return (
-    <div className="min-h-0 flex-1 overflow-auto">
+    <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
+      {loading && items.length === 0 && !error ? (
+        <NewsFeedSkeleton rows={6} />
+      ) : (
       <ul className="divide-y divide-line">
         {items.map((item) => (
           <FilingRow key={item.id} item={item} />
@@ -35,21 +39,20 @@ export function FilingsPanel({ payload, error, loading, companyName }: FilingsPa
           <li className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">
             {error
               ? `FILINGS FEED UNAVAILABLE · ${error}`
-              : loading
-                ? "LOADING BURSA ANNOUNCEMENTS…"
-                : `NO RECENT FILINGS FOR ${companyName.toUpperCase()}`}
+              : `NO RECENT FILINGS FOR ${companyName.toUpperCase()}`}
           </li>
         ) : null}
       </ul>
+      )}
     </div>
   );
 }
 
 function FilingRow({ item }: { item: Filing }) {
   const body = (
-    <div className="px-2.5 py-2">
-      <div className="flex items-center gap-2">
-        <span className="w-[44px] shrink-0 font-mono text-[10px] text-neutral-500">
+    <div className="flex flex-col gap-2 px-2.5 py-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="shrink-0 font-mono text-[10px] text-zinc-400">
           {formatKlStamp(item.publishedAt)}
         </span>
         <span
@@ -57,19 +60,18 @@ function FilingRow({ item }: { item: Filing }) {
         >
           {item.category}
         </span>
-        <span className="min-w-0 text-[12px] font-medium leading-snug text-neutral-100">{item.title}</span>
       </div>
-      <p className="mt-0.5 pl-[62px] font-mono text-[9px] uppercase tracking-wider text-neutral-600">
+      <p className="line-clamp-2 min-w-0 overflow-hidden text-[12px] font-medium leading-snug text-neutral-100" title={item.title}>
+        {item.title}
+      </p>
+      <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-400">
         {item.source}
         {item.url ? " ↗" : ""}
       </p>
-
-      <div className="pl-[62px]">
-        <Eli5Block
-          build={() => summariseFiling(item.title, item.category)}
-          subject={item.title}
-        />
-      </div>
+      <Eli5Block
+        build={() => summariseFiling(item.title, item.category)}
+        subject={item.title}
+      />
     </div>
   );
 
@@ -82,6 +84,7 @@ function FilingRow({ item }: { item: Filing }) {
         target="_blank"
         rel="noopener noreferrer"
         aria-label={`${item.title} — open filing`}
+        title={item.title}
         className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
       />
       <div className="pointer-events-none relative z-10">{body}</div>

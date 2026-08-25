@@ -1,6 +1,7 @@
 "use client";
 
 import { lazy, memo, Suspense, useState } from "react";
+import { PanelSkeleton } from "@/components/skeleton";
 import { sectorPeers } from "@/lib/universe";
 import { useShariahOnly } from "@/lib/use-shariah";
 
@@ -35,11 +36,7 @@ type IntelPanelProps = {
 };
 
 function TabFallback() {
-  return (
-    <p className="px-2.5 py-3 font-mono text-[10px] uppercase tracking-wider text-neutral-600">
-      LOADING PANEL…
-    </p>
-  );
+  return <PanelSkeleton />;
 }
 
 function IntelPanelInner({ symbol, companyName, companyShariah }: IntelPanelProps) {
@@ -104,7 +101,7 @@ function IntelPanelInner({ symbol, companyName, companyShariah }: IntelPanelProp
         </span>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto overscroll-contain touch-pan-y">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y">
         <Suspense fallback={<TabFallback />}>
           {tab === "technicals" ? (
             <TechnicalGauge symbol={symbol} companyName={companyName} />

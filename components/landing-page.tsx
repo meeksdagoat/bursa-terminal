@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useId, useState, type ReactNode } from "react";
 import { MarketOverview } from "@/components/market-overview";
-import { changeClass, formatFx, formatKlStamp, formatPct, formatPrice } from "@/lib/format";
+import { SignedPct } from "@/components/signed-change";
+import { NewsFeedSkeleton } from "@/components/skeleton";
+import { formatFx, formatKlStamp, formatPrice } from "@/lib/format";
 import type {
   BnmPayload,
   EconomyPayload,
@@ -278,6 +280,9 @@ export function LandingPage() {
                   Full desk →
                 </Link>
               </div>
+              {news.loading && stories.length === 0 ? (
+                <NewsFeedSkeleton rows={5} />
+              ) : (
               <ul className="divide-y divide-white/5">
                 {stories.map((item) => (
                   <li key={item.id}>
@@ -285,21 +290,29 @@ export function LandingPage() {
                       href={item.url ?? terminalHref()}
                       target={item.url ? "_blank" : undefined}
                       rel={item.url ? "noreferrer" : undefined}
-                      className="block px-4 py-3 hover:bg-white/[0.03]"
+                      title={item.headline}
+                      className="flex flex-col gap-2 px-4 py-3 hover:bg-white/[0.03]"
                     >
-                      <p className="text-sm leading-snug text-neutral-100">{item.headline}</p>
-                      <p className="mt-1 font-mono text-[10px] text-neutral-600">
-                        {item.tag} · {item.source} · {formatKlStamp(item.publishedAt)}
+                      <p className="line-clamp-2 min-w-0 overflow-hidden text-sm font-medium leading-snug text-neutral-100">
+                        {item.headline}
+                      </p>
+                      <p className="flex min-w-0 items-center gap-2 font-mono text-[10px] text-zinc-400">
+                        <span className="shrink-0">{item.tag}</span>
+                        <span aria-hidden>·</span>
+                        <span className="truncate">{item.source}</span>
+                        <span aria-hidden>·</span>
+                        <span className="shrink-0">{formatKlStamp(item.publishedAt)}</span>
                       </p>
                     </a>
                   </li>
                 ))}
                 {stories.length === 0 ? (
                   <li className="px-4 py-8 text-center font-mono text-[11px] text-neutral-600">
-                    {news.loading ? "LOADING WIRE…" : "NO HEADLINES YET"}
+                    NO HEADLINES YET
                   </li>
                 ) : null}
               </ul>
+              )}
             </div>
           </div>
         </div>
@@ -391,7 +404,7 @@ function HeroPreview({
           <div className="px-4 py-4">
             <p className="text-[10px] uppercase tracking-wider text-neutral-500">FBM KLCI</p>
             <p className="mt-1 font-mono text-2xl text-white">{formatPrice(klci)}</p>
-            <p className={`font-mono text-sm ${changeClass(klciChange)}`}>{formatPct(klciChange)}</p>
+            <SignedPct value={klciChange} className="font-mono text-sm" />
           </div>
           <div className="px-4 py-4">
             <p className="text-[10px] uppercase tracking-wider text-neutral-500">BNM OPR</p>
@@ -436,9 +449,7 @@ function TapeCell({
         {item.label}
       </span>
       <span className="font-mono text-[13px] text-white">{item.value}</span>
-      <span className={`font-mono text-[11px] ${changeClass(item.changePct)}`}>
-        {formatPct(item.changePct)}
-      </span>
+      <SignedPct value={item.changePct} className="font-mono text-[11px]" />
     </li>
   );
 }

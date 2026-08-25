@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useMemo, useRef, useState } from "react";
+import { FormEvent, useMemo, useRef, useState, type ReactNode } from "react";
 import { AllocationDonut } from "@/components/allocation-donut";
 import { ExportMenu } from "@/components/export-menu";
 import { HeaderBar } from "@/components/header-bar";
 import { stickyCellClass, stickyHeadClass, tableCellClass, tableHeadClass } from "@/components/h-scroll";
 import { MainNav } from "@/components/main-nav";
+import { SignedPct } from "@/components/signed-change";
+import { KpiSkeleton, SparklineSkeleton, TableSkeleton } from "@/components/skeleton";
 import { ValueSparkline } from "@/components/value-sparkline";
 import {
   downloadCsv,
@@ -19,7 +21,6 @@ import {
   changeClass,
   formatKlTime,
   formatMarketState,
-  formatPct,
   formatPrice,
   formatRinggit,
   formatShares,
@@ -245,6 +246,13 @@ export function PortfolioDashboard() {
     return have ? pnl : null;
   }, [rows]);
 
+  const todayPct = useMemo(() => {
+    if (todayPnl == null || totals.value == null) return null;
+    const start = totals.value - todayPnl;
+    if (start <= 0) return null;
+    return (todayPnl / start) * 100;
+  }, [todayPnl, totals.value]);
+
   const realizedPnl = useMemo(() => {
     const sells = portfolio.transactions.filter((row) => row.type === "sell");
     if (sells.length === 0) return null;
@@ -393,11 +401,20 @@ export function PortfolioDashboard() {
         </div>
 
         <section className="grid grid-cols-2 gap-px overflow-hidden border border-line bg-line md:grid-cols-4">
+          {quotes.loading && quotes.data == null ? (
+            <>
+              <KpiSkeleton />
+              <KpiSkeleton />
+              <KpiSkeleton />
+              <KpiSkeleton />
+            </>
+          ) : (
+            <>
           <Kpi label="Total portfolio value" value={formatRinggit(totals.value)} />
           <Kpi
             label="Unrealised P&L"
             value={formatRinggit(totals.pnl, true)}
-            hint={formatPct(totals.pnlPct)}
+            hint={<SignedPct value={totals.pnlPct} />}
             tone={totals.pnl}
           />
           <Kpi
@@ -411,22 +428,35 @@ export function PortfolioDashboard() {
             hint={`${portfolio.transactions.filter((row) => row.type === "sell").length} closed trades`}
             tone={winRate != null ? winRate - 50 : null}
           />
+            </>
+          )}
         </section>
 
         <section className="grid grid-cols-2 gap-px overflow-hidden border border-line bg-line md:grid-cols-3">
+          {quotes.loading && quotes.data == null ? (
+            <>
+              <KpiSkeleton />
+              <KpiSkeleton />
+              <KpiSkeleton />
+            </>
+          ) : (
+            <>
           <Kpi label="Cost basis" value={formatRinggit(totals.cost > 0 ? totals.cost : null)} />
           <Kpi
             label={`${RANGE_LABEL[range]} return`}
             value={formatRinggit(totals.periodPnl, true)}
-            hint={formatPct(totals.periodPct)}
+            hint={<SignedPct value={totals.periodPct} />}
             tone={totals.periodPnl}
           />
           <Kpi
             label="Today"
             value={formatRinggit(todayPnl, true)}
+            hint={<SignedPct value={todayPct} />}
             badge={postSessionBadge(quotes.data?.marketState)}
             tone={todayPnl}
           />
+            </>
+          )}
         </section>
 
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
@@ -442,7 +472,7 @@ export function PortfolioDashboard() {
               {RANGE_LABEL[range]} mark-to-market
             </h2>
             {history.loading && sparkline.length === 0 ? (
-              <p className="py-6 text-center font-mono text-[10px] text-neutral-600">LOADING HISTORY…</p>
+              <SparklineSkeleton />
             ) : (
               <ValueSparkline points={sparkline} />
             )}
@@ -575,7 +605,8 @@ export function PortfolioDashboard() {
             Market notes
           </h2>
           <p className="mt-1 font-mono text-[11px] text-neutral-400">
-            FBM KLCI {formatPrice(quotes.data?.index?.price)} ({formatPct(quotes.data?.index?.changePct)}) ·{" "}
+            FBM KLCI {formatPrice(quotes.data?.index?.price)} (
+            <SignedPct value={quotes.data?.index?.changePct} className="font-mono text-[11px]" />) ·{" "}
             {formatMarketState(quotes.data?.marketState)} · Yahoo{" "}
             {quotes.data?.delayMinutes != null ? `${quotes.data.delayMinutes}m delay` : "delayed"} · Updated{" "}
             {formatKlTime(quotes.updatedAt)} MYT · {portfolio.holdings.length} open lots stored in this
@@ -611,6 +642,11 @@ export function PortfolioDashboard() {
         {tab === "dividends" ? <DividendTable rows={dividends} /> : null}
 
         {tab === "holdings" ? (
+        quotes.loading && quotes.data == null && rows.length > 0 ? (
+          <section className="min-w-0 border border-line bg-panel">
+            <TableSkeleton rows={Math.min(rows.length, 8)} cols={6} />
+          </section>
+        ) : (
         <section className="min-w-0 border border-line bg-panel">
           <div className="divide-y divide-line md:hidden">
             {rows.map((row) => {
@@ -683,14 +719,16 @@ export function PortfolioDashboard() {
                     </div>
                     <div className="flex justify-between gap-2">
                       <dt className="text-neutral-500">P&amp;L</dt>
-                      <dd className={changeClass(row.pnl)}>
-                        {formatRinggit(row.pnl, true)} {formatPct(row.pnlPct)}
+                      <dd className={`inline-flex items-center gap-2 ${changeClass(row.pnl)}`}>
+                        <span>{formatRinggit(row.pnl, true)}</span>
+                        <SignedPct value={row.pnlPct} className="text-[12px]" />
                       </dd>
                     </div>
                     <div className="flex justify-between gap-2">
                       <dt className="text-neutral-500">{RANGE_LABEL[range]}</dt>
-                      <dd className={changeClass(row.periodPnl)}>
-                        {formatRinggit(row.periodPnl, true)} {formatPct(row.periodPct)}
+                      <dd className={`inline-flex items-center gap-2 ${changeClass(row.periodPnl)}`}>
+                        <span>{formatRinggit(row.periodPnl, true)}</span>
+                        <SignedPct value={row.periodPct} className="text-[12px]" />
                       </dd>
                     </div>
                   </dl>
@@ -756,15 +794,13 @@ export function PortfolioDashboard() {
                       <p className={`font-mono text-[12px] ${changeClass(row.pnl)}`}>
                         {formatRinggit(row.pnl, true)}
                       </p>
-                      <p className={`font-mono text-[10px] ${changeClass(row.pnlPct)}`}>{formatPct(row.pnlPct)}</p>
+                      <SignedPct value={row.pnlPct} className="font-mono text-[10px]" />
                     </td>
                     <td className="px-3 py-2">
                       <p className={`font-mono text-[12px] ${changeClass(row.periodPnl)}`}>
                         {formatRinggit(row.periodPnl, true)}
                       </p>
-                      <p className={`font-mono text-[10px] ${changeClass(row.periodPct)}`}>
-                        {formatPct(row.periodPct)}
-                      </p>
+                      <SignedPct value={row.periodPct} className="font-mono text-[10px]" />
                     </td>
                     <td className="px-3 py-2 font-mono text-[11px] text-neutral-300">
                       {formatHoldingDay(row.holding.boughtAt)}
@@ -799,6 +835,7 @@ export function PortfolioDashboard() {
           </table>
           </div>
         </section>
+        )
         ) : null}
       </div>
 
@@ -826,21 +863,21 @@ function Kpi({
 }: {
   label: string;
   value: string;
-  hint?: string;
+  hint?: ReactNode;
   badge?: "POST" | null;
   tone?: number | null;
 }) {
   return (
     <div className="bg-panel px-3 py-3">
-      <p className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">{label}</p>
+      <p className="font-mono text-[9px] uppercase tracking-wider text-zinc-400">{label}</p>
       <p className={`mt-1 font-mono text-[15px] ${tone != null ? changeClass(tone) : "text-neutral-100"}`}>
         {value}
       </p>
-      {badge ? <span className="mt-0.5 inline-block text-xs font-bold text-red-500">{badge}</span> : null}
-      {!badge && hint ? (
-        <p className={`mt-0.5 font-mono text-[10px] ${tone != null ? changeClass(tone) : "text-neutral-600"}`}>
+      {badge ? <span className="mt-0.5 inline-block text-xs font-bold text-rose-400">{badge}</span> : null}
+      {hint ? (
+        <div className={`mt-0.5 font-mono text-[10px] ${typeof hint === "string" && tone != null ? changeClass(tone) : "text-zinc-400"}`}>
           {hint}
-        </p>
+        </div>
       ) : null}
     </div>
   );
@@ -976,7 +1013,9 @@ function DividendTable({ rows }: { rows: ReturnType<typeof estimateDividends> })
                 <td className="px-3 py-2 font-mono text-[12px] text-neutral-200">
                   {formatRinggit(row.annual)}
                 </td>
-                <td className="px-3 py-2 font-mono text-[12px] text-gain">{formatRinggit(row.nextPayout)}</td>
+                <td className={`px-3 py-2 font-mono text-[12px] ${(row.nextPayout ?? 0) > 0 ? "text-emerald-400" : "text-zinc-400"}`}>
+                  {formatRinggit(row.nextPayout)}
+                </td>
                 <td className="px-3 py-2 font-mono text-[11px] text-neutral-300">
                   {formatHoldingDay(row.nextDate)}
                 </td>

@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { stickyCellClass, stickyHeadClass, tableCellClass, tableHeadClass } from "@/components/h-scroll";
+import { TableSkeleton } from "@/components/skeleton";
 import { changeClass, formatCompact, formatEps, formatPct, formatRatio } from "@/lib/format";
 import type { AnnualResult, FundamentalsPayload, FundamentalsProfitLine, QuarterlyResult } from "@/lib/types";
 import { useLiveData } from "@/lib/use-live-data";
@@ -27,7 +28,7 @@ export function CorporatePerformance({ symbol, companyName }: CorporatePerforman
     return <FeedNote text={`FUNDAMENTALS FEED UNAVAILABLE · ${error}`} />;
   }
   if (pending) {
-    return <FeedNote text={`LOADING ${companyName.toUpperCase()} FUNDAMENTALS…`} />;
+    return <TableSkeleton rows={8} cols={5} />;
   }
   if (!payload) {
     return <FeedNote text={`NO FUNDAMENTALS FOR ${companyName.toUpperCase()}`} />;

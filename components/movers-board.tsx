@@ -2,7 +2,9 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { formatPct, formatPrice, formatVolume } from "@/lib/format";
+import { SignedPct } from "@/components/signed-change";
+import { CountPulse, MoverRowSkeleton } from "@/components/skeleton";
+import { formatPrice, formatVolume } from "@/lib/format";
 
 function displayVolume(volume: number | null) {
   return volume != null && volume > 0 ? formatVolume(volume) : "—";
@@ -26,11 +28,6 @@ export function MoversBoard({ payload, error, loading, size = 6, onRetry }: Move
   const feed = [...gainers, ...losers];
   const breadth = board.breadth;
   const usingFallback = board.source === "fallback" || Boolean(error);
-  const status = usingFallback
-    ? "LAST SESSION"
-    : loading
-      ? "LOADING"
-      : `YAHOO · ${board.marketState ?? "—"}`;
 
   return (
     <section className="border-b border-line bg-terminal">
@@ -51,7 +48,9 @@ export function MoversBoard({ payload, error, loading, size = 6, onRetry }: Move
           <span className="text-neutral-600">
             {breadth.covered}/{breadth.universe} TRADED
           </span>
-          <span className={error ? "text-loss" : "text-neutral-600"}>{status}</span>
+          <span className={error ? "text-loss" : "text-neutral-600"}>
+            {usingFallback ? "LAST SESSION" : loading ? <CountPulse /> : `YAHOO · ${board.marketState ?? "—"}`}
+          </span>
           {onRetry ? (
             <button
               type="button"
@@ -105,7 +104,9 @@ function Board({
       </div>
 
       <ul className="divide-y divide-line">
-        {rows.map((row, position) => {
+        {loading && rows.length === 0
+          ? Array.from({ length: 6 }, (_, index) => <MoverRowSkeleton key={index} />)
+          : rows.map((row, position) => {
           const up = (row.quote.changePct ?? 0) >= 0;
           return (
             <li key={row.symbol} className="relative hover:bg-[#161616]">
@@ -130,11 +131,11 @@ function Board({
                     RM {formatPrice(row.quote.price)}
                   </p>
                   <span
-                    className={`mt-0.5 inline-flex rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold ${
-                      up ? "bg-gain/15 text-gain" : "bg-loss/15 text-loss"
+                    className={`mt-0.5 inline-flex rounded-full px-1.5 py-0.5 ${
+                      up ? "bg-emerald-400/15" : "bg-rose-400/15"
                     }`}
                   >
-                    {formatPct(row.quote.changePct)}
+                    <SignedPct value={row.quote.changePct} className="text-[10px] font-semibold" />
                   </span>
                 </div>
               </Link>
@@ -142,9 +143,9 @@ function Board({
           );
         })}
 
-        {rows.length === 0 ? (
+        {!loading && rows.length === 0 ? (
           <li className="px-3 py-6 text-center font-mono text-[10px] text-neutral-600">
-            {loading ? "SCANNING THE UNIVERSE…" : "NO QUALIFYING MOVES THIS SESSION"}
+            NO QUALIFYING MOVES THIS SESSION
           </li>
         ) : null}
       </ul>
@@ -194,11 +195,11 @@ function MoversTape({
                   RM {formatPrice(row.quote.price)}
                 </span>
                 <span
-                  className={`rounded-full px-1.5 py-0.5 font-mono text-[9px] ${
-                    up ? "bg-gain/15 text-gain" : "bg-loss/15 text-loss"
+                  className={`inline-flex rounded-full px-1.5 py-0.5 ${
+                    up ? "bg-emerald-400/15" : "bg-rose-400/15"
                   }`}
                 >
-                  {formatPct(row.quote.changePct)}
+                  <SignedPct value={row.quote.changePct} className="text-[9px]" />
                 </span>
               </Link>
             );

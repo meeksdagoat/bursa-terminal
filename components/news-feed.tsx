@@ -3,6 +3,7 @@
 import { memo, useMemo, useState } from "react";
 import { Eli5Block } from "@/components/eli5-summary";
 import { ShowMoreBar } from "@/components/h-scroll";
+import { CountPulse, NewsFeedSkeleton } from "@/components/skeleton";
 import { hasValidSummary } from "@/lib/eli5";
 import { formatKlStamp } from "@/lib/format";
 import { textIsShariahSafe } from "@/lib/shariah";
@@ -55,14 +56,16 @@ function NewsFeedInner({
   const company = scope === "company";
   const hidden = all.length - items.length;
 
+  const pending = loading && shown.length === 0 && !error;
+
   return (
-    <aside className="flex h-full min-h-0 flex-col bg-panel">
+    <aside className="flex h-full min-h-0 flex-col overflow-hidden bg-panel">
       <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 border-b border-line px-2.5 md:h-7 md:min-h-0">
         <h2 className="truncate text-[10px] font-semibold tracking-[0.16em] text-amber-400/90 uppercase">
           {company ? `${companyName} News` : "Local Market News"}
         </h2>
         <span className={`shrink-0 font-mono text-[9px] ${error ? "text-loss" : "text-neutral-600"}`}>
-          {error ? "FEED ERROR" : loading ? "LOADING" : items.length}
+          {error ? "FEED ERROR" : pending ? <CountPulse /> : items.length}
         </span>
       </div>
 
@@ -78,7 +81,7 @@ function NewsFeedInner({
       ) : null}
 
       {tags.length > 0 ? (
-        <div className="flex shrink-0 flex-wrap gap-1 border-b border-line px-2 py-1.5">
+        <div className="flex shrink-0 gap-1 overflow-x-auto scrollbar-none border-b border-line px-2 py-1.5">
           <TagChip label="ALL" active={activeTag === null} onClick={() => setActiveTag(null)} />
           {tags.map((tag) => (
             <TagChip
@@ -91,79 +94,89 @@ function NewsFeedInner({
         </div>
       ) : null}
 
-      <ul className="min-h-0 flex-1 divide-y divide-line overflow-auto overscroll-contain">
-        {shown.map((item) => (
-          <li key={item.id} className="relative hover:bg-[#161616]">
-            {item.url ? (
-              // Stretched link: the card is clickable while the tag button below
-              // stays interactive, without nesting a button inside an anchor.
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`${item.headline} — open on ${item.source}`}
-                className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
-              />
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {pending ? (
+          <NewsFeedSkeleton />
+        ) : (
+          <ul className="divide-y divide-line">
+            {shown.map((item) => (
+              <li key={item.id} className="relative hover:bg-[#161616]">
+                {item.url ? (
+                  // Stretched link: the card is clickable while the tag button below
+                  // stays interactive, without nesting a button inside an anchor.
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${item.headline} — open on ${item.source}`}
+                    title={item.headline}
+                    className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
+                  />
+                ) : null}
+
+                <div className="pointer-events-none relative z-10 flex flex-col gap-2 px-2.5 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setActiveTag(activeTag === item.tag ? null : item.tag)}
+                      title={`Filter by ${item.tag}`}
+                      className={`pointer-events-auto shrink-0 rounded-sm px-1 font-mono text-[9px] transition-colors ${
+                        activeTag === item.tag
+                          ? "bg-gain/15 text-gain"
+                          : "text-gain hover:bg-gain/10"
+                      }`}
+                    >
+                      {item.tag}
+                    </button>
+                    <span className="shrink-0 font-mono text-[9px] text-zinc-400">
+                      {formatKlStamp(item.publishedAt)}
+                    </span>
+                  </div>
+
+                  <p
+                    className="line-clamp-2 min-w-0 overflow-hidden text-[12px] font-medium leading-snug text-neutral-100"
+                    title={item.headline}
+                  >
+                    {item.headline}
+                  </p>
+
+                  <p className="flex min-w-0 items-center gap-2 text-[9px] uppercase tracking-wider text-zinc-400">
+                    <span className="truncate">{item.source}</span>
+                    {item.url ? <span aria-hidden className="text-neutral-700">↗</span> : null}
+                  </p>
+
+                  {hasValidSummary(item) && (
+                    <Eli5Block
+                      news={{
+                        title: item.headline,
+                        snippet: item.snippet,
+                        url: item.url,
+                        company: company ? companyName : null,
+                        symbol: company ? companySymbol : null,
+                      }}
+                      subject={item.headline}
+                    />
+                  )}
+                </div>
+              </li>
+            ))}
+
+            {visible.length === 0 ? (
+              <li className="px-2.5 py-3 font-mono text-[10px] leading-relaxed text-neutral-600">
+                {error
+                  ? `NEWS FEED UNAVAILABLE · ${error}`
+                  : hidden > 0 && items.length === 0
+                    ? "EVERY HEADLINE HERE NAMES A NON-COMPLIANT STOCK"
+                    : activeTag
+                    ? `NO HEADLINES TAGGED ${activeTag}`
+                    : company
+                      ? `NO RECENT COVERAGE OF ${companyName.toUpperCase()}`
+                      : "NO HEADLINES RETURNED"}
+              </li>
             ) : null}
-
-            <div className="pointer-events-none relative z-10 px-2.5 py-2">
-              <div className="flex items-center justify-between gap-2">
-                <button
-                  type="button"
-                  onClick={() => setActiveTag(activeTag === item.tag ? null : item.tag)}
-                  title={`Filter by ${item.tag}`}
-                  className={`pointer-events-auto rounded-sm px-1 font-mono text-[9px] transition-colors ${
-                    activeTag === item.tag
-                      ? "bg-gain/15 text-gain"
-                      : "text-gain hover:bg-gain/10"
-                  }`}
-                >
-                  {item.tag}
-                </button>
-                <span className="shrink-0 font-mono text-[9px] text-neutral-600">
-                  {formatKlStamp(item.publishedAt)}
-                </span>
-              </div>
-
-              <p className="mt-0.5 text-[12px] leading-snug text-neutral-100">{item.headline}</p>
-
-              <p className="mt-0.5 flex items-center gap-1 text-[9px] uppercase tracking-wider text-neutral-600">
-                <span className="truncate">{item.source}</span>
-                {item.url ? <span aria-hidden className="text-neutral-700">↗</span> : null}
-              </p>
-
-              {hasValidSummary(item) && (
-                <Eli5Block
-                  news={{
-                    title: item.headline,
-                    snippet: item.snippet,
-                    url: item.url,
-                    company: company ? companyName : null,
-                    symbol: company ? companySymbol : null,
-                  }}
-                  subject={item.headline}
-                />
-              )}
-            </div>
-          </li>
-        ))}
-
-        {visible.length === 0 ? (
-          <li className="px-2.5 py-3 font-mono text-[10px] leading-relaxed text-neutral-600">
-            {error
-              ? `NEWS FEED UNAVAILABLE · ${error}`
-              : loading
-                ? "LOADING HEADLINES…"
-                : hidden > 0 && items.length === 0
-                  ? "EVERY HEADLINE HERE NAMES A NON-COMPLIANT STOCK"
-                  : activeTag
-                  ? `NO HEADLINES TAGGED ${activeTag}`
-                  : company
-                    ? `NO RECENT COVERAGE OF ${companyName.toUpperCase()}`
-                    : "NO HEADLINES RETURNED"}
-          </li>
-        ) : null}
-      </ul>
+          </ul>
+        )}
+      </div>
       <ShowMoreBar
         remaining={visible.length - shown.length}
         onClick={() => setLimit((n) => n + 32)}
@@ -213,7 +226,7 @@ function TagChip({
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-11 rounded-sm border px-2.5 font-mono text-[10px] tracking-wider transition-colors md:min-h-0 md:px-1.5 md:py-px md:text-[9px] ${
+      className={`min-h-11 shrink-0 rounded-sm border px-2.5 font-mono text-[10px] tracking-wider transition-colors md:min-h-0 md:px-1.5 md:py-px md:text-[9px] ${
         active
           ? "border-gain/50 bg-gain/10 text-gain"
           : "border-line text-neutral-500 hover:border-neutral-600 hover:text-neutral-300"

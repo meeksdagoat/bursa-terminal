@@ -7,12 +7,11 @@ import { Jargon } from "@/components/jargon-term";
 import { NAV_ITEMS, type NavActive } from "@/components/main-nav";
 import { SlideDrawer } from "@/components/slide-drawer";
 import { TickerSearchField } from "@/components/ticker-search";
+import { SignedPct } from "@/components/signed-change";
 import {
-  changeClass,
   formatFx,
   formatKlDate,
   formatOpr,
-  formatPct,
   formatPrice,
 } from "@/lib/format";
 import type { JargonTerm } from "@/lib/jargon";
@@ -366,9 +365,7 @@ function Tile({ label, note, value, changePct, badge, term, flash, className = "
         {badge ? (
           <span className="font-mono text-[10px] text-neutral-500">{badge}</span>
         ) : (
-          <span className={`font-mono text-[10px] ${changeClass(changePct)}`}>
-            {formatPct(changePct)}
-          </span>
+          <SignedPct value={changePct} className="font-mono text-[10px]" />
         )}
       </div>
     </div>

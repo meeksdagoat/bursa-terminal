@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Eli5Block } from "@/components/eli5-summary";
+import { CountPulse, NewsFeedSkeleton } from "@/components/skeleton";
 import { HEADLINE_CATEGORIES, type HeadlineCategory } from "@/lib/categories";
 import { hasValidSummary } from "@/lib/eli5";
 import { formatKlStamp } from "@/lib/format";
@@ -52,9 +53,10 @@ export function HeadlineList({
   }, [items, pinnedTags]);
 
   const visible = activeTag ? items.filter((item) => item.tag === activeTag) : items;
+  const pending = (loading || current == null) && visible.length === 0 && !error;
 
   return (
-    <section className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <section className="flex h-full min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-b border-line bg-panel px-3 py-2">
         <div>
           <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
@@ -63,16 +65,18 @@ export function HeadlineList({
           <p className="mt-0.5 text-[11px] text-neutral-500">{meta?.blurb}</p>
         </div>
         <span className={`font-mono text-[10px] ${error ? "text-loss" : "text-neutral-600"}`}>
-          {error
-            ? "FEED ERROR"
-            : current == null
-              ? "LOADING"
-              : `GOOGLE NEWS · ${items.length} STORIES${hidden > 0 ? ` · ${hidden} HIDDEN BY SHARIAH FILTER` : ""}`}
+          {error ? (
+            "FEED ERROR"
+          ) : pending ? (
+            <CountPulse />
+          ) : (
+            `GOOGLE NEWS · ${items.length} STORIES${hidden > 0 ? ` · ${hidden} HIDDEN BY SHARIAH FILTER` : ""}`
+          )}
         </span>
       </div>
 
       {tags.length > 0 ? (
-        <div className="flex shrink-0 flex-wrap gap-1 border-b border-line px-3 py-2">
+        <div className="flex shrink-0 gap-1 overflow-x-auto scrollbar-none border-b border-line px-3 py-2">
           <TagChip label="ALL" active={activeTag == null} onClick={() => setActiveTag(null)} />
           {tags.map((tag) => (
             <TagChip
@@ -85,48 +89,53 @@ export function HeadlineList({
         </div>
       ) : null}
 
-      <ul className="custom-scrollbar min-h-0 flex-1 divide-y divide-line overflow-y-auto">
-        {visible.map((item) => (
-          <li key={item.id} className="relative hover:bg-[#161616]">
-            {item.url ? (
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={`${item.title} — open story`}
-                className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
-              />
-            ) : null}
-            <div className="pointer-events-none relative z-10 px-3 py-2.5">
-              <HeadlineBody
-                title={item.title}
-                publisher={item.publisher}
-                publishedAt={item.publishedAt}
-                tag={item.tag}
-                linked={Boolean(item.url)}
-              />
-              {hasValidSummary(item) && (
-                <Eli5Block
-                  news={{ title: item.title, snippet: item.snippet, url: item.url }}
-                  subject={item.title}
-                />
-              )}
-            </div>
-          </li>
-        ))}
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        {pending ? (
+          <NewsFeedSkeleton />
+        ) : (
+          <ul className="divide-y divide-line">
+            {visible.map((item) => (
+              <li key={item.id} className="relative hover:bg-[#161616]">
+                {item.url ? (
+                  <a
+                    href={item.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label={`${item.title} — open story`}
+                    title={item.title}
+                    className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
+                  />
+                ) : null}
+                <div className="pointer-events-none relative z-10 flex flex-col gap-2 px-3 py-2.5">
+                  <HeadlineBody
+                    title={item.title}
+                    publisher={item.publisher}
+                    publishedAt={item.publishedAt}
+                    tag={item.tag}
+                    linked={Boolean(item.url)}
+                  />
+                  {hasValidSummary(item) && (
+                    <Eli5Block
+                      news={{ title: item.title, snippet: item.snippet, url: item.url }}
+                      subject={item.title}
+                    />
+                  )}
+                </div>
+              </li>
+            ))}
 
-        {visible.length === 0 ? (
-          <li className="px-3 py-8 text-center font-mono text-[11px] leading-relaxed text-neutral-600">
-            {error
-              ? `NEWS FEED UNAVAILABLE · ${error}`
-              : loading || current == null
-                ? "LOADING HEADLINES…"
-                : activeTag
-                  ? `NO STORIES TAGGED ${activeTag}`
-                  : "NO HEADLINES RETURNED"}
-          </li>
-        ) : null}
-      </ul>
+            {visible.length === 0 ? (
+              <li className="px-3 py-8 text-center font-mono text-[11px] leading-relaxed text-neutral-600">
+                {error
+                  ? `NEWS FEED UNAVAILABLE · ${error}`
+                  : activeTag
+                    ? `NO STORIES TAGGED ${activeTag}`
+                    : "NO HEADLINES RETURNED"}
+              </li>
+            ) : null}
+          </ul>
+        )}
+      </div>
     </section>
   );
 }
@@ -145,10 +154,17 @@ function HeadlineBody({
   linked?: boolean;
 }) {
   return (
-    <>
-      {tag ? <span className="font-mono text-[9px] text-gain">{tag}</span> : null}
-      <p className="text-[13px] leading-snug text-neutral-100">{title}</p>
-      <p className="mt-1 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-neutral-600">
+    <div className="flex min-w-0 flex-col gap-2">
+      {tag ? (
+        <span className="w-fit shrink-0 font-mono text-[9px] text-gain">{tag}</span>
+      ) : null}
+      <p
+        className="line-clamp-2 min-w-0 overflow-hidden text-[13px] font-medium leading-snug text-neutral-100"
+        title={title}
+      >
+        {title}
+      </p>
+      <p className="flex min-w-0 items-center gap-2 font-mono text-[9px] uppercase tracking-wider text-zinc-400">
         <span className="truncate">{publisher ?? "Google News"}</span>
         <span aria-hidden>·</span>
         <span className="shrink-0">{formatKlStamp(publishedAt)} MYT</span>
@@ -158,7 +174,7 @@ function HeadlineBody({
           </span>
         ) : null}
       </p>
-    </>
+    </div>
   );
 }
 
@@ -175,7 +191,7 @@ function TagChip({
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-11 rounded-sm border px-2.5 font-mono text-[10px] tracking-wider transition-colors md:min-h-0 md:px-1.5 md:py-px md:text-[9px] ${
+      className={`min-h-11 shrink-0 rounded-sm border px-2.5 font-mono text-[10px] tracking-wider transition-colors md:min-h-0 md:px-1.5 md:py-px md:text-[9px] ${
         active
           ? "border-gain/50 bg-gain/10 text-gain"
           : "border-line text-neutral-500 hover:border-neutral-600 hover:text-neutral-300"

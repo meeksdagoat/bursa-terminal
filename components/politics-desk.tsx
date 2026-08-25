@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Eli5Block } from "@/components/eli5-summary";
+import { NewsFeedSkeleton, PanelSkeleton } from "@/components/skeleton";
 import { ResponsiveSplit } from "@/components/responsive-split";
 import { POLITICS_DESK_TAGS } from "@/lib/categories";
 import { hasValidSummary } from "@/lib/eli5";
@@ -61,7 +62,7 @@ export function PoliticsDesk({
             <p className="px-3 py-2 font-mono text-[10px] text-loss">WIRE ERROR · {officialError}</p>
           ) : null}
           {officialLoading && desks.length === 0 ? (
-            <p className="px-3 py-8 text-center font-mono text-[10px] text-neutral-600">LOADING OFFICIAL WIRE…</p>
+            <PanelSkeleton rows={8} />
           ) : null}
           {desks.map((desk) => (
             <div key={desk.handle} className="border-b border-line">
@@ -110,7 +111,7 @@ export function PoliticsDesk({
           </p>
         </div>
         {tags.length > 0 ? (
-          <div className="flex shrink-0 flex-wrap gap-1 border-b border-line px-3 py-2">
+          <div className="flex shrink-0 gap-1 overflow-x-auto scrollbar-none border-b border-line px-3 py-2">
             <TagChip label="ALL" active={tag == null} onClick={() => setTag(null)} />
             {tags.map((name) => (
               <TagChip
@@ -122,7 +123,11 @@ export function PoliticsDesk({
             ))}
           </div>
         ) : null}
-        <ul className="custom-scrollbar min-h-0 flex-1 divide-y divide-line overflow-y-auto pl-2">
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain pl-2">
+          {headlinesLoading && visible.length === 0 && !headlinesError ? (
+            <NewsFeedSkeleton />
+          ) : (
+          <ul className="divide-y divide-line">
           {visible.map((item) => (
             <StoryRow
               key={item.id}
@@ -136,12 +141,12 @@ export function PoliticsDesk({
             <li className="px-3 py-8 text-center font-mono text-[11px] text-neutral-600">
               {headlinesError
                 ? `NEWS FEED UNAVAILABLE · ${headlinesError}`
-                : headlinesLoading
-                  ? "LOADING HEADLINES…"
-                  : "NO HEADLINES"}
+                : "NO HEADLINES"}
             </li>
           ) : null}
-        </ul>
+          </ul>
+          )}
+        </div>
       </section>
         ),
       }}
@@ -170,18 +175,20 @@ function StoryRow({
           target="_blank"
           rel="noopener noreferrer"
           aria-label={`${title} — open story`}
+          title={title}
           className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
         />
       ) : null}
-      <div className={`pointer-events-none relative z-10 px-3 ${compact ? "py-2" : "py-2.5"}`}>
-        {tag ? <span className="font-mono text-[9px] text-gain">{tag}</span> : null}
-        <p className={`leading-snug text-neutral-100 ${compact ? "text-[12px]" : "text-[13px]"}`}>
+      <div className={`pointer-events-none relative z-10 flex flex-col gap-2 px-3 ${compact ? "py-2" : "py-2.5"}`}>
+        {tag ? <span className="w-fit font-mono text-[9px] text-gain">{tag}</span> : null}
+        <p
+          className={`line-clamp-2 min-w-0 overflow-hidden font-medium leading-snug text-neutral-100 ${compact ? "text-[12px]" : "text-[13px]"}`}
+          title={title}
+        >
           {title}
         </p>
         <p
-          className={`font-mono text-[9px] uppercase tracking-wider text-neutral-600 ${
-            compact ? "mt-0.5" : "mt-1"
-          }`}
+          className="font-mono text-[9px] uppercase tracking-wider text-zinc-400"
         >
           {meta}
         </p>
@@ -198,7 +205,7 @@ function TagChip({ label, active, onClick }: { label: string; active: boolean; o
     <button
       type="button"
       onClick={onClick}
-      className={`min-h-11 rounded-sm border px-2.5 font-mono text-[10px] tracking-wider md:min-h-0 md:px-1.5 md:py-px md:text-[9px] ${
+      className={`min-h-11 shrink-0 rounded-sm border px-2.5 font-mono text-[10px] tracking-wider md:min-h-0 md:px-1.5 md:py-px md:text-[9px] ${
         active ? "border-gain/50 bg-gain/10 text-gain" : "border-line text-neutral-500 hover:text-neutral-300"
       }`}
     >

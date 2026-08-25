@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { stickyCellClass, stickyHeadClass, tableCellClass, tableHeadClass } from "@/components/h-scroll";
+import { TableSkeleton } from "@/components/skeleton";
 import {
   changeClass,
   formatKlFullDate,
@@ -96,7 +97,7 @@ export function StockDeepDivePanel({ currentTicker, peerTickers }: StockDeepDive
       </div>
 
       {loading ? (
-        <SkeletonRows />
+        <TableSkeleton rows={5} cols={6} />
       ) : error ? (
         <p className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">{error}</p>
       ) : tab === "peers" ? (
@@ -230,16 +231,6 @@ function ActionCalendar({
         </li>
       ))}
     </ol>
-  );
-}
-
-function SkeletonRows() {
-  return (
-    <div className="flex flex-col gap-1.5 px-2.5 py-3" aria-hidden>
-      {Array.from({ length: 5 }, (_, index) => (
-        <div key={index} className="h-7 animate-pulse rounded-sm bg-[#1a1a1a]" />
-      ))}
-    </div>
   );
 }
 

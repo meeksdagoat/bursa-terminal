@@ -2,6 +2,7 @@
 
 import { memo, useState } from "react";
 import { ShowMoreBar, stickyCellClass, stickyHeadClass, tableCellClass, tableHeadClass } from "@/components/h-scroll";
+import { TableSkeleton } from "@/components/skeleton";
 import { changeClass, formatKlFullDate, formatPct, formatVolume } from "@/lib/format";
 import type { StructuredWarrant, WarrantsPayload } from "@/lib/types";
 import { useLiveData } from "@/lib/use-live-data";
@@ -34,11 +35,7 @@ function WarrantsPanelInner({ symbol, companyName }: WarrantsPanelProps) {
     return <p className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">WARRANTS FEED UNAVAILABLE · {error}</p>;
   }
   if (pending) {
-    return (
-      <p className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">
-        LOADING {companyName.toUpperCase()} STRUCTURED WARRANTS…
-      </p>
-    );
+    return <TableSkeleton rows={8} cols={6} />;
   }
 
   return (
