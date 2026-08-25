@@ -11,12 +11,17 @@ import { SlideDrawer } from "@/components/slide-drawer";
 import { upcomingGlobalEvents } from "@/lib/global-calendar";
 import { summariseMacroEvent } from "@/lib/eli5";
 import { formatKlDate, formatKlStamp, formatOpr, formatPct, formatPrice, formatYield } from "@/lib/format";
-import type { GlobalEconomyPayload, HeadlinesPayload } from "@/lib/types";
+import type { GlobalEconomyPayload, GlobalMarketQuote, HeadlinesPayload } from "@/lib/types";
 import { useBreakpoint } from "@/lib/use-media-query";
+import { flashCardClass, flashPriceClass, useTickFlash } from "@/lib/use-tick-flash";
 
 type GlobalEconomyDeskProps = {
   snapshot: GlobalEconomyPayload | null;
   snapshotError: string | null;
+  markets?: GlobalMarketQuote[] | null;
+  marketsError?: string | null;
+  marketsAsOf?: string | null;
+  marketsLive?: boolean;
   headlines: HeadlinesPayload | null;
   headlinesError: string | null;
   headlinesLoading: boolean;
@@ -28,6 +33,10 @@ type TabletDrawer = "banks" | "news" | null;
 export function GlobalEconomyDesk({
   snapshot,
   snapshotError,
+  markets: liveMarkets,
+  marketsError,
+  marketsAsOf,
+  marketsLive = false,
   headlines,
   headlinesError,
   headlinesLoading,
@@ -36,7 +45,8 @@ export function GlobalEconomyDesk({
   const [tab, setTab] = useState<GlobalTab>("markets");
   const [drawer, setDrawer] = useState<TabletDrawer>(null);
   const rates = snapshot?.rates ?? [];
-  const markets = snapshot?.markets ?? [];
+  const markets = pickMarkets(liveMarkets, snapshot?.markets);
+  const feedError = marketsError ?? snapshotError;
   const events = upcomingGlobalEvents();
 
   const banks = (
@@ -82,27 +92,21 @@ export function GlobalEconomyDesk({
       </div>
 
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto bg-[#0a0a0a]">
-        {snapshotError ? (
+        {feedError ? (
           <p className="border-b border-neutral-800 px-3 py-1.5 font-mono text-[10px] text-loss">
-            MACRO FEED · {snapshotError}
+            MACRO FEED · {feedError}
           </p>
         ) : null}
 
         <div className="grid grid-cols-2 gap-px bg-neutral-800 md:grid-cols-5">
-          {(markets.length > 0 ? markets : EMPTY_MARKETS).map((item) => (
-            <Indicator
-              key={item.id}
-              label={item.label}
-              value={item.unit === "%" ? formatYield(item.price) : formatPrice(item.price)}
-              hint={`${item.symbol} · ${item.unit}`}
-              change={item.changePct != null ? formatPct(item.changePct) : null}
-              live
-            />
+          {markets.map((item) => (
+            <MarketTickCard key={item.id} item={item} streaming={marketsLive} />
           ))}
         </div>
 
         <p className="px-3 pb-2 font-mono text-[9px] text-neutral-700">
-          UPDATED {snapshot?.asOf ? formatKlStamp(snapshot.asOf) : "—"} · YAHOO · NY FED · ECB
+          UPDATED {marketsAsOf || snapshot?.asOf ? formatKlStamp(marketsAsOf ?? snapshot?.asOf) : "—"} · YAHOO
+          LIVE 2.5s · NY FED · ECB
         </p>
       </div>
     </div>
@@ -283,10 +287,63 @@ const EMPTY_RATES = [
   { id: "pboc" as const, label: "PBOC", region: "China", instrument: "1-year LPR", rate: null, changeBps: null, asOf: null, source: "last-print", bank: "People's Bank of China" },
 ];
 
-const EMPTY_MARKETS = [
-  { id: "tnx", symbol: "^TNX", label: "US 10-Year Yield", unit: "%", price: null, changePct: null },
-  { id: "spx", symbol: "^GSPC", label: "S&P 500", unit: "pts", price: null, changePct: null },
-  { id: "ndx", symbol: "^NDX", label: "Nasdaq 100", unit: "pts", price: null, changePct: null },
-  { id: "brent", symbol: "BZ=F", label: "Brent Crude", unit: "USD/bbl", price: null, changePct: null },
-  { id: "gold", symbol: "GC=F", label: "Gold", unit: "USD/oz", price: null, changePct: null },
+const EMPTY_MARKETS: GlobalMarketQuote[] = [
+  { id: "tnx", symbol: "^TNX", label: "US 10-Year Yield", unit: "%", price: null, changePct: null, currency: null, asOf: null },
+  { id: "spx", symbol: "^GSPC", label: "S&P 500", unit: "pts", price: null, changePct: null, currency: null, asOf: null },
+  { id: "ndx", symbol: "^NDX", label: "Nasdaq 100", unit: "pts", price: null, changePct: null, currency: null, asOf: null },
+  { id: "brent", symbol: "BZ=F", label: "Brent Crude", unit: "USD/bbl", price: null, changePct: null, currency: null, asOf: null },
+  { id: "gold", symbol: "GC=F", label: "Gold", unit: "USD/oz", price: null, changePct: null, currency: null, asOf: null },
 ];
+
+function hasQuotes(rows: GlobalMarketQuote[] | null | undefined): rows is GlobalMarketQuote[] {
+  return !!rows && rows.some((row) => row.price != null);
+}
+
+function pickMarkets(
+  live: GlobalMarketQuote[] | null | undefined,
+  snapshot: GlobalMarketQuote[] | null | undefined,
+): GlobalMarketQuote[] {
+  if (hasQuotes(live)) return live;
+  if (hasQuotes(snapshot)) return snapshot;
+  return EMPTY_MARKETS;
+}
+
+function MarketTickCard({ item, streaming }: { item: GlobalMarketQuote; streaming: boolean }) {
+  const flashState = useTickFlash(item.price);
+  const value = item.unit === "%" ? formatYield(item.price) : formatPrice(item.price);
+  const change = item.changePct != null ? formatPct(item.changePct) : null;
+
+  return (
+    <div className={`border px-3 py-3 transition-colors duration-300 ${flashCardClass(flashState)}`}>
+      <div className="flex items-center justify-between gap-2">
+        <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">{item.label}</span>
+        <span className="inline-flex items-center gap-1 rounded-sm border border-gain/40 bg-gain/10 px-1 font-mono text-[8px] tracking-wider text-gain">
+          {streaming ? (
+            <span className="relative inline-flex h-2 w-2" aria-hidden>
+              <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-emerald-500 opacity-75 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+            </span>
+          ) : null}
+          LIVE
+        </span>
+      </div>
+      <p className={`mt-1 font-mono text-[18px] ${flashPriceClass(flashState)}`}>
+        {flashState === "up" ? (
+          <span className="price-arrow-up mr-1" aria-hidden>
+            ▲
+          </span>
+        ) : null}
+        {flashState === "down" ? (
+          <span className="price-arrow-down mr-1" aria-hidden>
+            ▼
+          </span>
+        ) : null}
+        <span>{value}</span>
+      </p>
+      <p className="mt-0.5 font-mono text-[10px] text-neutral-500">
+        {item.symbol} · {item.unit}
+        {change ? ` · ${change}` : ""}
+      </p>
+    </div>
+  );
+}

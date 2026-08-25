@@ -1,7 +1,7 @@
 import "server-only";
 
 import { fetchQuotes } from "./yahoo";
-import type { GlobalEconomyPayload, GlobalMarketQuote, PolicyRate } from "./types";
+import type { GlobalEconomyPayload, GlobalMarketQuote, GlobalMarketsPayload, PolicyRate } from "./types";
 
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -223,14 +223,28 @@ async function loadMarkets(errors: string[]): Promise<GlobalMarketQuote[]> {
   }
 }
 
+export async function getGlobalMarketQuotes(): Promise<GlobalMarketsPayload> {
+  const errors: string[] = [];
+  const markets = await loadMarkets(errors);
+  return {
+    asOf: new Date().toISOString(),
+    markets,
+    errors,
+  };
+}
+
 export async function getGlobalEconomySnapshot(): Promise<GlobalEconomyPayload> {
   const errors: string[] = [];
-  const [fed, ecb, markets] = await Promise.all([loadFed(errors), loadEcb(errors), loadMarkets(errors)]);
+  const [fed, ecb, marketBoard] = await Promise.all([
+    loadFed(errors),
+    loadEcb(errors),
+    getGlobalMarketQuotes(),
+  ]);
 
   return {
     asOf: new Date().toISOString(),
     rates: [fed, ecb, fromFallback("boj"), fromFallback("pboc")],
-    markets,
-    errors,
+    markets: marketBoard.markets,
+    errors: [...errors, ...marketBoard.errors],
   };
 }

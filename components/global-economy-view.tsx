@@ -7,20 +7,30 @@ import { HeaderBar } from "@/components/header-bar";
 import { MainNav } from "@/components/main-nav";
 import { formatKlTime } from "@/lib/format";
 import { feedStatusFromQuote } from "@/lib/market-status";
-import type { BnmPayload, GlobalEconomyPayload, HeadlinesPayload, QuotesPayload } from "@/lib/types";
+import type {
+  BnmPayload,
+  GlobalEconomyPayload,
+  GlobalMarketsPayload,
+  HeadlinesPayload,
+  QuotesPayload,
+} from "@/lib/types";
 import { findEntry, terminalHref, universe } from "@/lib/universe";
 import { useLiveData } from "@/lib/use-live-data";
+import { useCoarsePointer } from "@/lib/use-media-query";
 import { useShariahOnly } from "@/lib/use-shariah";
 
 const QUOTES_REFRESH_MS = 60 * 1000;
 const BNM_REFRESH_MS = 10 * 60 * 1000;
 const HEADLINES_REFRESH_MS = 5 * 60 * 1000;
+const MARKET_POLL_MS = 2_500;
+const MARKET_POLL_TOUCH_MS = 5_000;
 
 export function GlobalEconomyView() {
   const router = useRouter();
   const [searchHint, setSearchHint] = useState<string | null>(null);
   const shariahOnly = useShariahOnly();
 
+  const coarse = useCoarsePointer();
   const quotes = useLiveData<QuotesPayload>("/api/quotes?symbols=1155.KL", QUOTES_REFRESH_MS);
   const bnm = useLiveData<BnmPayload>("/api/bnm", BNM_REFRESH_MS);
   const headlines = useLiveData<HeadlinesPayload>(
@@ -28,6 +38,10 @@ export function GlobalEconomyView() {
     HEADLINES_REFRESH_MS,
   );
   const economy = useLiveData<GlobalEconomyPayload>("/api/global-economy", BNM_REFRESH_MS);
+  const markets = useLiveData<GlobalMarketsPayload>(
+    "/api/global-economy/markets",
+    coarse ? MARKET_POLL_TOUCH_MS : MARKET_POLL_MS,
+  );
 
   const handleSearch = useCallback(
     (query: string) => {
@@ -74,6 +88,10 @@ export function GlobalEconomyView() {
         <GlobalEconomyDesk
           snapshot={economy.data}
           snapshotError={economy.error}
+          markets={markets.data?.markets}
+          marketsError={markets.error}
+          marketsAsOf={markets.data?.asOf}
+          marketsLive={markets.data != null && !markets.error}
           headlines={headlines.data}
           headlinesError={headlines.error}
           headlinesLoading={headlines.loading}
@@ -84,9 +102,13 @@ export function GlobalEconomyView() {
         <span>
           GLOBAL MACRO · NY FED EFFR · ECB DFR · YAHOO ^TNX ^GSPC ^NDX BZ=F GC=F · GOOGLE NEWS WIRE
         </span>
-        <span className={quotes.error || economy.error ? "text-loss" : "text-gain"}>
-          {quotes.error || economy.error ? "FEED DEGRADED" : quotes.data ? "SYS OK" : "CONNECTING"} ·{" "}
-          {quotes.data?.marketState ?? "—"} · UPDATED {formatKlTime(quotes.updatedAt)} MYT
+        <span className={quotes.error || economy.error || markets.error ? "text-loss" : "text-gain"}>
+          {quotes.error || economy.error || markets.error
+            ? "FEED DEGRADED"
+            : markets.data
+              ? "SYS OK"
+              : "CONNECTING"}{" "}
+          · {quotes.data?.marketState ?? "—"} · UPDATED {formatKlTime(markets.updatedAt ?? quotes.updatedAt)} MYT
         </span>
       </footer>
     </div>
