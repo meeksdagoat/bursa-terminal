@@ -74,7 +74,7 @@ function TradingViewSingleQuote({ ticker }: { ticker: TickerSpec }) {
  */
 export function TradingViewTickers() {
   return (
-    <div className="grid grid-cols-1 gap-px bg-neutral-800 sm:grid-cols-2 lg:grid-cols-5">
+    <div className="grid grid-cols-1 gap-px bg-neutral-800 sm:grid-cols-2">
       {TV_TICKERS.map((ticker) => (
         <div key={ticker.symbol} className="bg-[#0a0a0a] px-1 pb-1 pt-1.5">
           <p className="px-1 pb-0.5 font-mono text-[8px] uppercase tracking-[0.16em] text-neutral-600">
