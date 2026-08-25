@@ -29,7 +29,7 @@ export function GlobalPolicyMatrix({ rates, opr, malaysiaCpi }: GlobalPolicyMatr
       </header>
 
       <div className="min-h-0 flex-1 overflow-x-auto">
-        <table className="w-full min-w-[520px] border-collapse text-left">
+        <table className="w-full min-w-[420px] border-collapse text-left">
           <thead>
             <tr className="border-b border-neutral-800 font-mono text-[8px] uppercase tracking-[0.14em] text-neutral-600">
               <th className="px-3 py-1.5 font-medium">Region</th>

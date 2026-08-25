@@ -5,7 +5,9 @@ import { useEffect, useRef } from "react";
 const TV_HEATMAP_SRC = "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
 
 const HEATMAP_CONFIG = {
-  dataSource: "S&P500",
+  exchanges: [] as string[],
+  // TradingView's official S&P 500 heatmap universe id is SPX500.
+  dataSource: "SPX500",
   grouping: "sector",
   blockSize: "market_cap_basic",
   blockColor: "change",
@@ -13,6 +15,10 @@ const HEATMAP_CONFIG = {
   colorTheme: "dark",
   theme: "dark",
   isTransparent: true,
+  hasTopBar: false,
+  isDataSetEnabled: false,
+  isZoomEnabled: true,
+  hasSymbolTooltip: true,
   width: "100%",
   height: 280,
 };
@@ -60,6 +66,7 @@ export function GlobalMarketHeatmap() {
       </header>
       <div
         ref={hostRef}
+        data-tv-heatmap
         className="h-[280px] w-full overflow-hidden bg-transparent [&_iframe]:block [&_iframe]:h-[280px] [&_iframe]:w-full"
         aria-label="S&P 500 sector heatmap"
       />

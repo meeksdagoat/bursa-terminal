@@ -40,13 +40,19 @@ export function GlobalEconomyTab({
       </p>
 
       <div className="grid grid-cols-1 gap-4 p-3 lg:grid-cols-3">
-        <MacroCurrencyMatrix markets={snapshot?.markets ?? []} bnm={bnm} cpo={cpo} />
-        <GlobalPolicyMatrix
-          rates={snapshot?.rates ?? []}
-          opr={bnm?.opr ?? null}
-          malaysiaCpi={malaysia?.cpi ?? null}
-        />
-        <GlobalMarketHeatmap />
+        <div className="min-w-0">
+          <MacroCurrencyMatrix markets={snapshot?.markets ?? []} bnm={bnm} cpo={cpo} />
+        </div>
+        <div className="min-w-0">
+          <GlobalPolicyMatrix
+            rates={snapshot?.rates ?? []}
+            opr={bnm?.opr ?? null}
+            malaysiaCpi={malaysia?.cpi ?? null}
+          />
+        </div>
+        <div className="min-w-0">
+          <GlobalMarketHeatmap />
+        </div>
       </div>
     </>
   );
