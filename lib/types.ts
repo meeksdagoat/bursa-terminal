@@ -219,12 +219,6 @@ export type GlobalEconomyPayload = {
   errors: string[];
 };
 
-export type GlobalMarketsPayload = {
-  asOf: string;
-  markets: GlobalMarketQuote[];
-  errors: string[];
-};
-
 export type FilingCategory = "QR" | "IA" | "GA" | "DIV" | "BOARD" | "AL" | "OTHER";
 
 export type Filing = {

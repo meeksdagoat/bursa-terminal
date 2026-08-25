@@ -1,7 +1,6 @@
 import "server-only";
 
-import { fetchQuotes } from "./yahoo";
-import type { GlobalEconomyPayload, GlobalMarketQuote, GlobalMarketsPayload, PolicyRate } from "./types";
+import type { GlobalEconomyPayload, PolicyRate } from "./types";
 
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -64,14 +63,6 @@ const RATE_FALLBACKS: RateFallback[] = [
   },
 ];
 
-const MARKET_SPECS = [
-  { id: "tnx", symbol: "^TNX", label: "US 10-Year Yield", unit: "%", kind: "yield" },
-  { id: "spx", symbol: "^GSPC", label: "S&P 500", unit: "pts", kind: "index" },
-  { id: "ndx", symbol: "^NDX", label: "Nasdaq 100", unit: "pts", kind: "index" },
-  { id: "brent", symbol: "BZ=F", label: "Brent Crude", unit: "USD/bbl", kind: "price" },
-  { id: "gold", symbol: "GC=F", label: "Gold", unit: "USD/oz", kind: "price" },
-] as const;
-
 function num(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
 }
@@ -97,11 +88,6 @@ function fromFallback(id: PolicyRate["id"]): PolicyRate {
     asOf: row.asOf,
     source: row.source,
   };
-}
-
-function yieldPct(price: number | null): number | null {
-  if (price == null) return null;
-  return price > 20 ? price / 10 : price;
 }
 
 function ecbObservationDate(payload: Record<string, unknown> | null): string | null {
@@ -184,67 +170,14 @@ async function loadEcb(errors: string[]): Promise<PolicyRate> {
   }
 }
 
-async function loadMarkets(errors: string[]): Promise<GlobalMarketQuote[]> {
-  try {
-    const quotes = await fetchQuotes(MARKET_SPECS.map((spec) => spec.symbol));
-    const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
-
-    return MARKET_SPECS.map((spec) => {
-      const quote =
-        bySymbol.get(spec.symbol) ??
-        quotes.find(
-          (row) => row.symbol.replace("^", "") === spec.symbol.replace("^", ""),
-        ) ??
-        null;
-      const raw = quote?.price ?? null;
-      return {
-        id: spec.id,
-        symbol: spec.symbol,
-        label: spec.label,
-        unit: spec.unit,
-        price: spec.kind === "yield" ? yieldPct(raw) : raw,
-        changePct: quote?.changePct ?? null,
-        currency: quote?.currency ?? null,
-        asOf: quote?.quoteTime ?? null,
-      };
-    });
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
-    return MARKET_SPECS.map((spec) => ({
-      id: spec.id,
-      symbol: spec.symbol,
-      label: spec.label,
-      unit: spec.unit,
-      price: null,
-      changePct: null,
-      currency: null,
-      asOf: null,
-    }));
-  }
-}
-
-export async function getGlobalMarketQuotes(): Promise<GlobalMarketsPayload> {
-  const errors: string[] = [];
-  const markets = await loadMarkets(errors);
-  return {
-    asOf: new Date().toISOString(),
-    markets,
-    errors,
-  };
-}
-
 export async function getGlobalEconomySnapshot(): Promise<GlobalEconomyPayload> {
   const errors: string[] = [];
-  const [fed, ecb, marketBoard] = await Promise.all([
-    loadFed(errors),
-    loadEcb(errors),
-    getGlobalMarketQuotes(),
-  ]);
+  const [fed, ecb] = await Promise.all([loadFed(errors), loadEcb(errors)]);
 
   return {
     asOf: new Date().toISOString(),
     rates: [fed, ecb, fromFallback("boj"), fromFallback("pboc")],
-    markets: marketBoard.markets,
-    errors: [...errors, ...marketBoard.errors],
+    markets: [],
+    errors,
   };
 }
