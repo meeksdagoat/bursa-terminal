@@ -87,7 +87,7 @@ export function GlobalEconomyView() {
         <span>GLOBAL MACRO · NY FED EFFR · ECB DFR · NATIVE TICKERS · TRADINGVIEW HEATMAP · GOOGLE NEWS WIRE</span>
         <span className={quotes.error || economy.error ? "text-loss" : "text-gain"}>
           {quotes.error || economy.error ? "FEED DEGRADED" : quotes.data ? "SYS OK" : "CONNECTING"} ·
-          LIVE TAPE • YAHOO POLL · UPDATED {formatKlTime(quotes.updatedAt)} MYT
+          LIVE TAPE · TRADINGVIEW WEBSOCKET · UPDATED {formatKlTime(quotes.updatedAt)} MYT
         </span>
       </footer>
     </div>

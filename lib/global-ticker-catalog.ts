@@ -3,21 +3,24 @@ import type { GlobalTickerKind } from "./types";
 export type GlobalTickerSpec = {
   id: string;
   label: string;
-  yahoo: string;
+  tv: string;
   symbol: string;
   unit: string;
   kind: GlobalTickerKind;
 };
 
 /**
- * Native Global Economy tape. Yahoo symbols are the live feed; `symbol` is the
- * terminal print (US10Y / SPX / NDX) so the cards never show vendor-locked TNX.
+ * Native Global Economy tape. `tv` is the TradingView websocket symbol;
+ * `symbol` is the compact print on the card.
+ *
+ * CBOT:US10Y is locked on the public quote stream (empty `qsd`). TVC:US10Y
+ * is the live 10-year yield print (already in percent, e.g. 4.71).
  */
 export const GLOBAL_TICKER_SPECS: readonly GlobalTickerSpec[] = [
   {
     id: "us10y",
     label: "US 10-YEAR YIELD",
-    yahoo: "^TNX",
+    tv: "TVC:US10Y",
     symbol: "US10Y",
     unit: "%",
     kind: "yield",
@@ -25,7 +28,7 @@ export const GLOBAL_TICKER_SPECS: readonly GlobalTickerSpec[] = [
   {
     id: "spx",
     label: "S&P 500",
-    yahoo: "^GSPC",
+    tv: "FOREXCOM:SPXUSD",
     symbol: "SPX",
     unit: "IDX",
     kind: "index",
@@ -33,7 +36,7 @@ export const GLOBAL_TICKER_SPECS: readonly GlobalTickerSpec[] = [
   {
     id: "ndx",
     label: "NASDAQ 100",
-    yahoo: "^NDX",
+    tv: "FOREXCOM:NSXUSD",
     symbol: "NDX",
     unit: "IDX",
     kind: "index",
@@ -41,17 +44,21 @@ export const GLOBAL_TICKER_SPECS: readonly GlobalTickerSpec[] = [
   {
     id: "brent",
     label: "BRENT CRUDE",
-    yahoo: "BZ=F",
-    symbol: "BZ=F",
+    tv: "TVC:UKOIL",
+    symbol: "UKOIL",
     unit: "USD/BBL",
     kind: "commodity",
   },
   {
     id: "gold",
     label: "GOLD",
-    yahoo: "GC=F",
-    symbol: "GC=F",
+    tv: "TVC:GOLD",
+    symbol: "GOLD",
     unit: "USD/OZ",
     kind: "commodity",
   },
 ];
+
+export function tickerSpecByTv(symbol: string): GlobalTickerSpec | undefined {
+  return GLOBAL_TICKER_SPECS.find((spec) => spec.tv === symbol);
+}

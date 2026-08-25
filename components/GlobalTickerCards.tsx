@@ -3,10 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { GLOBAL_TICKER_SPECS } from "@/lib/global-ticker-catalog";
 import { formatPct, formatPrice, formatYield } from "@/lib/format";
-import type { GlobalTickerQuote, GlobalTickersPayload } from "@/lib/types";
-import { useLiveData } from "@/lib/use-live-data";
+import type { GlobalTickerQuote } from "@/lib/types";
+import { useTradingViewTickers } from "@/lib/use-tradingview-tickers";
 
-const POLL_MS = 5 * 1000;
 const FLASH_MS = 600;
 
 type Flash = "up" | "down" | null;
@@ -18,8 +17,8 @@ function formatPrint(ticker: GlobalTickerQuote | null): string {
 }
 
 export function GlobalTickerCards() {
-  const feed = useLiveData<GlobalTickersPayload>("/api/global-economy/tickers", POLL_MS);
-  const byId = new Map((feed.data?.tickers ?? []).map((row) => [row.id, row]));
+  const feed = useTradingViewTickers();
+  const byId = new Map(feed.data.tickers.map((row) => [row.id, row]));
 
   return (
     <div>
@@ -96,7 +95,7 @@ function TickerCard({
         </span>
       </div>
 
-      <p className={`mt-1.5 font-mono text-xl leading-none ${priceTone}`} aria-live="polite">
+      <p className={`mt-1.5 font-mono text-2xl leading-none tabular-nums ${priceTone}`} aria-live="polite">
         {formatPrint(ticker)}
       </p>
 

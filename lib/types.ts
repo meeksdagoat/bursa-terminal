@@ -235,7 +235,7 @@ export type GlobalTickerQuote = {
 };
 
 export type GlobalTickersPayload = {
-  source: "yahoo";
+  source: "tradingview" | "yahoo";
   asOf: string;
   tickers: GlobalTickerQuote[];
   errors: string[];

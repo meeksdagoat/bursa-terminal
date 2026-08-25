@@ -36,7 +36,7 @@ export function GlobalEconomyTab({
       <GlobalTickerCards />
 
       <p className="px-3 py-2 font-mono text-[9px] uppercase tracking-wider text-neutral-700">
-        LIVE TAPE • YAHOO POLL 5S • FLASH ON TICK
+        LIVE TAPE · TRADINGVIEW WEBSOCKET · FLASH ON TICK
       </p>
 
       <div className="grid grid-cols-1 gap-4 p-3 lg:grid-cols-3">

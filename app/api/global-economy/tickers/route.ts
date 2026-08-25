@@ -1,14 +1,11 @@
-import { cached } from "@/lib/cache";
-import { getGlobalTickers } from "@/lib/global-tickers";
+import { getGlobalTickers } from "@/lib/tradingview-quote-hub";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const TTL_MS = 3 * 1000;
-
 export async function GET() {
   try {
-    const payload = await cached("global-tickers:v1", TTL_MS, getGlobalTickers);
+    const payload = await getGlobalTickers();
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Unknown error";
