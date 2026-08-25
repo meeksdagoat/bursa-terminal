@@ -220,6 +220,27 @@ export type GlobalEconomyPayload = {
   errors: string[];
 };
 
+export type GlobalTickerKind = "yield" | "index" | "commodity";
+
+export type GlobalTickerQuote = {
+  id: string;
+  label: string;
+  symbol: string;
+  unit: string;
+  kind: GlobalTickerKind;
+  price: number | null;
+  changePct: number | null;
+  currency: string | null;
+  asOf: string | null;
+};
+
+export type GlobalTickersPayload = {
+  source: "yahoo";
+  asOf: string;
+  tickers: GlobalTickerQuote[];
+  errors: string[];
+};
+
 export type FilingCategory = "QR" | "IA" | "GA" | "DIV" | "BOARD" | "AL" | "OTHER";
 
 export type Filing = {

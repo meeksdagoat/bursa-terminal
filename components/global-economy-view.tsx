@@ -84,10 +84,10 @@ export function GlobalEconomyView() {
       </div>
 
       <footer className="flex shrink-0 flex-wrap items-center justify-between gap-x-4 gap-y-1 border-t border-line bg-panel px-3 py-1.5 font-mono text-[9px] text-neutral-600">
-        <span>GLOBAL MACRO · NY FED EFFR · ECB DFR · TRADINGVIEW STREAMING · GOOGLE NEWS WIRE</span>
+        <span>GLOBAL MACRO · NY FED EFFR · ECB DFR · NATIVE TICKERS · TRADINGVIEW HEATMAP · GOOGLE NEWS WIRE</span>
         <span className={quotes.error || economy.error ? "text-loss" : "text-gain"}>
           {quotes.error || economy.error ? "FEED DEGRADED" : quotes.data ? "SYS OK" : "CONNECTING"} ·
-          STREAMING LIVE • TRADINGVIEW WEBSOCKET · UPDATED {formatKlTime(quotes.updatedAt)} MYT
+          LIVE TAPE • YAHOO POLL · UPDATED {formatKlTime(quotes.updatedAt)} MYT
         </span>
       </footer>
     </div>

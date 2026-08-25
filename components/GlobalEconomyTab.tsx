@@ -2,8 +2,8 @@
 
 import { GlobalMarketHeatmap } from "@/components/GlobalMarketHeatmap";
 import { GlobalPolicyMatrix } from "@/components/GlobalPolicyMatrix";
+import { GlobalTickerCards } from "@/components/GlobalTickerCards";
 import { MacroCurrencyMatrix } from "@/components/MacroCurrencyMatrix";
-import { TradingViewTickers } from "@/components/tradingview-tickers";
 import type { BnmPayload, EconomyPayload, GlobalEconomyPayload } from "@/lib/types";
 
 type GlobalEconomyTabProps = {
@@ -33,10 +33,10 @@ export function GlobalEconomyTab({
         </p>
       ) : null}
 
-      <TradingViewTickers />
+      <GlobalTickerCards />
 
       <p className="px-3 py-2 font-mono text-[9px] uppercase tracking-wider text-neutral-700">
-        STREAMING LIVE • TRADINGVIEW WEBSOCKET
+        LIVE TAPE • YAHOO POLL 5S • FLASH ON TICK
       </p>
 
       <div className="grid grid-cols-1 gap-4 p-3 lg:grid-cols-3">
