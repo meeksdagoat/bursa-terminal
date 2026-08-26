@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { ChartWidget } from "@/components/chart-widget";
@@ -50,6 +50,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   const [newsScope, setNewsScope] = useState<NewsScope>("company");
   const [compactDrawer, setCompactDrawer] = useState<CompactDrawer>(null);
   const [layoutReady, setLayoutReady] = useState(false);
+  const restoreWatchlistAfterPicker = useRef(false);
 
   useEffect(() => {
     setSelectedSymbol(initialSymbol);
@@ -115,6 +116,25 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
     [selectSymbol],
   );
 
+  const openPicker = useCallback(() => {
+    if (compactDrawer === "watchlist") {
+      restoreWatchlistAfterPicker.current = true;
+      setCompactDrawer(null);
+    }
+    setPickerOpen(true);
+  }, [compactDrawer]);
+
+  const closePicker = useCallback(() => {
+    setPickerOpen(false);
+    if (!restoreWatchlistAfterPicker.current) return;
+    restoreWatchlistAfterPicker.current = false;
+    setCompactDrawer("watchlist");
+  }, []);
+
+  const closeWatchlistDrawer = useCallback(() => {
+    setCompactDrawer(null);
+  }, []);
+
   // Turning the filter on while sitting on a conventional name would leave a
   // hidden ticker charted; hop to the first still-visible watchlist name.
   useEffect(() => {
@@ -157,7 +177,8 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
       selectedSymbol={selected.symbol}
       onSelect={handleSelectFromList}
       onRemove={watchlist.remove}
-      onBrowse={() => setPickerOpen(true)}
+      onBrowse={openPicker}
+      onClose={closeWatchlistDrawer}
       ticks={quotes.ticks}
     />
   );
@@ -195,7 +216,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   return (
     <div
       data-app-shell
-      className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-terminal text-neutral-200 max-lg:touch-pan-y lg:h-screen lg:max-h-screen lg:overflow-hidden"
+      className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-terminal text-neutral-200 max-lg:touch-pan-y"
     >
       <HeaderBar
         bnm={bnm.data}
@@ -273,7 +294,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
 
       {pickerOpen ? (
         <StockPicker
-          onClose={() => setPickerOpen(false)}
+          onClose={closePicker}
           savedSymbols={watchlist.symbols}
           onToggleSave={watchlist.toggle}
           onSelect={handleSelectFromList}
@@ -301,25 +322,25 @@ function DesktopWorkspace({
       direction="horizontal"
       className="min-h-0 flex-1 overflow-hidden"
     >
-      <Panel id="watchlist" defaultSize={18} minSize={15} order={1} className="min-h-0 overflow-hidden">
+      <Panel id="watchlist" defaultSize={18} minSize={15} order={1} className="flex min-h-0 flex-col overflow-hidden">
         {watchlistPane}
       </Panel>
 
       <PanelSplitter />
 
-      <Panel id="main" defaultSize={57} minSize={40} order={2} className="min-h-0 overflow-hidden">
+      <Panel id="main" defaultSize={57} minSize={40} order={2} className="flex min-h-0 flex-col overflow-hidden">
         <PanelGroup
           autoSaveId="bursa-terminal-chart"
           direction="vertical"
-          className="h-full min-h-0 overflow-hidden"
+          className="h-full min-h-0"
         >
-          <Panel id="chart" defaultSize={62} minSize={30} className="min-h-0 overflow-hidden">
+          <Panel id="chart" defaultSize={62} minSize={28} className="min-h-[250px] overflow-hidden">
             {chartPane}
           </Panel>
 
           <PanelSplitter direction="vertical" />
 
-          <Panel id="intel" defaultSize={38} minSize={20} className="min-h-0 overflow-hidden">
+          <Panel id="intel" defaultSize={38} minSize={22} className="min-h-[200px] overflow-hidden">
             {intelPane}
           </Panel>
         </PanelGroup>
@@ -329,8 +350,16 @@ function DesktopWorkspace({
 
       {/* Remounting per scope and ticker resets the tag filter, which is
           meaningless once the underlying set of headlines changes. */}
-      <Panel id="news" defaultSize={25} minSize={20} order={3} className="min-h-0 overflow-hidden">
-        {newsPane}
+      <Panel
+        id="news"
+        defaultSize={25}
+        minSize={20}
+        order={3}
+        className="flex min-h-0 flex-col overflow-hidden"
+      >
+        <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+          {newsPane}
+        </div>
       </Panel>
     </PanelGroup>
   );
@@ -383,6 +412,8 @@ function CompactWorkspace({
         onClose={() => onDrawer(null)}
         side="bottom"
         title="Watchlist"
+        labelledBy="watchlist-heading"
+        headerClassName="max-sm:hidden"
       >
         {watchlistPane}
       </SlideDrawer>

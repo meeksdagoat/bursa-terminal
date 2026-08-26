@@ -115,6 +115,7 @@ type StockCandlestickChartProps = {
   chartType?: ChartType;
   overlays?: ChartOverlays;
   drawingTool?: DrawingTool;
+  freeMove?: boolean;
   onDrawingComplete?: () => void;
 };
 
@@ -125,6 +126,61 @@ const TIME_SCALE = {
   rightOffset: 12,
   barSpacing: 6,
 } as const;
+
+const PRICE_SCALE_MARGINS = { top: 0.06, bottom: 0.22 } as const;
+
+const MOBILE_CHART_TOUCH = "pan-y pinch-zoom";
+const CAPTURE_CHART_TOUCH = "none";
+
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 1023px)").matches;
+}
+
+/** FREE MOVE and desktop capture the gesture; mobile AUTO SCALE lets the page pan vertically. */
+function syncChartTouchAction(container: HTMLElement, freeMove: boolean) {
+  const value = freeMove || !isMobileViewport() ? CAPTURE_CHART_TOUCH : MOBILE_CHART_TOUCH;
+  container.style.touchAction = value;
+  for (const canvas of container.querySelectorAll("canvas")) {
+    canvas.style.touchAction = value;
+  }
+}
+
+function applyMovementMode(
+  chart: IChartApi,
+  freeMove: boolean,
+  fit: boolean,
+  series?: ISeriesApi<"Candlestick"> | ISeriesApi<"Line"> | null,
+) {
+  const mobile = isMobileViewport();
+  chart.applyOptions({
+    handleScroll: {
+      mouseWheel: true,
+      pressedMouseMove: true,
+      // Horizontal pan stays on the chart; vertical is page-scroll unless FREE MOVE.
+      horzTouchDrag: true,
+      vertTouchDrag: freeMove,
+    },
+    handleScale: {
+      axisPressedMouseMove: { time: true, price: true },
+      mouseWheel: true,
+      pinch: true,
+    },
+    kineticScroll: {
+      mouse: freeMove,
+      touch: freeMove || !mobile,
+    },
+  });
+  const priceScaleOptions = {
+    autoScale: !freeMove,
+    scaleMargins: PRICE_SCALE_MARGINS,
+  };
+  chart.priceScale("right").applyOptions(priceScaleOptions);
+  series?.priceScale().applyOptions({ autoScale: !freeMove });
+  if (!freeMove && fit) {
+    chart.timeScale().applyOptions({ ...TIME_SCALE });
+    chart.timeScale().fitContent();
+  }
+}
 
 function toOhlc(candles: Candle[]): CandlestickData<UTCTimestamp>[] {
   return candles.map((candle) => ({
@@ -212,6 +268,7 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
   chartType = "candlestick",
   overlays = EMPTY_OVERLAYS,
   drawingTool = "cursor",
+  freeMove = false,
   onDrawingComplete,
 }: StockCandlestickChartProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -226,6 +283,8 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
   const priceLinesRef = useRef<IPriceLine[]>([]);
   const byTimeRef = useRef<Map<number, Candle>>(new Map());
   const datasetRef = useRef<DatasetMark | null>(null);
+  const freeMoveRef = useRef(freeMove);
+  freeMoveRef.current = freeMove;
   const [hovered, setHovered] = useState<Candle | null>(null);
   const [drawings, setDrawings] = useState<Drawing[]>([]);
   const [draft, setDraft] = useState<ChartPoint | null>(null);
@@ -245,6 +304,7 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
     const container = containerRef.current;
     if (!container) return;
 
+    const mobile = isMobileViewport();
     const coarse = window.matchMedia("(pointer: coarse)").matches;
 
     const chart = createChart(container, {
@@ -267,7 +327,8 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
       rightPriceScale: {
         borderColor: GRID,
         entireTextOnly: true,
-        scaleMargins: { top: 0.06, bottom: 0.22 },
+        autoScale: !freeMoveRef.current,
+        scaleMargins: PRICE_SCALE_MARGINS,
       },
       localization: {
         timeFormatter: formatKlCrosshairTime,
@@ -292,13 +353,17 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
       handleScroll: {
         mouseWheel: true,
         pressedMouseMove: true,
-        horzTouchDrag: !coarse,
-        vertTouchDrag: false,
+        horzTouchDrag: true,
+        vertTouchDrag: freeMoveRef.current,
       },
       handleScale: {
-        axisPressedMouseMove: true,
+        axisPressedMouseMove: { time: true, price: true },
         mouseWheel: true,
         pinch: true,
+      },
+      kineticScroll: {
+        mouse: freeMoveRef.current,
+        touch: freeMoveRef.current || !mobile,
       },
     });
 
@@ -404,6 +469,8 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
     macdSignalRef.current = macdSignal;
     macdHistRef.current = macdHist;
 
+    applyMovementMode(chart, freeMoveRef.current, false, mainSeries);
+
     chart.subscribeCrosshairMove((param) => {
       if (coarse) return;
       const time = param.time as number | undefined;
@@ -427,6 +494,13 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
     };
 
     const observer = new ResizeObserver(() => {
+      if (container.clientWidth > 0 && container.clientHeight > 0) {
+        chart.resize(container.clientWidth, container.clientHeight);
+      }
+      if (!freeMoveRef.current) {
+        chart.timeScale().fitContent();
+      }
+      syncChartTouchAction(container, freeMoveRef.current);
       refreshMapper();
     });
     observer.observe(container);
@@ -434,16 +508,18 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
     const onRangeChange = () => refreshMapper();
     chart.timeScale().subscribeVisibleLogicalRangeChange(onRangeChange);
 
+    syncChartTouchAction(container, freeMoveRef.current);
+
     const blockPageScroll = (event: TouchEvent) => {
       if (event.touches.length >= 1) event.preventDefault();
     };
-    if (!coarse) {
+    if (!mobile) {
       container.addEventListener("touchmove", blockPageScroll, { passive: false });
     }
 
     return () => {
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(onRangeChange);
-      if (!coarse) container.removeEventListener("touchmove", blockPageScroll);
+      if (!mobile) container.removeEventListener("touchmove", blockPageScroll);
       observer.disconnect();
       overlaySeriesRef.current.clear();
       datasetRef.current = null;
@@ -458,6 +534,14 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
       chart.remove();
     };
   }, [overlayKey]);
+
+  useEffect(() => {
+    const chart = chartRef.current;
+    const container = containerRef.current;
+    if (!chart) return;
+    applyMovementMode(chart, freeMove, !freeMove, candleSeriesRef.current);
+    if (container) syncChartTouchAction(container, freeMove);
+  }, [freeMove]);
 
   useEffect(() => {
     const main = candleSeriesRef.current;
@@ -545,7 +629,7 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
     setProfile(overlays.volumeProfile ? volumeProfile(source) : []);
 
     const nextMark = markDataset(source);
-    if (shouldFitContent(datasetRef.current, nextMark)) {
+    if (!freeMoveRef.current && shouldFitContent(datasetRef.current, nextMark)) {
       chart.timeScale().fitContent();
     }
     datasetRef.current = nextMark;
@@ -651,7 +735,7 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
   const maxProfile = profile.reduce((max, bin) => Math.max(max, bin.volume), 0);
 
   return (
-    <div className="relative h-full min-h-0 w-full overflow-hidden overscroll-none">
+    <div className="relative h-full min-h-0 w-full overflow-hidden touch-pan-y max-lg:overscroll-y-auto lg:overscroll-none">
       <div ref={containerRef} className="chart-touch-surface h-full min-h-0 w-full" />
 
       {drawingTool !== "cursor" ? (

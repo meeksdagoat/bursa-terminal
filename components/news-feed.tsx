@@ -59,7 +59,7 @@ function NewsFeedInner({
   const pending = loading && shown.length === 0 && !error;
 
   return (
-    <aside className="flex h-full min-h-0 flex-col overflow-hidden bg-panel">
+    <aside className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-panel">
       <div className="flex min-h-11 shrink-0 items-center justify-between gap-2 border-b border-line px-2.5 md:h-7 md:min-h-0">
         <h2 className="truncate text-[10px] font-semibold tracking-[0.16em] text-amber-400/90 uppercase">
           {company ? `${companyName} News` : "Local Market News"}

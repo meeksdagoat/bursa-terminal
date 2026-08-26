@@ -25,32 +25,29 @@ html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
-  overscroll-behavior-y: none;
-}
-
-@media (min-width: 1024px) {
-  html:has([data-app-shell]),
-  body:has([data-app-shell]) {
-    height: 100%;
-    max-height: 100vh;
-    overflow: hidden;
-  }
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  overscroll-behavior-y: none;
 }
 
 .chart-touch-surface {
-  touch-action: pan-y;
-  overscroll-behavior: none;
+  touch-action: pan-y pinch-zoom;
+  overscroll-behavior: auto;
+}
+
+.chart-touch-surface canvas {
+  touch-action: pan-y pinch-zoom;
 }
 
 @media (min-width: 1024px) {
-  .chart-touch-surface {
-    touch-action: none;
+  html:has([data-app-shell]),
+  html:has([data-app-shell]) body {
+    height: 100%;
+    max-height: 100dvh;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 }
 

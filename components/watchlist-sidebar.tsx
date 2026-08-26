@@ -16,6 +16,7 @@ type WatchlistSidebarProps = {
   onSelect: (symbol: string) => void;
   onRemove: (symbol: string) => void;
   onBrowse: () => void;
+  onClose?: () => void;
   ticks?: Record<string, TickPulse>;
 };
 
@@ -26,6 +27,7 @@ function WatchlistSidebarInner({
   onSelect,
   onRemove,
   onBrowse,
+  onClose,
   ticks = {},
 }: WatchlistSidebarProps) {
   const shariahOnly = useShariahOnly();
@@ -55,17 +57,32 @@ function WatchlistSidebarInner({
   return (
     <aside className="flex h-full min-h-0 flex-col overflow-hidden bg-panel">
       <div className="flex min-h-11 shrink-0 items-center justify-between border-b border-line px-2.5 md:h-7 md:min-h-0">
-        <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
+        <h2
+          id="watchlist-heading"
+          className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90"
+        >
           Watchlist
         </h2>
-        <button
-          type="button"
-          onClick={onBrowse}
-          title="Browse and search all Bursa tickers"
-          className="min-h-11 rounded-sm border border-line px-3 font-mono text-[10px] tracking-wider text-neutral-500 hover:border-gain/40 hover:text-gain md:min-h-0 md:px-1.5 md:text-[9px]"
-        >
-          + ADD
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={onBrowse}
+            title="Browse and search all Bursa tickers"
+            className="min-h-11 rounded-sm border border-line px-3 font-mono text-[10px] tracking-wider text-neutral-500 hover:border-gain/40 hover:text-gain md:min-h-0 md:px-1.5 md:text-[9px]"
+          >
+            + ADD
+          </button>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close watchlist"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center font-mono text-[11px] text-neutral-500 hover:text-gain sm:hidden"
+            >
+              CLOSE
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {hidden > 0 ? (

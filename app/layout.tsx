@@ -31,10 +31,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} min-h-full antialiased`}
     >
-      {/* Landing and news desks scroll; the terminal pins itself to the viewport. */}
-      <body className="min-h-full overflow-x-hidden touch-pan-y bg-terminal font-sans text-neutral-200">
+      {/* Pages use normal document flow; compact shells lock themselves below lg. */}
+      <body className="min-h-full overflow-x-hidden overflow-y-auto touch-pan-y bg-terminal font-sans text-neutral-200">
         <KeyboardLayer />
         {children}
       </body>

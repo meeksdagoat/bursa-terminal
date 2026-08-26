@@ -43,8 +43,8 @@ const INTERVAL_CONFIG: Record<IntervalKey, IntervalConfig> = {
   "5m": { lookbackDays: 60, interval: "5m", intraday: true },
   "15m": { lookbackDays: 60, interval: "15m", intraday: true },
   "30m": { lookbackDays: 60, interval: "30m", intraday: true },
-  "1h": { lookbackDays: 60, interval: "60m", intraday: true },
-  "4h": { lookbackDays: 60, interval: "60m", intraday: true, bucketMinutes: 240 },
+  "1h": { lookbackDays: 90, interval: "60m", intraday: true },
+  "4h": { lookbackDays: 180, interval: "60m", intraday: true, bucketMinutes: 240 },
   "1D": { lookbackDays: 370, interval: "1d", intraday: false },
   "1W": { lookbackDays: 5 * 365, interval: "1wk", intraday: false },
 };

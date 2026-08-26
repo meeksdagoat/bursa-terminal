@@ -12,11 +12,14 @@ type SlideDrawerProps = {
   children: ReactNode;
   className?: string;
   bodyClassName?: string;
+  /** Extra classes for the chrome title row (e.g. `max-sm:hidden`). */
+  headerClassName?: string;
 };
 
 /**
  * Overlay drawer used for mobile/tablet side panes and the hamburger menu.
  * Body scroll is locked while open so the sheet, not the page, receives gestures.
+ * Stacks below full-screen modals (ticker picker `z-[60]`, command palette `z-[80]`).
  */
 export function SlideDrawer({
   open,
@@ -27,6 +30,7 @@ export function SlideDrawer({
   children,
   className = "",
   bodyClassName = "overflow-hidden",
+  headerClassName = "",
 }: SlideDrawerProps) {
   useBodyScrollLock(open);
 
@@ -51,7 +55,7 @@ export function SlideDrawer({
         : "inset-y-0 right-0 w-[min(340px,90vw)] border-l";
 
   return (
-    <div className="fixed inset-0 z-[80]" data-drawer-open="">
+    <div className="fixed inset-0 z-40" data-drawer-open="">
       <button
         type="button"
         aria-label="Close drawer"
@@ -66,7 +70,9 @@ export function SlideDrawer({
         className={`absolute flex flex-col overflow-hidden border-line bg-panel shadow-2xl modal-overscroll ${panel} ${className}`}
       >
         {title ? (
-          <div className="flex h-11 shrink-0 items-center justify-between border-b border-line px-3">
+          <div
+            className={`flex h-11 shrink-0 items-center justify-between border-b border-line px-3 ${headerClassName}`}
+          >
             <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
               {title}
             </h2>

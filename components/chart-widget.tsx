@@ -20,6 +20,7 @@ import type { JargonTerm } from "@/lib/jargon";
 import {
   CHART_TIMEFRAMES,
   CHART_TYPES,
+  chartTimeframeRequest,
   type ChartTimeframe,
   type ChartType,
 } from "@/lib/ranges";
@@ -81,16 +82,21 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
   const [chartType, setChartType] = useState<ChartType>("candlestick");
   const [overlays, setOverlays] = useState<ChartOverlays>(EMPTY_OVERLAYS);
   const [drawingTool, setDrawingTool] = useState<DrawingTool>("cursor");
+  const [freeMove, setFreeMove] = useState(false);
   const quote = row.quote;
   const priceFlash = usePriceFlash(row.symbol, ticks);
 
-  const url = `/api/candles?symbol=${encodeURIComponent(row.symbol)}&range=${timeframe}`;
+  const candleQuery = chartTimeframeRequest(timeframe);
+  const url = `/api/candles?symbol=${encodeURIComponent(row.symbol)}&${candleQuery.param}=${candleQuery.value}`;
   const { data, error } = useLiveData<CandlesPayload>(url, REFRESH_MS);
 
-  const stale = data?.symbol !== row.symbol || data?.range !== timeframe;
+  const payloadMatches =
+    data != null &&
+    data.symbol === row.symbol &&
+    (data.range === candleQuery.value || data.interval === candleQuery.value);
+  const stale = !payloadMatches;
   const candles = useMemo(() => {
-    const raw =
-      data && data.symbol === row.symbol && data.range === timeframe ? data.candles : [];
+    const raw = payloadMatches && data ? data.candles : [];
     const last = quote?.price;
     if (raw.length === 0 || last == null) return raw;
     const tail = raw[raw.length - 1];
@@ -103,7 +109,7 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
         low: Math.min(tail.low, last),
       },
     ];
-  }, [data, row.symbol, timeframe, quote?.price]);
+  }, [data, payloadMatches, quote?.price]);
 
   const rangeChangePct = useMemo(() => {
     if (candles.length < 2) return null;
@@ -190,6 +196,9 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
                 key={key}
                 type="button"
                 onClick={() => setTimeframe(key)}
+                title={
+                  key === "1H" ? "60-minute candles" : key === "4H" ? "240-minute candles" : undefined
+                }
                 className={`shrink-0 px-2 py-1 font-mono text-[11px] tracking-wider transition-colors sm:px-1.5 sm:py-0.5 sm:text-[10px] ${
                   timeframe === key
                     ? "bg-[#1f1f1f] text-amber-400"
@@ -243,6 +252,27 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
               </button>
             ))}
           </div>
+
+          <span className="h-3.5 w-px shrink-0 bg-line" />
+
+          <button
+            type="button"
+            aria-pressed={freeMove}
+            aria-label={freeMove ? "Free move on. Switch to auto scale." : "Auto scale on. Enable free move."}
+            title={
+              freeMove
+                ? "Free pan and manual price scale. Click to auto-fit."
+                : "Fit price scale to data. Click to pan freely."
+            }
+            onClick={() => setFreeMove((current) => !current)}
+            className={`shrink-0 px-2 py-1 font-mono text-[11px] tracking-wider transition-colors sm:px-1.5 sm:py-0.5 sm:text-[10px] ${
+              freeMove
+                ? "bg-[#1f1f1f] text-amber-400"
+                : "text-neutral-500 hover:text-neutral-300"
+            }`}
+          >
+            {freeMove ? "✥ FREE MOVE" : "AUTO SCALE"}
+          </button>
         </div>
 
         {rangeChangePct != null ? (
@@ -272,7 +302,7 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
         ))}
       </div>
 
-      <div className="relative flex min-h-0 flex-1 overflow-hidden overscroll-none bg-[#0a0a0a] max-lg:h-[40vh] max-lg:min-h-[280px] max-lg:max-h-[380px] max-lg:flex-none">
+      <div className="relative flex min-h-0 flex-1 overflow-hidden bg-[#0a0a0a] touch-pan-y max-lg:h-[40vh] max-lg:min-h-[280px] max-lg:max-h-[380px] max-lg:flex-none max-lg:overscroll-y-auto lg:min-h-0 lg:overscroll-none">
         <div className="z-20 flex w-11 shrink-0 flex-col items-center gap-1 border-r border-line bg-[#101010] py-2 md:w-9">
           {TOOLS.map((tool) => (
             <button
@@ -302,6 +332,7 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
                 chartType={chartType}
                 overlays={overlays}
                 drawingTool={drawingTool}
+                freeMove={freeMove}
                 onDrawingComplete={() => setDrawingTool("cursor")}
               />
               {candles.length === 0 ? (
@@ -315,7 +346,7 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
           )}
 
           <div className="pointer-events-none absolute bottom-1.5 right-2 font-mono text-[9px] text-neutral-700">
-            YAHOO FINANCE · {data?.range ?? timeframe} · BURSA MAIN
+            YAHOO FINANCE · {timeframe} · BURSA MAIN
           </div>
         </div>
       </div>

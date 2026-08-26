@@ -46,7 +46,7 @@ function IntelPanelInner({ symbol, companyName, companyShariah }: IntelPanelProp
 
   return (
     <section className="flex h-full min-h-0 flex-col bg-panel">
-      <div className="flex min-h-11 shrink-0 items-center overflow-x-auto scrollbar-none snap-x border-b border-line md:h-7 md:min-h-0">
+      <div className="no-scrollbar flex min-h-11 shrink-0 items-center overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-none snap-x border-b border-line md:h-7 md:min-h-0">
         <TabButton
           active={tab === "performance"}
           onClick={() => setTab("performance")}

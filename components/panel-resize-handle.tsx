@@ -17,10 +17,11 @@ export function PanelSplitter({ direction = "horizontal", className }: PanelSpli
 
   return (
     <PanelResizeHandle
+      aria-label={vertical ? "Resize chart and tables" : "Resize columns"}
       className={
         className ??
         (vertical
-          ? "h-3 shrink-0 cursor-row-resize bg-line transition-colors hover:bg-amber-500/50 data-[resize-handle-state=hover]:bg-amber-500/50 data-[resize-handle-state=drag]:bg-amber-500/70 md:h-1.5"
+          ? "h-2 shrink-0 cursor-row-resize bg-line transition-colors hover:bg-amber-500/50 data-[resize-handle-state=hover]:bg-amber-500/50 data-[resize-handle-state=drag]:bg-amber-500/70"
           : "w-3 shrink-0 cursor-col-resize bg-line transition-colors hover:bg-amber-500/50 data-[resize-handle-state=hover]:bg-amber-500/50 data-[resize-handle-state=drag]:bg-amber-500/70 md:w-1.5")
       }
     />
