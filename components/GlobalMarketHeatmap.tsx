@@ -32,10 +32,12 @@ export function GlobalMarketHeatmap() {
 
     let cancelled = false;
     const container = document.createElement("div");
-    container.className = "tradingview-widget-container";
+    container.className = "tradingview-widget-container relative h-full w-full overflow-hidden";
+    container.style.cssText = "position:relative;width:100%;height:100%;overflow:hidden;";
 
     const widget = document.createElement("div");
-    widget.className = "tradingview-widget-container__widget";
+    widget.className = "tradingview-widget-container__widget relative h-full w-full";
+    widget.style.cssText = "position:relative;width:100%;height:100%;";
     container.append(widget);
     host.replaceChildren(container);
 
@@ -57,8 +59,8 @@ export function GlobalMarketHeatmap() {
   }, []);
 
   return (
-    <section className="flex h-auto min-w-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d] lg:h-full lg:min-h-0">
-      <header className="shrink-0 border-b border-neutral-800 p-3 sm:px-3 sm:py-2">
+    <section className="relative flex h-[400px] w-full min-w-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d] sm:h-[500px] lg:h-full lg:min-h-0">
+      <header className="relative z-10 shrink-0 border-b border-neutral-800 p-3 sm:px-3 sm:py-2">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           S&P 500 Heatmap
         </h3>
@@ -67,7 +69,7 @@ export function GlobalMarketHeatmap() {
       <div
         ref={hostRef}
         data-tv-heatmap
-        className="min-h-[180px] w-full flex-1 overflow-hidden bg-transparent sm:min-h-[220px] [&_.tradingview-widget-container]:h-full [&_.tradingview-widget-container]:w-full [&_.tradingview-widget-container__widget]:h-full [&_iframe]:block [&_iframe]:h-full [&_iframe]:w-full"
+        className="relative isolate block h-full min-h-0 w-full flex-1 overflow-hidden bg-transparent [&_.tradingview-widget-container]:relative [&_.tradingview-widget-container]:h-full [&_.tradingview-widget-container]:w-full [&_.tradingview-widget-container]:overflow-hidden [&_.tradingview-widget-container__widget]:relative [&_.tradingview-widget-container__widget]:h-full [&_.tradingview-widget-container__widget]:w-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:block [&_iframe]:!h-full [&_iframe]:!w-full [&_iframe]:max-h-full [&_iframe]:max-w-full [&_iframe]:border-0"
         aria-label="S&P 500 sector heatmap"
       />
     </section>

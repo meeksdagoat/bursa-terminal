@@ -41,12 +41,6 @@ const StockCandlestickChart = dynamic(
 
 const REFRESH_MS = 15 * 1000;
 
-const CHART_TYPE_LABEL: Record<ChartType, string> = {
-  candlestick: "Candlestick",
-  line: "Line",
-  "heikin-ashi": "Heikin-Ashi",
-};
-
 const CHART_TYPE_SHORT: Record<ChartType, string> = {
   candlestick: "Candle",
   line: "Line",
@@ -157,7 +151,7 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
             </div>
           </div>
 
-          <div className="flex min-w-0 flex-col items-start gap-1.5 sm:items-end">
+          <div className="flex w-full min-w-0 flex-col items-start gap-1.5 sm:w-auto sm:min-w-0 sm:flex-1 sm:items-end">
             <TapHint text={SHARIAH_SOURCE} title="Screening" align="right">
               <span
                 className={`rounded-sm border px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] ${
@@ -169,7 +163,10 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
                 {row.shariah ? "Shariah compliant" : "Non-Shariah"}
               </span>
             </TapHint>
-            <dl className="grid grid-cols-3 gap-px border border-line bg-line">
+            <dl
+              id="chart-metrics-row"
+              className="flex w-full min-w-0 flex-nowrap items-stretch gap-px overflow-hidden border border-line bg-line"
+            >
               <Stat label="P/E" term="pe" value={formatRatio(quote?.pe)} />
               <Stat label="Mkt Cap" term="marketCap" value={formatMarketCap(quote?.marketCap)} />
               <Stat
@@ -177,102 +174,57 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
                 term="dividendYield"
                 value={quote?.dividendYieldPct != null ? `${quote.dividendYieldPct.toFixed(1)}%` : "—"}
               />
+              <WeekRangeBar
+                low={quote?.yearLow ?? null}
+                high={quote?.yearHigh ?? null}
+                last={quote?.price ?? null}
+              />
             </dl>
           </div>
         </div>
-
-        <WeekRangeBar
-          low={quote?.yearLow ?? null}
-          high={quote?.yearHigh ?? null}
-          last={quote?.price ?? null}
-        />
       </div>
 
       <div className="flex items-center gap-2 border-b border-line px-2 py-1">
-        <div className="no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-2 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-none">
-          <div className="flex shrink-0 items-center" role="group" aria-label="Chart timeframe">
-            {CHART_TIMEFRAMES.map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setTimeframe(key)}
-                title={
-                  key === "1H" ? "60-minute candles" : key === "4H" ? "240-minute candles" : undefined
-                }
-                className={`shrink-0 px-2 py-1 font-mono text-[11px] tracking-wider transition-colors sm:px-1.5 sm:py-0.5 sm:text-[10px] ${
-                  timeframe === key
-                    ? "bg-[#1f1f1f] text-amber-400"
-                    : "text-neutral-500 hover:text-neutral-300"
-                }`}
-              >
-                {key}
-              </button>
-            ))}
-          </div>
-
-          <span className="h-3.5 w-px shrink-0 bg-line" />
-
-          <div className="relative shrink-0 sm:hidden">
-            <label className="sr-only" htmlFor="chart-type-mobile">
-              Chart type
-            </label>
-            <select
-              id="chart-type-mobile"
-              value={chartType}
-              onChange={(event) => setChartType(event.target.value as ChartType)}
-              className="max-w-[5.75rem] appearance-none rounded-sm border border-line bg-[#0d0d0d] py-1 pr-5 pl-2 font-mono text-[11px] text-neutral-300"
-            >
-              {CHART_TYPES.map((key) => (
-                <option key={key} value={key}>
-                  {CHART_TYPE_SHORT[key]}
-                </option>
-              ))}
-            </select>
-            <span
-              className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 font-mono text-[8px] text-neutral-500"
-              aria-hidden
-            >
-              ▾
-            </span>
-          </div>
-
-          <div className="hidden shrink-0 items-center sm:flex" role="group" aria-label="Chart type">
-            {CHART_TYPES.map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setChartType(key)}
-                className={`shrink-0 px-2 py-1 font-mono text-[10px] tracking-wider sm:px-1.5 sm:py-0.5 ${
-                  chartType === key
-                    ? "bg-[#1f1f1f] text-amber-400"
-                    : "text-neutral-500 hover:text-neutral-300"
-                }`}
-              >
-                {CHART_TYPE_LABEL[key]}
-              </button>
-            ))}
-          </div>
-
-          <span className="h-3.5 w-px shrink-0 bg-line" />
-
-          <button
-            type="button"
-            aria-pressed={freeMove}
-            aria-label={freeMove ? "Free move on. Switch to auto scale." : "Auto scale on. Enable free move."}
+        <div className="no-scrollbar flex min-w-0 flex-1 flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-none">
+          <ChartToolbarSelect
+            id="chart-timeframe"
+            label="Timeframe"
+            value={timeframe}
+            title={
+              timeframe === "1H"
+                ? "60-minute candles"
+                : timeframe === "4H"
+                  ? "240-minute candles"
+                  : "Chart timeframe"
+            }
+            options={CHART_TIMEFRAMES.map((key) => ({ value: key, label: key }))}
+            onChange={setTimeframe}
+          />
+          <ChartToolbarSelect
+            id="chart-type"
+            label="Chart type"
+            value={chartType}
+            options={CHART_TYPES.map((key) => ({
+              value: key,
+              label: CHART_TYPE_SHORT[key],
+            }))}
+            onChange={setChartType}
+          />
+          <ChartToolbarSelect
+            id="chart-scale-mode"
+            label="Scale mode"
+            value={freeMove ? "free" : "auto"}
             title={
               freeMove
-                ? "Free pan and manual price scale. Click to auto-fit."
-                : "Fit price scale to data. Click to pan freely."
+                ? "Free pan and manual price scale"
+                : "Fit price scale to data"
             }
-            onClick={() => setFreeMove((current) => !current)}
-            className={`shrink-0 px-2 py-1 font-mono text-[11px] tracking-wider transition-colors sm:px-1.5 sm:py-0.5 sm:text-[10px] ${
-              freeMove
-                ? "bg-[#1f1f1f] text-amber-400"
-                : "text-neutral-500 hover:text-neutral-300"
-            }`}
-          >
-            {freeMove ? "✥ FREE MOVE" : "AUTO SCALE"}
-          </button>
+            options={[
+              { value: "auto", label: "Auto Scale" },
+              { value: "free", label: "Free Move" },
+            ]}
+            onChange={(mode) => setFreeMove(mode === "free")}
+          />
         </div>
 
         {rangeChangePct != null ? (
@@ -354,15 +306,58 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
   );
 }
 
+function ChartToolbarSelect<T extends string>({
+  id,
+  label,
+  value,
+  options,
+  onChange,
+  title,
+}: {
+  id: string;
+  label: string;
+  value: T;
+  options: { value: T; label: string }[];
+  onChange: (value: T) => void;
+  title?: string;
+}) {
+  return (
+    <div className="relative shrink-0">
+      <label className="sr-only" htmlFor={id}>
+        {label}
+      </label>
+      <select
+        id={id}
+        value={value}
+        title={title ?? label}
+        onChange={(event) => onChange(event.target.value as T)}
+        className="appearance-none rounded-sm border border-line bg-[#0d0d0d] py-1 pr-5 pl-2 font-mono text-xs whitespace-nowrap text-neutral-300"
+      >
+        {options.map((option) => (
+          <option key={option.value} value={option.value}>
+            {option.label}
+          </option>
+        ))}
+      </select>
+      <span
+        className="pointer-events-none absolute top-1/2 right-1.5 -translate-y-1/2 font-mono text-[8px] text-neutral-500"
+        aria-hidden
+      >
+        ▾
+      </span>
+    </div>
+  );
+}
+
 function Stat({ label, term, value }: { label: string; term: JargonTerm; value: string }) {
   return (
-    <div className="min-w-0 bg-panel px-2 py-1 sm:min-w-[92px] sm:px-3 sm:py-1.5">
+    <div className="shrink-0 bg-panel px-1.5 py-1 sm:min-w-[92px] sm:px-3 sm:py-1.5">
       <dt className="text-[9px] uppercase tracking-wider text-neutral-500">
         <Jargon term={term} align="right" className="min-h-0! sm:min-h-0">
           {label}
         </Jargon>
       </dt>
-      <dd className="font-mono text-[11px] text-neutral-100 sm:text-[12px]">{value}</dd>
+      <dd className="font-mono text-[11px] whitespace-nowrap text-neutral-100 sm:text-[12px]">{value}</dd>
     </div>
   );
 }
@@ -380,24 +375,24 @@ function WeekRangeBar({
   const pct = ready ? Math.min(100, Math.max(0, ((last - low) / (high - low)) * 100)) : 50;
 
   return (
-    <div className="flex items-center gap-2 border-t border-line px-3 py-1">
-      <span className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-        <Jargon term="week52" className="min-h-0!">
-          52W
+    <div id="chart-week-range" className="flex min-w-0 flex-1 flex-col justify-center bg-panel px-1.5 py-1 sm:px-3 sm:py-1.5">
+      <dt className="text-[9px] uppercase tracking-wider text-neutral-500">
+        <Jargon term="week52" align="right" className="min-h-0!">
+          52W Range
         </Jargon>
-      </span>
-      <span className="w-10 shrink-0 font-mono text-[10px] text-neutral-400 sm:w-12">{formatPrice(low)}</span>
-      <div className="relative h-1 min-w-0 flex-1 rounded-sm bg-[#1f1f1f] sm:h-1.5">
-        {ready ? (
-          <span
-            className="absolute top-1/2 h-2 w-0.5 -translate-y-1/2 bg-amber-400 sm:h-2.5"
-            style={{ left: `${pct}%` }}
-          />
-        ) : null}
-      </div>
-      <span className="w-10 shrink-0 text-right font-mono text-[10px] text-neutral-400 sm:w-12">
-        {formatPrice(high)}
-      </span>
+      </dt>
+      <dd className="mt-0.5 flex min-w-0 items-center gap-1 font-mono text-[10px] tabular-nums whitespace-nowrap text-neutral-400">
+        <span className="shrink-0">{formatPrice(low)}</span>
+        <div className="relative h-1 min-w-[1.25rem] flex-1 rounded-sm bg-[#1f1f1f] sm:h-1.5">
+          {ready ? (
+            <span
+              className="absolute top-1/2 h-2 w-0.5 -translate-y-1/2 bg-amber-400 sm:h-2.5"
+              style={{ left: `${pct}%` }}
+            />
+          ) : null}
+        </div>
+        <span className="shrink-0">{formatPrice(high)}</span>
+      </dd>
     </div>
   );
 }

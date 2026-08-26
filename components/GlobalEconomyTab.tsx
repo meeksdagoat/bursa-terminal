@@ -45,18 +45,18 @@ export function GlobalEconomyTab({
           </p>
         </div>
 
-        <div className="grid min-h-0 grid-cols-1 gap-3 p-3 sm:p-5 lg:min-h-[220px] lg:flex-1 lg:grid-cols-3 lg:gap-4 lg:overflow-y-auto lg:p-3">
-          <div className="min-h-0 min-w-0">
+        <div className="grid h-auto w-full shrink-0 grid-cols-1 gap-6 p-3 sm:p-5 lg:min-h-[220px] lg:flex-1 lg:shrink lg:grid-cols-3 lg:gap-4 lg:overflow-y-auto lg:p-3">
+          <div className="relative min-w-0 lg:min-h-0">
             <MacroCurrencyMatrix markets={snapshot?.markets ?? []} bnm={bnm} cpo={cpo} />
           </div>
-          <div className="min-h-0 min-w-0">
+          <div className="relative min-w-0 lg:min-h-0">
             <GlobalPolicyMatrix
               rates={snapshot?.rates ?? []}
               opr={bnm?.opr ?? null}
               malaysiaCpi={malaysia?.cpi ?? null}
             />
           </div>
-          <div className="flex min-h-[180px] min-w-0 flex-col sm:min-h-[220px] lg:min-h-0 lg:overflow-hidden">
+          <div className="relative mb-6 block w-full min-w-0 clear-both overflow-hidden lg:mb-0 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
             <GlobalMarketHeatmap />
           </div>
         </div>
