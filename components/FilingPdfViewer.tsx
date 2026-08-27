@@ -13,6 +13,8 @@ type FilingPdfViewerProps = {
 
 type LoadState = "loading" | "ready" | "failed";
 
+const PROXY_TIMEOUT_MS = 12_000;
+
 function blobLooksLikePdf(blob: Blob): Promise<boolean> {
   return blob.slice(0, 8).arrayBuffer().then((buffer) => {
     const head = new Uint8Array(buffer);
@@ -33,7 +35,7 @@ function blobLooksLikePdf(blob: Blob): Promise<boolean> {
 
 /**
  * Loads the same-origin proxy as a blob and embeds it. Bursa blocks Google Docs
- * embeds and often 403s datacenter proxies — never auto-failover to Google.
+ * embeds and often 403s/timeouts datacenter proxies — never auto-failover to Google.
  */
 export function FilingPdfViewer({
   pdfUrl,
@@ -53,7 +55,10 @@ export function FilingPdfViewer({
 
     async function load() {
       try {
-        const response = await fetch(pdfUrl, { cache: "no-store" });
+        const response = await fetch(pdfUrl, {
+          cache: "no-store",
+          signal: AbortSignal.timeout(PROXY_TIMEOUT_MS),
+        });
         if (cancelled) return;
 
         if (!response.ok) {
@@ -91,24 +96,40 @@ export function FilingPdfViewer({
     };
   }, [pdfUrl]);
 
-  if (state === "failed") {
-    return (
-      <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-1.5">
-          <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
-            Preview
-          </span>
-          <span className="font-mono text-[9px] uppercase tracking-wider text-amber-300">
-            Proxy blocked by Bursa
-          </span>
-        </div>
+  return (
+    <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-1.5">
+        <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+          {state === "loading"
+            ? "Loading proxy…"
+            : state === "ready"
+              ? "Proxy preview"
+              : "Preview unavailable"}
+        </span>
+        <a
+          href={openHref}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="font-mono text-[9px] uppercase tracking-wider text-emerald-400 hover:underline"
+        >
+          Open PDF in browser ↗
+        </a>
+      </div>
+
+      {state === "ready" && blobUrl ? (
+        <iframe
+          title={title}
+          src={blobUrl}
+          className="h-full w-full flex-1 border-0 bg-[#0d0d0d]"
+        />
+      ) : state === "failed" ? (
         <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
-          <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-            In-app preview unavailable
+          <p className="font-mono text-[10px] uppercase tracking-wider text-amber-300">
+            Proxy blocked by Bursa
           </p>
           <p className="max-w-sm text-[12px] leading-snug text-neutral-400">
-            Bursa is blocking the server proxy. Open the PDF in Chrome instead — that uses your
-            PC&apos;s connection.
+            In-app preview cannot load this filing (403 / timeout). Open it in Chrome with your own
+            connection instead.
           </p>
           <a
             href={openHref}
@@ -119,39 +140,19 @@ export function FilingPdfViewer({
             Open PDF in browser ↗
           </a>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-1.5">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
-          {state === "loading" ? "Loading PDF…" : "Proxy preview"}
-        </span>
-        {upstreamPdfUrl ? (
-          <a
-            href={upstreamPdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-[9px] uppercase tracking-wider text-neutral-500 hover:text-gain"
-          >
-            Open direct ↗
-          </a>
-        ) : null}
-      </div>
-
-      {state === "ready" && blobUrl ? (
-        <iframe
-          title={title}
-          src={blobUrl}
-          className="h-full w-full flex-1 border-0 bg-[#0d0d0d]"
-        />
       ) : (
-        <div className="flex flex-1 items-center justify-center">
+        <div className="flex flex-1 flex-col items-center justify-center gap-3 px-6 text-center">
           <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-600">
             Fetching filing…
           </p>
+          <a
+            href={openHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-emerald-400"
+          >
+            Don&apos;t wait — open PDF ↗
+          </a>
         </div>
       )}
     </div>

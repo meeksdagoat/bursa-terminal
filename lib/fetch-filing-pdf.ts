@@ -112,8 +112,10 @@ async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
     await runCurl([
       "-sS",
       "-L",
+      "--connect-timeout",
+      "8",
       "--max-time",
-      "15",
+      "12",
       "-A",
       USER_AGENT,
       "-c",
@@ -131,8 +133,10 @@ async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
       "-sS",
       "-L",
       "--fail",
+      "--connect-timeout",
+      "8",
       "--max-time",
-      "25",
+      "18",
       "--max-filesize",
       String(MAX_BYTES),
       "-A",
@@ -190,7 +194,7 @@ async function fetchPdfViaHttp(target: URL): Promise<{ body: ArrayBuffer; filena
       },
       cache: "no-store",
       redirect: "follow",
-      signal: AbortSignal.timeout(10_000),
+      signal: AbortSignal.timeout(8_000),
     });
   } catch {
     // Warm-up is best-effort.
@@ -208,7 +212,7 @@ async function fetchPdfViaHttp(target: URL): Promise<{ body: ArrayBuffer; filena
     },
     cache: "no-store",
     redirect: "follow",
-    signal: AbortSignal.timeout(25_000),
+    signal: AbortSignal.timeout(15_000),
   });
 
   if (!response.ok) {
