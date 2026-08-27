@@ -23,9 +23,10 @@ const FILTERS: { id: "all" | AnnouncementKind; label: string }[] = [
 type AnnouncementsDrawerProps = {
   activeTicker: string;
   activeCompany: string;
+  onClose?: () => void;
 };
 
-export function AnnouncementsDrawer({ activeTicker, activeCompany }: AnnouncementsDrawerProps) {
+export function AnnouncementsDrawer({ activeTicker, activeCompany, onClose }: AnnouncementsDrawerProps) {
   const url = `/api/bursa/filings?symbol=${encodeURIComponent(activeTicker)}`;
   const feed = useLiveData<CompanyFilingsPayload>(url, REFRESH_MS);
   const shariahOnly = useShariahOnly();
@@ -57,9 +58,21 @@ export function AnnouncementsDrawer({ activeTicker, activeCompany }: Announcemen
         <h2 className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
           Bursa filings · {activeTicker}
         </h2>
-        <span className={`shrink-0 font-mono text-[9px] ${feed.error ? "text-loss" : "text-neutral-600"}`}>
-          {feed.error ? "FEED ERROR" : pending ? <CountPulse /> : items.length}
-        </span>
+        <div className="flex shrink-0 items-center gap-2">
+          <span className={`font-mono text-[9px] ${feed.error ? "text-loss" : "text-neutral-600"}`}>
+            {feed.error ? "FEED ERROR" : pending ? <CountPulse /> : items.length}
+          </span>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close filings"
+              className="inline-flex min-h-11 min-w-11 items-center justify-center font-mono text-[11px] text-neutral-500 hover:text-gain lg:hidden"
+            >
+              CLOSE
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex shrink-0 gap-1 overflow-x-auto scrollbar-none border-b border-line px-2 py-1.5">
@@ -89,7 +102,7 @@ export function AnnouncementsDrawer({ activeTicker, activeCompany }: Announcemen
         </p>
       ) : null}
 
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y">
         {pending ? (
           <NewsFeedSkeleton />
         ) : (

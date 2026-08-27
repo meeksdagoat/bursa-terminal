@@ -45,7 +45,7 @@ export function FinancialStatements({ symbol, companyName }: FinancialStatements
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden">
-      <div className="flex w-full items-center justify-between gap-3 overflow-hidden border-b border-line px-4 py-2">
+      <div className="no-scrollbar flex w-full items-center justify-between gap-2 overflow-x-auto border-b border-line px-3 py-2 sm:px-4">
         <div role="tablist" aria-label="Reporting period" className="flex shrink-0 items-center">
           <PeriodTab
             label="Annual"
@@ -58,7 +58,7 @@ export function FinancialStatements({ symbol, companyName }: FinancialStatements
             onSelect={() => setPeriod("quarterly")}
           />
         </div>
-        <p className="ml-auto mr-2 shrink-0 whitespace-nowrap font-mono text-xs uppercase tracking-wider text-neutral-400">
+        <p className="shrink-0 whitespace-nowrap font-mono text-xs uppercase tracking-wider text-neutral-400">
           {payload
             ? `YAHOO · ${payload.currency} · ${payload.symbol}`
             : `HISTORICAL STATEMENTS · ${symbol}`}

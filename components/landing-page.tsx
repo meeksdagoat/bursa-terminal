@@ -328,7 +328,7 @@ export function LandingPage() {
               <span className="text-[12px] font-semibold tracking-[0.22em] text-gain">TERMINAL</span>
             </p>
             <p className="mt-2 text-xs text-neutral-600">
-              © {new Date().getFullYear()} Bursa Terminal. Delayed quotes · not investment advice.
+              © {new Date().getFullYear()} Bursa Terminal. Bursa Terminal is an independent market data interface and is not affiliated with, endorsed by, or connected to Bursa Malaysia Berhad.
             </p>
           </div>
           <nav className="flex flex-wrap gap-x-5 gap-y-2 text-sm text-neutral-400">

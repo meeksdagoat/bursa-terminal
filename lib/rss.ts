@@ -127,6 +127,7 @@ export async function fetchRss(url: string, limit: number): Promise<RssItem[]> {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "application/rss+xml, application/xml;q=0.9, text/xml;q=0.8, */*;q=0.5",
+      "Accept-Language": "en-MY,en;q=0.9",
     },
     cache: "no-store",
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
@@ -137,6 +138,46 @@ export async function fetchRss(url: string, limit: number): Promise<RssItem[]> {
   }
 
   return parseRss(await response.text(), limit);
+}
+
+/** Try each URL until one returns items. Google News 503s are common; Yahoo/Reuters are backups. */
+export async function fetchRssWithFallback(
+  urls: string[],
+  limit: number,
+  errors: string[],
+): Promise<RssItem[]> {
+  for (const url of urls) {
+    try {
+      const items = await fetchRss(url, limit);
+      if (items.length > 0) return items;
+      errors.push(`${hostOf(url)} returned an empty channel`);
+    } catch (error) {
+      errors.push(`${hostOf(url)}: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  return [];
+}
+
+function hostOf(url: string): string {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+}
+
+export function yahooNewsRss(path: "world" | "politics" | "business" | "malaysia"): string {
+  if (path === "malaysia") return "https://malaysia.news.yahoo.com/rss/";
+  if (path === "business") return "https://finance.yahoo.com/news/rssindex";
+  return `https://news.yahoo.com/rss/${path}`;
+}
+
+export function reutersBusinessRss(): string {
+  return "https://www.reutersagency.com/feed/?best-topics=business-finance&post_type=best";
+}
+
+export function reutersWorldRss(): string {
+  return "https://www.reutersagency.com/feed/?best-topics=political-general&post_type=best";
 }
 
 export async function fetchHtml(

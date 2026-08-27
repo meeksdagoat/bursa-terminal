@@ -11,6 +11,7 @@ import {
 } from "./rss";
 import type { CompanyNewsPayload, NewsItem, UniverseEntry } from "./types";
 import { fetchTickerNews } from "./yahoo";
+import { NEWS_WINDOW_DAYS } from "./news-window";
 
 /**
  * Single-company news. Google News is queried on the name the press actually
@@ -18,8 +19,8 @@ import { fetchTickerNews } from "./yahoo";
  * ticker's panel cannot fill up with unrelated sector stories.
  */
 
-const PER_FEED_LIMIT = 20;
-const MAX_ITEMS = 24;
+const PER_FEED_LIMIT = 40;
+const MAX_ITEMS = 80;
 
 /**
  * Aliases for names where the exchange short name is not what newsrooms print:
@@ -278,10 +279,10 @@ export async function getCompanyNews(entry: UniverseEntry): Promise<CompanyNewsP
       errors.push(error instanceof Error ? error.message : String(error));
       return [];
     }),
-    loadFeed(googleNewsUrl(`"${query}"`, { withinDays: 60 }), errors),
+    loadFeed(googleNewsUrl(`"${query}"`, { withinDays: NEWS_WINDOW_DAYS }), errors),
     loadFeed(
       googleNewsUrl(`"${query}" ${entry.code} (Bursa OR Berhad OR shares OR earnings)`, {
-        withinDays: 180,
+        withinDays: NEWS_WINDOW_DAYS,
       }),
       errors,
     ),
@@ -327,7 +328,7 @@ export async function getCompanyNews(entry: UniverseEntry): Promise<CompanyNewsP
   const trimmed = items.slice(0, MAX_ITEMS);
 
   if (trimmed.length === 0 && errors.length > 0) {
-    throw new Error(errors.join("; "));
+    throw new Error("live-wire-unavailable");
   }
 
   return {

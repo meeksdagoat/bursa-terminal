@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
-import { cached } from "@/lib/cache";
+import { cachedKeepLast } from "@/lib/cache";
 import { DEFAULT_CATEGORY, isHeadlineCategory } from "@/lib/categories";
+import { fallbackHeadlinesPayload } from "@/lib/news-fallback";
 import { getHeadlines } from "@/lib/headlines";
 
 export const runtime = "nodejs";
@@ -14,10 +15,9 @@ export async function GET(request: NextRequest) {
   const category = isHeadlineCategory(requested) ? requested : DEFAULT_CATEGORY;
 
   try {
-    const payload = await cached(`headlines:v5:${category}`, TTL_MS, () => getHeadlines(category));
+    const payload = await cachedKeepLast(`headlines:v6:${category}`, TTL_MS, () => getHeadlines(category));
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "Unknown error";
-    return Response.json({ error: `Headline request failed: ${detail}` }, { status: 502 });
+  } catch {
+    return Response.json(fallbackHeadlinesPayload(category), { headers: { "Cache-Control": "no-store" } });
   }
 }

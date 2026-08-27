@@ -1,6 +1,7 @@
 import "server-only";
 
 import { fetchRss, googleNewsUrl, headlineKey, stripPublisherSuffix } from "./rss";
+import { NEWS_WINDOW_DAYS } from "./news-window";
 import type { MacroItem, MacroPayload, MacroSource } from "./types";
 
 /**
@@ -26,7 +27,7 @@ async function loadFeed(
   errors: string[],
 ): Promise<MacroItem[]> {
   try {
-    const entries = await fetchRss(googleNewsUrl(query), PER_FEED_LIMIT);
+    const entries = await fetchRss(googleNewsUrl(query, { withinDays: NEWS_WINDOW_DAYS }), PER_FEED_LIMIT);
 
     return entries.slice(0, PER_SOURCE_ITEMS).map((entry) => {
       const title = stripPublisherSuffix(entry.title, entry.publisher);

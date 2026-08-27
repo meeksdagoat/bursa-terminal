@@ -1,4 +1,5 @@
-import { cached } from "@/lib/cache";
+import { cachedKeepLast } from "@/lib/cache";
+import { fallbackNewsPayload } from "@/lib/news-fallback";
 import { getNewsSnapshot } from "@/lib/news";
 
 export const runtime = "nodejs";
@@ -9,10 +10,9 @@ const TTL_MS = 5 * 60 * 1000;
 
 export async function GET() {
   try {
-    const payload = await cached("news:v2", TTL_MS, getNewsSnapshot);
+    const payload = await cachedKeepLast("news:v3", TTL_MS, getNewsSnapshot);
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "Unknown error";
-    return Response.json({ error: `News request failed: ${detail}` }, { status: 502 });
+  } catch {
+    return Response.json(fallbackNewsPayload(), { headers: { "Cache-Control": "no-store" } });
   }
 }

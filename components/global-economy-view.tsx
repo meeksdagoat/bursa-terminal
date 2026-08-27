@@ -23,10 +23,7 @@ export function GlobalEconomyView() {
 
   const quotes = useLiveData<QuotesPayload>("/api/quotes?symbols=1155.KL", QUOTES_REFRESH_MS);
   const bnm = useLiveData<BnmPayload>("/api/bnm", BNM_REFRESH_MS);
-  const headlines = useLiveData<HeadlinesPayload>(
-    "/api/headlines?category=global-economy",
-    HEADLINES_REFRESH_MS,
-  );
+  const headlines = useLiveData<HeadlinesPayload>("/api/news/global", HEADLINES_REFRESH_MS);
   const economy = useLiveData<GlobalEconomyPayload>("/api/global-economy", BNM_REFRESH_MS);
   const malaysia = useLiveData<EconomyPayload>("/api/economy", BNM_REFRESH_MS);
 

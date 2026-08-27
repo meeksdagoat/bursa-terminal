@@ -191,16 +191,16 @@ const klDayFormatter = new Intl.DateTimeFormat("en-CA", {
 });
 
 /**
- * Clock time for items published today, calendar date for anything older —
- * newswire feeds span several days, and a bare "09:00" on a three-day-old
- * headline reads as breaking news.
+ * News/wire stamps: "Today HH:MM" for same KL calendar day, otherwise
+ * day + month + year so older headlines aren't ambiguous across years.
  */
 export function formatKlStamp(iso: string | null | undefined): string {
   if (!iso) return DASH;
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return DASH;
 
+  const time = klTimeFormatter.format(date);
   return klDayFormatter.format(date) === klDayFormatter.format(new Date())
-    ? klTimeFormatter.format(date)
-    : klDateFormatter.format(date);
+    ? `Today ${time}`
+    : klFullDateFormatter.format(date);
 }

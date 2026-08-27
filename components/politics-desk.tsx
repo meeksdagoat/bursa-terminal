@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Eli5Block } from "@/components/eli5-summary";
 import { NewsFeedSkeleton, PanelSkeleton } from "@/components/skeleton";
+import { NewsWindowNotice } from "@/components/news-window-notice";
 import { ResponsiveSplit } from "@/components/responsive-split";
 import { POLITICS_DESK_TAGS } from "@/lib/categories";
 import { hasValidSummary } from "@/lib/eli5";
@@ -57,9 +58,12 @@ export function PoliticsDesk({
             Live statements tracked per account — PMO, Ministry of Finance, Bank Negara
           </p>
         </div>
-        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto pr-2">
-          {officialError ? (
-            <p className="px-3 py-2 font-mono text-[10px] text-loss">WIRE ERROR · {officialError}</p>
+        <NewsWindowNotice />
+        <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y pr-2">
+          {officialError && desks.length === 0 ? (
+            <p className="px-3 py-2 font-mono text-[10px] text-neutral-600">
+              NEWS FEED TEMPORARILY UNAVAILABLE
+            </p>
           ) : null}
           {officialLoading && desks.length === 0 ? (
             <PanelSkeleton rows={8} />
@@ -110,6 +114,7 @@ export function PoliticsDesk({
             The Edge, Bernama and Malaysiakini · tagged subsidy, JS-SEZ, cabinet and budget
           </p>
         </div>
+        <NewsWindowNotice />
         {tags.length > 0 ? (
           <div className="flex shrink-0 gap-1 overflow-x-auto scrollbar-none border-b border-line px-3 py-2">
             <TagChip label="ALL" active={tag == null} onClick={() => setTag(null)} />
@@ -140,8 +145,8 @@ export function PoliticsDesk({
           {visible.length === 0 ? (
             <li className="px-3 py-8 text-center font-mono text-[11px] text-neutral-600">
               {headlinesError
-                ? `NEWS FEED UNAVAILABLE · ${headlinesError}`
-                : "NO HEADLINES"}
+                ? "NEWS FEED TEMPORARILY UNAVAILABLE"
+                : "NO HEADLINES IN THE PAST 365 DAYS"}
             </li>
           ) : null}
           </ul>

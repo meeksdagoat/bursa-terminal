@@ -1,9 +1,19 @@
 import "server-only";
 
 import { categoryLabel, type HeadlineCategory } from "./categories";
-import { fetchRss, googleNewsUrl, headlineKey, type NewsEdition, stripPublisherSuffix } from "./rss";
+import {
+  fetchRssWithFallback,
+  googleNewsUrl,
+  headlineKey,
+  reutersBusinessRss,
+  reutersWorldRss,
+  type NewsEdition,
+  stripPublisherSuffix,
+  yahooNewsRss,
+} from "./rss";
 import { usableArticleText } from "./eli5";
 import { isNoiseHeadline } from "./news";
+import { NEWS_WINDOW_DAYS } from "./news-window";
 import type { Headline, HeadlinesPayload } from "./types";
 
 const POLITICS_TAGS: Array<{ tag: string; keywords: string[] }> = [
@@ -163,8 +173,8 @@ function isMalaysianPolitics(title: string): boolean {
  * all-time ranking.
  */
 
-const PER_FEED_LIMIT = 20;
-const MAX_ITEMS = 30;
+const PER_FEED_LIMIT = 40;
+const MAX_ITEMS = 80;
 
 type CategoryFeed = {
   edition: NewsEdition;
@@ -179,7 +189,7 @@ type CategoryFeed = {
 const FEEDS: Record<HeadlineCategory, CategoryFeed> = {
   "my-politics": {
     edition: "MY",
-    withinDays: 7,
+    withinDays: NEWS_WINDOW_DAYS,
     queries: [
       "Malaysia cabinet minister Dewan Rakyat Anwar Putrajaya",
       "Malaysia subsidy RON95 diesel targeted subsidy MOF",
@@ -194,7 +204,7 @@ const FEEDS: Record<HeadlineCategory, CategoryFeed> = {
   },
   "my-economy": {
     edition: "MY",
-    withinDays: 21,
+    withinDays: NEWS_WINDOW_DAYS,
     queries: [
       "Bank Negara Malaysia OPR monetary policy statement",
       "Malaysia GDP growth quarterly DOSM",
@@ -206,7 +216,7 @@ const FEEDS: Record<HeadlineCategory, CategoryFeed> = {
   },
   "global-economy": {
     edition: "WORLD",
-    withinDays: 7,
+    withinDays: NEWS_WINDOW_DAYS,
     queries: [
       "FOMC Federal Reserve interest rate Powell",
       "United States CPI inflation consumer prices BLS",
@@ -219,7 +229,7 @@ const FEEDS: Record<HeadlineCategory, CategoryFeed> = {
   },
   "my-companies": {
     edition: "MY",
-    withinDays: 7,
+    withinDays: NEWS_WINDOW_DAYS,
     queries: [
       "Malaysia Bursa listed company quarterly results earnings",
       "Petronas Maybank CIMB Tenaga Sime Darby Genting Axiata",
@@ -228,7 +238,7 @@ const FEEDS: Record<HeadlineCategory, CategoryFeed> = {
   },
   "world-politics": {
     edition: "WORLD",
-    withinDays: 3,
+    withinDays: NEWS_WINDOW_DAYS,
     queries: [
       "world politics geopolitics diplomacy summit",
       "United States China European Union foreign policy relations",
@@ -237,30 +247,33 @@ const FEEDS: Record<HeadlineCategory, CategoryFeed> = {
   },
 };
 
+const BACKUPS: Record<HeadlineCategory, string[]> = {
+  "my-politics": [yahooNewsRss("politics"), yahooNewsRss("malaysia"), reutersWorldRss()],
+  "my-economy": [yahooNewsRss("malaysia"), yahooNewsRss("business"), reutersBusinessRss()],
+  "global-economy": [yahooNewsRss("business"), yahooNewsRss("world"), reutersBusinessRss()],
+  "my-companies": [yahooNewsRss("malaysia"), yahooNewsRss("business")],
+  "world-politics": [yahooNewsRss("world"), yahooNewsRss("politics"), reutersWorldRss()],
+};
+
 async function loadFeed(
   url: string,
   errors: string[],
   tagger: (title: string) => string | null,
 ): Promise<Headline[]> {
-  try {
-    const entries = await fetchRss(url, PER_FEED_LIMIT);
+  const entries = await fetchRssWithFallback([url], PER_FEED_LIMIT, errors);
 
-    return entries.map((entry) => {
-      const title = stripPublisherSuffix(entry.title, entry.publisher);
-      return {
-        id: entry.guid ?? entry.link ?? headlineKey(title),
-        title,
-        publisher: entry.publisher,
-        url: entry.link,
-        publishedAt: entry.publishedAt,
-        tag: tagger(title),
-        snippet: usableArticleText(entry.summary, title),
-      } satisfies Headline;
-    });
-  } catch (error) {
-    errors.push(error instanceof Error ? error.message : String(error));
-    return [];
-  }
+  return entries.map((entry) => {
+    const title = stripPublisherSuffix(entry.title, entry.publisher);
+    return {
+      id: entry.guid ?? entry.link ?? headlineKey(title),
+      title,
+      publisher: entry.publisher,
+      url: entry.link,
+      publishedAt: entry.publishedAt,
+      tag: tagger(title),
+      snippet: usableArticleText(entry.summary, title),
+    } satisfies Headline;
+  });
 }
 
 export async function getHeadlines(category: HeadlineCategory): Promise<HeadlinesPayload> {
@@ -275,19 +288,33 @@ export async function getHeadlines(category: HeadlineCategory): Promise<Headline
   const seen = new Set<string>();
   const items: Headline[] = [];
 
-  for (const item of feeds.flat()) {
+  function take(item: Headline) {
     const key = headlineKey(item.title);
-    if (key.length === 0 || seen.has(key) || isNoiseHeadline(item.title)) continue;
-    if (relevant && !relevant(item.title)) continue;
+    if (key.length === 0 || seen.has(key) || isNoiseHeadline(item.title)) return;
+    if (relevant && !relevant(item.title)) return;
     seen.add(key);
     items.push(item);
+  }
+
+  for (const item of feeds.flat()) take(item);
+
+  if (items.length === 0) {
+    const backups = await Promise.all(
+      BACKUPS[category].map((url) => loadFeed(url, errors, tag)),
+    );
+    for (const item of backups.flat()) {
+      const key = headlineKey(item.title);
+      if (key.length === 0 || seen.has(key) || isNoiseHeadline(item.title)) continue;
+      seen.add(key);
+      items.push(item);
+    }
   }
 
   items.sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
   const trimmed = items.slice(0, MAX_ITEMS);
 
   if (trimmed.length === 0 && errors.length > 0) {
-    throw new Error(errors.join("; "));
+    throw new Error("live-wire-unavailable");
   }
 
   return {

@@ -113,7 +113,7 @@ export function FilingsModal({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="absolute inset-y-0 right-0 flex w-[min(640px,100vw)] flex-col overflow-hidden border-l border-line bg-panel shadow-2xl"
+        className="absolute inset-y-0 right-0 flex h-full max-h-dvh w-[min(640px,100vw)] flex-col overflow-hidden border-l border-line bg-panel shadow-2xl max-sm:inset-x-0 max-sm:top-auto max-sm:bottom-0 max-sm:h-[85vh] max-sm:max-h-[85vh] max-sm:w-full max-sm:rounded-t-lg max-sm:border-l-0 max-sm:border-t"
       >
         <div className="flex h-11 shrink-0 items-center justify-between gap-2 border-b border-line px-3">
           <h2 className="truncate text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">

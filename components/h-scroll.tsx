@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
-type HScrollProps = {
+type HScrollProps = HTMLAttributes<HTMLDivElement> & {
   children: ReactNode;
   className?: string;
   /** Snap each child to the start of the scroller — used for ticker chips. */
@@ -9,13 +9,20 @@ type HScrollProps = {
 };
 
 /** Horizontal swipe strip with hidden scrollbars for mobile ticker / macro rows. */
-export function HScroll({ children, className = "", snap = false, "aria-label": ariaLabel }: HScrollProps) {
+export function HScroll({
+  children,
+  className = "",
+  snap = false,
+  "aria-label": ariaLabel,
+  ...rest
+}: HScrollProps) {
   return (
     <div
       aria-label={ariaLabel}
-      className={`flex flex-nowrap overflow-x-auto overscroll-x-contain scrollbar-none touch-pan-x ${
+      className={`flex flex-nowrap items-center overflow-x-auto overflow-y-clip overscroll-none whitespace-nowrap scrollbar-none touch-pan-x ${
         snap ? "snap-x snap-mandatory" : ""
       } ${className}`}
+      {...rest}
     >
       {children}
     </div>

@@ -1,7 +1,8 @@
 import "server-only";
 
-import { fetchRss, googleNewsUrl, headlineKey, stripPublisherSuffix } from "./rss";
+import { fetchRssWithFallback, googleNewsUrl, headlineKey, stripPublisherSuffix } from "./rss";
 import type { OfficialDesk, OfficialPayload, OfficialPost } from "./types";
+import { NEWS_WINDOW_DAYS } from "./news-window";
 
 const PER_FEED = 12;
 const PER_DESK = 8;
@@ -33,7 +34,11 @@ export async function getOfficialWire(): Promise<OfficialPayload> {
   const desks: OfficialDesk[] = await Promise.all(
     DESKS.map(async (desk) => {
       try {
-        const entries = await fetchRss(googleNewsUrl(desk.query, { withinDays: 14 }), PER_FEED);
+        const entries = await fetchRssWithFallback(
+          [googleNewsUrl(desk.query, { withinDays: NEWS_WINDOW_DAYS })],
+          PER_FEED,
+          errors,
+        );
         const items: OfficialPost[] = [];
         const seen = new Set<string>();
 
@@ -54,15 +59,15 @@ export async function getOfficialWire(): Promise<OfficialPayload> {
         }
 
         return { handle: desk.handle, org: desk.org, blurb: desk.blurb, items };
-      } catch (error) {
-        errors.push(`${desk.handle}: ${error instanceof Error ? error.message : String(error)}`);
+      } catch {
+        errors.push(`${desk.handle}: live-wire-unavailable`);
         return { handle: desk.handle, org: desk.org, blurb: desk.blurb, items: [] };
       }
     }),
   );
 
   if (desks.every((desk) => desk.items.length === 0) && errors.length > 0) {
-    throw new Error(errors.join("; "));
+    throw new Error("live-wire-unavailable");
   }
 
   return {

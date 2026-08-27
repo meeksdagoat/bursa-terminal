@@ -7,6 +7,7 @@ import type {
   BursaAnnouncementsPayload,
   UniverseEntry,
 } from "./types";
+import { NEWS_WINDOW_DAYS } from "./news-window";
 
 const PER_FEED = 24;
 const MAX_ITEMS = 30;
@@ -232,7 +233,7 @@ async function loadScreener(code: string): Promise<BursaAnnouncement[]> {
 async function loadGoogleNews(entry: UniverseEntry): Promise<BursaAnnouncement[]> {
   const url = googleNewsUrl(
     `"${entry.name}" ${entry.code} (Bursa OR announcement OR "quarterly report" OR "substantial shareholder" OR dividend OR entitlement)`,
-    { withinDays: 120 },
+    { withinDays: NEWS_WINDOW_DAYS },
   );
   const entries = await fetchRss(url, PER_FEED);
   return entries.map((item) => {

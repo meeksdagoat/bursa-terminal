@@ -1,5 +1,6 @@
 import type { NextRequest } from "next/server";
-import { cached } from "@/lib/cache";
+import { cachedKeepLast } from "@/lib/cache";
+import { fallbackNewsPayload } from "@/lib/news-fallback";
 import { getCompanyNews } from "@/lib/company-news";
 import { entryBySymbol } from "@/lib/universe";
 
@@ -19,12 +20,14 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const payload = await cached(`company-news:v2:${entry.symbol}`, TTL_MS, () =>
+    const payload = await cachedKeepLast(`company-news:v3:${entry.symbol}`, TTL_MS, () =>
       getCompanyNews(entry),
     );
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "Unknown error";
-    return Response.json({ error: `Company news request failed: ${detail}` }, { status: 502 });
+  } catch {
+    return Response.json(
+      { ...fallbackNewsPayload(), symbol: entry.symbol, company: entry.name },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   }
 }

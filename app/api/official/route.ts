@@ -1,4 +1,5 @@
-import { cached } from "@/lib/cache";
+import { cachedKeepLast } from "@/lib/cache";
+import { fallbackOfficialPayload } from "@/lib/news-fallback";
 import { getOfficialWire } from "@/lib/official";
 
 export const runtime = "nodejs";
@@ -8,10 +9,9 @@ const TTL_MS = 5 * 60 * 1000;
 
 export async function GET() {
   try {
-    const payload = await cached("official-wire:v2", TTL_MS, () => getOfficialWire());
+    const payload = await cachedKeepLast("official-wire:v3", TTL_MS, () => getOfficialWire());
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : "Unknown error";
-    return Response.json({ error: `Official wire failed: ${detail}` }, { status: 502 });
+  } catch {
+    return Response.json(fallbackOfficialPayload(), { headers: { "Cache-Control": "no-store" } });
   }
 }

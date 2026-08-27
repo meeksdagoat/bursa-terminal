@@ -5,6 +5,7 @@ import { HScroll } from "@/components/h-scroll";
 import { SignedPct } from "@/components/signed-change";
 import { formatPrice } from "@/lib/format";
 import type { WatchlistRow } from "@/lib/types";
+import { usePanXLock } from "@/lib/use-pan-x-lock";
 import { usePriceFlash } from "@/lib/use-price-flash";
 import type { TickPulse } from "@/lib/use-market-data";
 
@@ -16,39 +17,47 @@ type TickerRibbonProps = {
 
 const TAPE_CAP = 24;
 
+const TAPE_FRAME =
+  "h-10 max-h-10 min-h-10 shrink-0 overflow-x-clip overflow-y-clip select-none touch-pan-x";
+
 function TickerRibbonInner({ rows, ticks, onSelect }: TickerRibbonProps) {
+  const setFrame = usePanXLock("[data-ticker-scroller]");
+
   if (rows.length === 0) return null;
 
   const visible = rows.slice(0, TAPE_CAP);
   const tape = [...visible, ...visible];
 
   return (
-    <>
-      <div className="flex shrink-0 items-center border-b border-line bg-[#0c0c0c] md:hidden">
-        <HScroll snap className="min-w-0 flex-1" aria-label="Watchlist tape">
-          {visible.map((row) => (
-            <RibbonItem key={row.symbol} row={row} ticks={ticks} onSelect={onSelect} snap />
+    <div
+      ref={setFrame}
+      className={`flex items-center border-b border-line bg-[#0c0c0c] ${TAPE_FRAME}`}
+      style={{ touchAction: "pan-x", overscrollBehavior: "none" }}
+    >
+      <HScroll
+        snap
+        className="flex h-full min-w-0 flex-1 flex-nowrap items-center overflow-x-auto overflow-y-clip overscroll-none whitespace-nowrap md:hidden"
+        aria-label="Watchlist tape"
+        data-ticker-scroller=""
+      >
+        {visible.map((row) => (
+          <RibbonItem key={row.symbol} row={row} ticks={ticks} onSelect={onSelect} snap />
+        ))}
+      </HScroll>
+
+      <div className="hidden h-full min-w-0 flex-1 overflow-x-clip overflow-y-clip md:block">
+        <div className="tape-track flex h-full flex-nowrap items-center whitespace-nowrap">
+          {tape.map((row, index) => (
+            <RibbonItem
+              key={`${row.symbol}-${index}`}
+              row={row}
+              ticks={ticks}
+              onSelect={onSelect}
+            />
           ))}
-        </HScroll>
-      </div>
-      <div className="hidden shrink-0 items-center overflow-hidden border-b border-line bg-[#0c0c0c] md:flex">
-        <span className="hidden shrink-0 border-r border-line px-2 font-mono text-[9px] uppercase tracking-[0.16em] text-gain sm:inline">
-          TAPE
-        </span>
-        <div className="min-w-0 flex-1 overflow-hidden">
-          <div className="tape-track flex">
-            {tape.map((row, index) => (
-              <RibbonItem
-                key={`${row.symbol}-${index}`}
-                row={row}
-                ticks={ticks}
-                onSelect={onSelect}
-              />
-            ))}
-          </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }
 
@@ -69,7 +78,7 @@ function RibbonItem({
     <button
       type="button"
       onClick={() => onSelect?.(row.symbol)}
-      className={`flex min-h-11 shrink-0 items-baseline gap-1.5 px-3 py-1 font-mono md:min-h-0 ${
+      className={`inline-flex h-full shrink-0 items-center gap-1.5 whitespace-nowrap px-3 font-mono ${
         snap ? "snap-start" : ""
       } ${flash}`}
     >

@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { Eli5Block } from "@/components/eli5-summary";
 import { CountPulse, NewsFeedSkeleton } from "@/components/skeleton";
+import { NewsWindowNotice } from "@/components/news-window-notice";
 import { HEADLINE_CATEGORIES, type HeadlineCategory } from "@/lib/categories";
 import { hasValidSummary } from "@/lib/eli5";
 import { formatKlStamp } from "@/lib/format";
@@ -75,6 +76,8 @@ export function HeadlineList({
         </span>
       </div>
 
+      <NewsWindowNotice />
+
       {tags.length > 0 ? (
         <div className="flex shrink-0 gap-1 overflow-x-auto scrollbar-none border-b border-line px-3 py-2">
           <TagChip label="ALL" active={activeTag == null} onClick={() => setActiveTag(null)} />
@@ -127,10 +130,10 @@ export function HeadlineList({
             {visible.length === 0 ? (
               <li className="px-3 py-8 text-center font-mono text-[11px] leading-relaxed text-neutral-600">
                 {error
-                  ? `NEWS FEED UNAVAILABLE · ${error}`
+                  ? "NEWS FEED TEMPORARILY UNAVAILABLE"
                   : activeTag
                     ? `NO STORIES TAGGED ${activeTag}`
-                    : "NO HEADLINES RETURNED"}
+                    : "NO HEADLINES IN THE PAST 365 DAYS"}
               </li>
             ) : null}
           </ul>

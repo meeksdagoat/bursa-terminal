@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ExportCsvButton } from "@/components/export-csv-button";
 import { stickyCellClass, stickyHeadClass, tableCellClass, tableHeadClass } from "@/components/h-scroll";
 import { csvFilename, useExportToCSV } from "@/hooks/useExportToCSV";
@@ -37,7 +38,12 @@ export function ScreenerTable({
   onQuery,
   onSort,
 }: ScreenerTableProps) {
+  const router = useRouter();
   const exportCsv = useExportToCSV();
+
+  function openOnBursaMy(symbol: string) {
+    router.push(terminalHref(symbol));
+  }
 
   return (
     <section className="min-w-0 flex-1 overflow-hidden border border-line bg-panel">
@@ -114,7 +120,21 @@ export function ScreenerTable({
               rows.map((row, index) => (
                 <tr
                   key={row.symbol}
-                  className={index % 2 === 1 ? "bg-[#101010] hover:bg-[#161616]" : "hover:bg-[#161616]"}
+                  role="link"
+                  tabIndex={0}
+                  title={`Open ${row.name} on Bursa MY`}
+                  onClick={(event) => {
+                    if ((event.target as HTMLElement).closest("a")) return;
+                    openOnBursaMy(row.symbol);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key !== "Enter" && event.key !== " ") return;
+                    event.preventDefault();
+                    openOnBursaMy(row.symbol);
+                  }}
+                  className={`cursor-pointer ${
+                    index % 2 === 1 ? "bg-[#101010] hover:bg-[#161616]" : "hover:bg-[#161616]"
+                  }`}
                 >
                   <td className={`${stickyCellClass} font-mono text-gain`}>
                     <Link
@@ -125,13 +145,7 @@ export function ScreenerTable({
                     </Link>
                   </td>
                   <td className={`${tableCellClass} max-w-[180px] truncate text-left text-neutral-100`}>
-                    <Link
-                      href={terminalHref(row.symbol)}
-                      title={`Open ${row.name} in the market terminal`}
-                      className="hover:text-white"
-                    >
-                      {row.name}
-                    </Link>
+                    {row.name}
                   </td>
                   <td className={`${tableCellClass} max-w-[140px] truncate text-left text-neutral-400`}>
                     {row.sector}

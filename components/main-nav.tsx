@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { HEADLINE_CATEGORIES, deskHref, type HeadlineCategory } from "@/lib/categories";
 
-export type NavActive = "market" | "screener" | "portfolio" | HeadlineCategory;
+export type NavActive = "market" | "market-hub" | "screener" | "portfolio" | HeadlineCategory;
 
 export const NAV_ITEMS: {
   id: NavActive;
@@ -13,6 +13,12 @@ export const NAV_ITEMS: {
   blurb?: string;
 }[] = [
   { id: "market", href: "/terminal", label: "Bursa MY", shortcut: "Alt+1" },
+  {
+    id: "market-hub",
+    href: "/terminal/market-hub",
+    label: "Market Hub",
+    blurb: "Indices, BMD, REITs, ETFs and institutional flows",
+  },
   { id: "screener", href: "/screener", label: "Screener" },
   { id: "portfolio", href: "/portfolio", label: "My Portfolio", shortcut: "Alt+2" },
   ...HEADLINE_CATEGORIES.map((tab) => ({
@@ -35,7 +41,11 @@ export function MainNav({ active }: MainNavProps) {
     <nav className="hidden shrink-0 items-stretch overflow-x-auto border-b border-line bg-panel lg:flex">
       {NAV_ITEMS.map((item) => {
         const selected = item.id === active;
-        const desk = item.id !== "market" && item.id !== "screener" && item.id !== "portfolio";
+        const desk =
+          item.id !== "market" &&
+          item.id !== "market-hub" &&
+          item.id !== "screener" &&
+          item.id !== "portfolio";
         return (
           <Link
             key={item.id}

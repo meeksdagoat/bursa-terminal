@@ -1,8 +1,9 @@
 import "server-only";
 
-import { fetchRss, googleNewsUrl, headlineKey, stripPublisherSuffix } from "./rss";
+import { fetchRssWithFallback, googleNewsUrl, headlineKey, stripPublisherSuffix, yahooNewsRss, reutersBusinessRss } from "./rss";
 import { usableArticleText } from "./eli5";
 import type { NewsItem, NewsPayload } from "./types";
+import { NEWS_WINDOW_DAYS } from "./news-window";
 
 /**
  * Local market news via Google News RSS. Google aggregates the Malaysian
@@ -10,14 +11,16 @@ import type { NewsItem, NewsPayload } from "./types";
  * publisher per item, which no local outlet exposes through a free API.
  */
 
-const PER_FEED_LIMIT = 25;
-const MAX_ITEMS = 45;
+const PER_FEED_LIMIT = 40;
+const MAX_ITEMS = 120;
 
 const FEEDS = [
-  googleNewsUrl("Bursa Malaysia stock news", { withinDays: 7 }),
-  googleNewsUrl("Malaysia KLCI ringgit stock market", { withinDays: 7 }),
-  googleNewsUrl("Malaysia listed company earnings banking property plantation", { withinDays: 7 }),
+  googleNewsUrl("Bursa Malaysia stock news", { withinDays: NEWS_WINDOW_DAYS }),
+  googleNewsUrl("Malaysia KLCI ringgit stock market", { withinDays: NEWS_WINDOW_DAYS }),
+  googleNewsUrl("Malaysia listed company earnings banking property plantation", { withinDays: NEWS_WINDOW_DAYS }),
 ];
+
+const BACKUP_FEEDS = [yahooNewsRss("malaysia"), yahooNewsRss("business"), reutersBusinessRss()];
 
 const FALLBACK_TAG = "#Markets";
 
@@ -219,26 +222,20 @@ export function rankTags(items: NewsItem[]): string[] {
 }
 
 async function loadFeed(url: string, errors: string[]): Promise<NewsItem[]> {
-  try {
-    const entries = await fetchRss(url, PER_FEED_LIMIT);
+  const entries = await fetchRssWithFallback([url], PER_FEED_LIMIT, errors);
 
-    return entries.map((entry) => {
-      const headline = stripPublisherSuffix(entry.title, entry.publisher);
-      return {
-        id: entry.guid ?? entry.link ?? headlineKey(headline),
-        tag: classifyHeadline(headline, entry.summary),
-        headline,
-        source: entry.publisher ?? "Google News",
-        url: entry.link,
-        publishedAt: entry.publishedAt,
-        snippet: usableArticleText(entry.summary, headline),
-      } satisfies NewsItem;
-    });
-  } catch (error) {
-    const detail = error instanceof Error ? error.message : String(error);
-    errors.push(detail);
-    return [];
-  }
+  return entries.map((entry) => {
+    const headline = stripPublisherSuffix(entry.title, entry.publisher);
+    return {
+      id: entry.guid ?? entry.link ?? headlineKey(headline),
+      tag: classifyHeadline(headline, entry.summary),
+      headline,
+      source: entry.publisher ?? "Google News",
+      url: entry.link,
+      publishedAt: entry.publishedAt,
+      snippet: usableArticleText(entry.summary, headline),
+    } satisfies NewsItem;
+  });
 }
 
 export async function getNewsSnapshot(): Promise<NewsPayload> {
@@ -248,18 +245,25 @@ export async function getNewsSnapshot(): Promise<NewsPayload> {
   const seen = new Set<string>();
   const items: NewsItem[] = [];
 
-  for (const item of feeds.flat()) {
+  function take(item: NewsItem) {
     const key = headlineKey(item.headline);
-    if (key.length === 0 || seen.has(key) || isNoiseHeadline(item.headline)) continue;
+    if (key.length === 0 || seen.has(key) || isNoiseHeadline(item.headline)) return;
     seen.add(key);
     items.push(item);
+  }
+
+  for (const item of feeds.flat()) take(item);
+
+  if (items.length === 0) {
+    const backups = await Promise.all(BACKUP_FEEDS.map((url) => loadFeed(url, errors)));
+    for (const item of backups.flat()) take(item);
   }
 
   items.sort((a, b) => (b.publishedAt ?? "").localeCompare(a.publishedAt ?? ""));
   const trimmed = items.slice(0, MAX_ITEMS);
 
   if (trimmed.length === 0 && errors.length > 0) {
-    throw new Error(errors.join("; "));
+    throw new Error("live-wire-unavailable");
   }
 
   return {

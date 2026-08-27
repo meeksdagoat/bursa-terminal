@@ -3,6 +3,7 @@
 import { memo, useMemo, useState } from "react";
 import { Eli5Block } from "@/components/eli5-summary";
 import { ShowMoreBar } from "@/components/h-scroll";
+import { NewsWindowNotice } from "@/components/news-window-notice";
 import { CountPulse, NewsFeedSkeleton } from "@/components/skeleton";
 import { hasValidSummary } from "@/lib/eli5";
 import { formatKlStamp } from "@/lib/format";
@@ -79,6 +80,8 @@ function NewsFeedInner({
           SHARIAH ONLY · {hidden} HIDDEN
         </p>
       ) : null}
+
+      <NewsWindowNotice />
 
       {tags.length > 0 ? (
         <div className="flex shrink-0 gap-1 overflow-x-auto scrollbar-none border-b border-line px-2 py-1.5">
@@ -164,14 +167,14 @@ function NewsFeedInner({
             {visible.length === 0 ? (
               <li className="px-2.5 py-3 font-mono text-[10px] leading-relaxed text-neutral-600">
                 {error
-                  ? `NEWS FEED UNAVAILABLE · ${error}`
+                  ? "NEWS FEED TEMPORARILY UNAVAILABLE"
                   : hidden > 0 && items.length === 0
                     ? "EVERY HEADLINE HERE NAMES A NON-COMPLIANT STOCK"
                     : activeTag
                     ? `NO HEADLINES TAGGED ${activeTag}`
                     : company
-                      ? `NO RECENT COVERAGE OF ${companyName.toUpperCase()}`
-                      : "NO HEADLINES RETURNED"}
+                      ? `NO COVERAGE OF ${companyName.toUpperCase()} IN THE PAST 365 DAYS`
+                      : "NO HEADLINES IN THE PAST 365 DAYS"}
               </li>
             ) : null}
           </ul>

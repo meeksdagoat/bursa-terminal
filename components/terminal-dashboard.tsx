@@ -178,6 +178,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
       selectedSymbol={selected.symbol}
       onSelect={handleSelectFromList}
       onRemove={watchlist.remove}
+      onReorder={watchlist.reorder}
       onBrowse={openPicker}
       onClose={closeWatchlistDrawer}
       ticks={quotes.ticks}
@@ -215,13 +216,17 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   );
 
   const filingsPane = (
-    <AnnouncementsDrawer activeTicker={selected.symbol} activeCompany={selected.fullName || selected.name} />
+    <AnnouncementsDrawer
+      activeTicker={selected.symbol}
+      activeCompany={selected.fullName || selected.name}
+      onClose={closeWatchlistDrawer}
+    />
   );
 
   return (
     <div
       data-app-shell
-      className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-terminal text-neutral-200 max-lg:touch-pan-y"
+      className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-clip bg-terminal text-neutral-200"
     >
       <HeaderBar
         bnm={bnm.data}
@@ -392,7 +397,7 @@ function CompactWorkspace({
   onDrawer: (drawer: CompactDrawer) => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden touch-pan-y">
+    <div className="flex min-h-0 flex-1 flex-col overflow-clip">
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain touch-pan-y">
         <div className="overflow-hidden">{chartPane}</div>
         <div className="min-h-[52vh] border-t border-line">{intelPane}</div>
@@ -431,14 +436,28 @@ function CompactWorkspace({
         side="bottom"
         title="Watchlist"
         labelledBy="watchlist-heading"
-        headerClassName="max-sm:hidden"
+        headerClassName="hidden"
+        className="h-[80vh] max-h-[85vh]"
       >
         {watchlistPane}
       </SlideDrawer>
-      <SlideDrawer open={drawer === "news"} onClose={() => onDrawer(null)} side="bottom" title="News">
+      <SlideDrawer
+        open={drawer === "news"}
+        onClose={() => onDrawer(null)}
+        side="bottom"
+        title="News"
+        className="h-[80vh] max-h-[85vh]"
+      >
         {newsPane}
       </SlideDrawer>
-      <SlideDrawer open={drawer === "filings"} onClose={() => onDrawer(null)} side="bottom" title="Bursa filings">
+      <SlideDrawer
+        open={drawer === "filings"}
+        onClose={() => onDrawer(null)}
+        side="bottom"
+        title="Bursa filings"
+        headerClassName="hidden"
+        className="h-[80vh] max-h-[85vh]"
+      >
         {filingsPane}
       </SlideDrawer>
     </div>

@@ -38,25 +38,27 @@ export function CorporatePerformance({ symbol, companyName }: CorporatePerforman
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden">
-      <div className="flex w-full items-center justify-between gap-3 overflow-hidden border-b border-line px-4 py-2">
-        <div className="flex min-w-0 items-center gap-3">
-          <SeriesToggle
-            label="Revenue"
-            swatch="#38bdf8"
-            checked={showRevenue}
-            onChange={() => setShowRevenue((value) => !value)}
-          />
-          <SeriesToggle
-            label="Net profit"
-            swatch="#22c55e"
-            checked={showProfit}
-            onChange={() => setShowProfit((value) => !value)}
-          />
-        </div>
-        <p className="ml-auto mr-2 shrink-0 whitespace-nowrap font-mono text-xs uppercase tracking-wider text-neutral-400">
-          {payload.source === "yahoo" ? "YAHOO FINANCE · REPORTED ACTUALS" : "LIVE SERIES"} ·{" "}
-          {payload.currency} · {symbol}
-        </p>
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 font-mono text-xs text-neutral-400 border-b border-line">
+        <SeriesToggle
+          label="Revenue"
+          swatch="#38bdf8"
+          checked={showRevenue}
+          onChange={() => setShowRevenue((value) => !value)}
+        />
+        <SeriesToggle
+          label="Net profit"
+          swatch="#22c55e"
+          checked={showProfit}
+          onChange={() => setShowProfit((value) => !value)}
+        />
+        <span className="flex-shrink-0 whitespace-nowrap">
+          {payload.source === "yahoo" ? "YAHOO FINANCE" : "LIVE SERIES"}
+        </span>
+        {payload.source === "yahoo" ? (
+          <span className="flex-shrink-0 whitespace-nowrap">REPORTED ACTUALS</span>
+        ) : null}
+        <span className="flex-shrink-0 whitespace-nowrap">{payload.currency}</span>
+        <span className="flex-shrink-0 whitespace-nowrap">{symbol}</span>
       </div>
       <div className="flex flex-col gap-4 overflow-x-auto px-2.5 py-3">
 
@@ -365,7 +367,7 @@ function SeriesToggle({
   onChange: () => void;
 }) {
   return (
-    <label className="flex min-h-11 cursor-pointer items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-neutral-500 md:min-h-0">
+    <label className="flex min-h-11 flex-shrink-0 cursor-pointer items-center gap-1.5 whitespace-nowrap font-mono text-[9px] uppercase tracking-wider text-neutral-500 md:min-h-0">
       <input type="checkbox" checked={checked} onChange={onChange} className="accent-gain" />
       <span className="h-2 w-2 shrink-0" style={{ backgroundColor: swatch }} />
       {label}

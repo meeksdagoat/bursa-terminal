@@ -12,6 +12,8 @@ export type Watchlist = {
   add: (symbol: string) => void;
   remove: (symbol: string) => void;
   toggle: (symbol: string) => void;
+  /** Move `fromSymbol` to the list slot currently held by `toSymbol`. */
+  reorder: (fromSymbol: string, toSymbol: string) => void;
   reset: () => void;
 };
 
@@ -121,9 +123,24 @@ export function useWatchlist(): Watchlist {
     );
   }, []);
 
+  const reorder = useCallback((fromSymbol: string, toSymbol: string) => {
+    if (fromSymbol === toSymbol) return;
+    update((current) => {
+      const from = current.indexOf(fromSymbol);
+      const to = current.indexOf(toSymbol);
+      if (from < 0 || to < 0 || from === to) return current;
+
+      const next = current.filter((symbol) => symbol !== fromSymbol);
+      const insertAt = next.indexOf(toSymbol);
+      if (insertAt < 0) return current;
+      next.splice(insertAt, 0, fromSymbol);
+      return next;
+    });
+  }, []);
+
   const reset = useCallback(() => write(DEFAULT_WATCHLIST), []);
 
   const saved = useCallback((symbol: string) => membership.has(symbol), [membership]);
 
-  return { symbols, saved, add, remove, toggle, reset };
+  return { symbols, saved, add, remove, toggle, reorder, reset };
 }

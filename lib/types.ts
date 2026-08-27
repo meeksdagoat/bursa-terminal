@@ -161,7 +161,7 @@ export type Headline = {
 };
 
 export type HeadlinesPayload = {
-  source: "google-news";
+  source: "google-news" | "yahoo-rss" | "reuters" | "cache";
   category: HeadlineCategory;
   label: string;
   asOf: string;
@@ -417,7 +417,7 @@ export type NewsItem = {
 };
 
 export type NewsPayload = {
-  source: "google-news" | "yahoo+google-news";
+  source: "google-news" | "yahoo+google-news" | "yahoo-rss" | "reuters" | "cache";
   asOf: string;
   items: NewsItem[];
   /** Tags present in `items`, most frequent first, for the sidebar filter row. */
@@ -597,4 +597,127 @@ export type ScreenerPayload = {
   peBounds: { min: number; max: number };
   yieldBounds: { min: number; max: number };
   rows: ScreenerRow[];
+};
+
+export type MarketHubBenchmark = {
+  id: string;
+  label: string;
+  symbol: string | null;
+  price: number | null;
+  changePct1d: number | null;
+  changePctYtd: number | null;
+  marketState: string | null;
+  /** True when using equal-weight basket or static snapshot instead of official index tape. */
+  proxy: boolean;
+  /** True when a static snapshot filled a missing live print. */
+  fallback: boolean;
+};
+
+export type MarketHubSectorRow = {
+  label: string;
+  changePct1d: number | null;
+  changePctYtd: number | null;
+  count: number;
+  status: "open" | "closed" | "delayed";
+};
+
+export type MarketHubDerivative = {
+  id: "fcpo" | "fkli";
+  label: string;
+  contract: string;
+  price: number | null;
+  changePts: number | null;
+  changePct1d: number | null;
+  volume: number | null;
+  premiumPct: number | null;
+  unit: string;
+  source: string;
+  asOf: string | null;
+  fallback: boolean;
+};
+
+export type MarketHubWarrant = {
+  code: string;
+  symbol: string;
+  name: string | null;
+  type: WarrantType;
+  lastPrice: number | null;
+  changePct: number | null;
+  volume: number | null;
+  underlying: string;
+};
+
+export type MarketHubReitRow = {
+  symbol: string;
+  code: string;
+  name: string;
+  reitSector: "Retail" | "Office" | "Industrial" | "Hospitality" | "Diversified";
+  price: number | null;
+  changePct: number | null;
+  distributionYieldPct: number | null;
+  priceToNav: number | null;
+  marketCap: number | null;
+};
+
+export type MarketHubEtfRow = {
+  symbol: string;
+  code: string;
+  name: string;
+  assetClass: "Equity" | "Fixed Income" | "Commodity";
+  expenseRatioPct: number | null;
+  price: number | null;
+  changePct: number | null;
+  volume: number | null;
+};
+
+export type MarketHubForm29B = {
+  id: string;
+  title: string;
+  company: string | null;
+  code: string | null;
+  symbol: string | null;
+  institution: string | null;
+  action: "Acquisition" | "Disposal" | "Change" | null;
+  publishedAt: string | null;
+  url: string;
+};
+
+export type ExDividendCategory = "interim" | "final" | "special" | "other";
+
+export type MarketHubExDiv = {
+  id: string;
+  title: string;
+  company: string | null;
+  code: string | null;
+  symbol: string | null;
+  dividendType: string | null;
+  category: ExDividendCategory;
+  entitlement: string | null;
+  exDate: string | null;
+  bookClosureDate: string | null;
+  paymentDate: string | null;
+  publishedAt: string | null;
+  url: string;
+  source: "bursa" | "snapshot";
+};
+
+export type CorporateActionsPayload = {
+  asOf: string;
+  source: "bursa" | "snapshot" | "mixed";
+  items: MarketHubExDiv[];
+  errors: string[];
+};
+
+export type MarketHubPayload = {
+  asOf: string;
+  marketState: string | null;
+  errors: string[];
+  benchmarks: MarketHubBenchmark[];
+  sectors: MarketHubSectorRow[];
+  derivatives: MarketHubDerivative[];
+  warrants: MarketHubWarrant[];
+  reits: MarketHubReitRow[];
+  etfs: MarketHubEtfRow[];
+  form29b: MarketHubForm29B[];
+  exDividends: MarketHubExDiv[];
 };

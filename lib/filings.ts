@@ -2,9 +2,10 @@ import "server-only";
 
 import { fetchHtml, fetchRss, googleNewsUrl, headlineKey, stripPublisherSuffix } from "./rss";
 import type { Filing, FilingCategory, FilingsPayload, UniverseEntry } from "./types";
+import { NEWS_WINDOW_DAYS } from "./news-window";
 
-const PER_FEED = 20;
-const MAX_ITEMS = 24;
+const PER_FEED = 40;
+const MAX_ITEMS = 80;
 
 const CATEGORY_RULES: Array<{ category: FilingCategory; keywords: string[] }> = [
   {
@@ -102,7 +103,7 @@ async function loadNews(entry: UniverseEntry, errors: string[]): Promise<Filing[
   try {
     const url = googleNewsUrl(
       `"${entry.name}" (Bursa OR announcement OR "quarterly report" OR "substantial shareholder" OR dividend OR entitlement)`,
-      { withinDays: 180 },
+      { withinDays: NEWS_WINDOW_DAYS },
     );
     const entries = await fetchRss(url, PER_FEED);
     return entries.map((item) => {

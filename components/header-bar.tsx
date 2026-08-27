@@ -20,6 +20,7 @@ import type { JargonTerm } from "@/lib/jargon";
 import { feedStatusFromQuote, type FeedStatus } from "@/lib/market-status";
 import type { BnmPayload, Quote } from "@/lib/types";
 import type { TickPulse } from "@/lib/use-market-data";
+import { usePanXLock } from "@/lib/use-pan-x-lock";
 import { usePriceFlash } from "@/lib/use-price-flash";
 import { useShariahFilter } from "@/lib/use-shariah";
 
@@ -53,6 +54,7 @@ export function HeaderBar({
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const mobileSearchRef = useRef<HTMLInputElement>(null);
+  const lockHeaderRow = usePanXLock("[data-macro-strip]");
   const status =
     feedStatus ??
     feedStatusFromQuote(index, { connected: index != null, loading: index == null });
@@ -75,8 +77,11 @@ export function HeaderBar({
   const showLiveBadge = active === "my-economy" || active === "global-economy";
 
   return (
-    <header className="w-full shrink-0 overflow-hidden border-b border-neutral-800 bg-[#0d0d0d]">
-      <div className="flex w-full min-h-[56px] items-center justify-between gap-2 overflow-hidden px-3 md:gap-4">
+    <header className="w-full shrink-0 overflow-x-clip overflow-y-clip border-b border-neutral-800 bg-[#0d0d0d]">
+      <div
+        ref={lockHeaderRow}
+        className="flex h-14 max-h-14 min-h-14 w-full items-center justify-between gap-2 overflow-x-clip overflow-y-clip px-3 md:gap-4"
+      >
         <div className="flex shrink-0 items-center gap-2 md:gap-4">
           <button
             type="button"
@@ -119,7 +124,7 @@ export function HeaderBar({
           </kbd>
         </form>
 
-        <div className="ml-auto flex min-w-0 items-center justify-end gap-2 overflow-hidden md:gap-4 lg:ml-0 lg:flex-1">
+        <div className="ml-auto flex h-full min-w-0 items-center justify-end gap-2 overflow-x-clip overflow-y-clip md:gap-4 lg:ml-0 lg:flex-1">
           <button
             type="button"
             className="inline-flex min-h-11 min-w-11 flex-shrink-0 items-center justify-center border border-neutral-800 text-neutral-300 md:hidden"
@@ -150,7 +155,11 @@ export function HeaderBar({
 
           {actions ? <div className="hidden flex-shrink-0 xl:block">{actions}</div> : null}
 
-          <div className="hidden min-w-0 max-w-[min(100%,42rem)] flex-1 items-stretch divide-x divide-neutral-800 overflow-x-auto border border-neutral-800 scrollbar-none md:flex">
+          <div
+            data-macro-strip=""
+            className="hidden h-full min-w-0 max-w-[min(100%,42rem)] flex-1 flex-nowrap items-stretch divide-x divide-neutral-800 overflow-x-auto overflow-y-clip overscroll-none border border-neutral-800 scrollbar-none touch-pan-x md:flex"
+            style={{ touchAction: "pan-x", overscrollBehavior: "none" }}
+          >
             <MacroTiles bnm={bnm} index={index} ticks={ticks} />
           </div>
         </div>
@@ -275,7 +284,7 @@ function MacroTiles({
   const fx = (bnm?.rates ?? []).filter(
     (rate) => rate.pair === "USD/MYR" || rate.pair === "SGD/MYR" || rate.pair === "EUR/MYR",
   );
-  const tileClass = snap ? "snap-start" : stacked ? "bg-panel" : "";
+  const tileClass = snap ? "snap-start" : stacked ? "min-h-11 bg-panel" : "";
   const secondaryClass = stacked ? tileClass : `${tileClass} max-lg:hidden`.trim();
 
   return (
@@ -358,7 +367,7 @@ type TileProps = {
 function Tile({ label, note, value, changePct, badge, term, flash, className = "" }: TileProps) {
   return (
     <div
-      className={`flex min-h-11 min-w-[120px] shrink-0 flex-col justify-center px-2 py-1.5 lg:px-3 ${flash ?? ""} ${className}`}
+      className={`inline-flex h-full max-h-full min-h-0 min-w-[120px] shrink-0 flex-col justify-center overflow-hidden whitespace-nowrap px-2 py-0.5 lg:px-3 ${flash ?? ""} ${className}`}
     >
       <div className="flex items-baseline justify-between gap-2">
         <span className="text-[9px] font-medium uppercase tracking-wider text-neutral-500">

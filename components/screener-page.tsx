@@ -31,8 +31,8 @@ export function ScreenerPage() {
   const quotes = useMarketData([KLCI_SYMBOL]);
 
   const [filters, setFilters] = useState(() => defaultScreenerFilters(shariahOnly, 80));
-  const [sortKey, setSortKey] = useState<ScreenerSortKey>("dividendYieldPct");
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
+  const [sortKey, setSortKey] = useState<ScreenerSortKey>("name");
+  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [searchHint, setSearchHint] = useState<string | null>(null);
 
   const peBoundMax = screener.data?.peBounds.max ?? 80;

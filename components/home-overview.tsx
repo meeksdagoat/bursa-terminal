@@ -41,10 +41,13 @@ export function HomeOverview({ category }: HomeOverviewProps) {
       : "/api/quotes?symbols=1155.KL";
   const quotes = useLiveData<QuotesPayload>(quotesUrl, QUOTES_REFRESH_MS);
   const bnm = useLiveData<BnmPayload>("/api/bnm", BNM_REFRESH_MS);
-  const headlines = useLiveData<HeadlinesPayload>(
-    `/api/headlines?category=${category}`,
-    HEADLINES_REFRESH_MS,
-  );
+  const headlinesUrl =
+    category === "my-politics"
+      ? "/api/news/politics"
+      : category === "world-politics"
+        ? "/api/news/politics?scope=world"
+        : `/api/headlines?category=${category}`;
+  const headlines = useLiveData<HeadlinesPayload>(headlinesUrl, HEADLINES_REFRESH_MS);
   const economy = useLiveData<EconomyPayload>("/api/economy", BNM_REFRESH_MS);
   const official = useLiveData<OfficialPayload>("/api/official", HEADLINES_REFRESH_MS);
 
