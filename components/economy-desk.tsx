@@ -11,7 +11,7 @@ import { summariseDosmStat, summariseMacroEvent } from "@/lib/eli5";
 import { changeClass, formatKlDate, formatKlStamp, formatOpr, formatPct, formatPrice } from "@/lib/format";
 import { FX_PAIRS, ratesHaveValues } from "@/lib/fx-live";
 import type { JargonTerm } from "@/lib/jargon";
-import { heatmapRows } from "@/lib/sectors";
+import { formatHeatmapPct, heatmapRows, heatmapValueClass } from "@/lib/sectors";
 import type { BnmPayload, EconomyPayload, HeadlinesPayload, SectorPerformance } from "@/lib/types";
 import { useEconomyLive } from "@/lib/use-economy-live";
 
@@ -196,8 +196,8 @@ export function EconomyDesk({
                   return (
                     <div key={row.label} className="bg-[#0a0a0a] px-2.5 py-2.5">
                       <p className="text-[10px] leading-snug text-neutral-400">{row.label}</p>
-                      <p className={`mt-1 font-mono text-[14px] ${tone.valueClass}`}>
-                        {heatmapLoading ? "..." : formatPct(row.changePct)}
+                      <p className={`mt-1 font-mono text-[14px] ${heatmapValueClass(row.changePct)}`}>
+                        {heatmapLoading ? "..." : formatHeatmapPct(row.changePct)}
                       </p>
                       <span
                         className={`mt-1 inline-block rounded-sm border px-1 py-px font-mono text-[8px] uppercase tracking-wider ${tone.badgeClass}`}
@@ -286,26 +286,23 @@ function toneBadgeClass(changePct: number | null): string {
 function heatmapTone(changePct: number | null): {
   badge: string;
   badgeClass: string;
-  valueClass: string;
 } {
-  if (changePct == null || changePct === 0) {
+  const n = Number.parseFloat(String(changePct ?? 0));
+  if (!Number.isFinite(n) || n === 0) {
     return {
       badge: "FLAT",
-      badgeClass: "border-amber-400/40 text-amber-300",
-      valueClass: "text-amber-300",
+      badgeClass: "border-neutral-700 text-neutral-400",
     };
   }
-  if (changePct > 0) {
+  if (n > 0) {
     return {
       badge: "UP",
-      badgeClass: "border-gain/40 text-gain",
-      valueClass: changeClass(changePct),
+      badgeClass: "border-emerald-500/40 text-emerald-400",
     };
   }
   return {
     badge: "DOWN",
-    badgeClass: "border-loss/40 text-loss",
-    valueClass: changeClass(changePct),
+    badgeClass: "border-rose-500/40 text-rose-400",
   };
 }
 

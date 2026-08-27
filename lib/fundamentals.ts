@@ -166,14 +166,17 @@ function statementDateKey(row: Record<string, unknown>): string | null {
 async function loadQuarterlyFinancials(symbol: string): Promise<Record<string, unknown>[]> {
   const yearAgo = new Date();
   yearAgo.setUTCFullYear(yearAgo.getUTCFullYear() - 1);
+  const twoYearsAgo = new Date();
+  twoYearsAgo.setUTCFullYear(twoYearsAgo.getUTCFullYear() - 2);
 
-  const [latest, prior] = await Promise.all([
+  const [latest, prior, twoYears] = await Promise.all([
     loadSeries(symbol, "quarterly", "financials"),
     loadSeries(symbol, "quarterly", "financials", yearAgo),
+    loadSeries(symbol, "quarterly", "financials", twoYearsAgo),
   ]);
 
   const byDate = new Map<string, Record<string, unknown>>();
-  for (const row of [...statementRows(latest), ...statementRows(prior)]) {
+  for (const row of [...statementRows(latest), ...statementRows(prior), ...statementRows(twoYears)]) {
     const key = statementDateKey(row);
     if (!key) continue;
     byDate.set(key, mergeStatement(byDate.get(key), row));

@@ -125,6 +125,52 @@ export async function fetchQuotes(symbols: string[]): Promise<Quote[]> {
     .filter((quote) => quote.symbol.length > 0);
 }
 
+export type ScreenerQuoteMetrics = {
+  symbol: string;
+  pe: number | null;
+  marketCap: number | null;
+  dividendYieldPct: number | null;
+  roe: number | null;
+};
+
+function toPercentish(value: number | null): number | null {
+  if (value == null) return null;
+  return Math.abs(value) <= 1.5 ? value * 100 : value;
+}
+
+function roeOf(row: Record<string, unknown>): number | null {
+  const reported =
+    toPercentish(num(row.returnOnEquity)) ?? toPercentish(num(row.returnOnEquityTTM));
+  if (reported != null) return Math.round(reported * 100) / 100;
+
+  const eps = num(row.trailingEps) ?? num(row.epsTrailingTwelveMonths);
+  const book = num(row.bookValue);
+  if (eps == null || book == null || book === 0) return null;
+  return Math.round((eps / book) * 10_000) / 100;
+}
+
+/** Quote-tape metrics for the full-universe screener (PE, yield, cap, ROE). */
+export async function fetchScreenerMetrics(symbols: string[]): Promise<ScreenerQuoteMetrics[]> {
+  const raw: unknown = await yahoo.quote(symbols, {}, { validateResult: false });
+  const rows = Array.isArray(raw) ? raw : raw ? [raw] : [];
+
+  return rows.flatMap((row) => {
+    if (typeof row !== "object" || row == null) return [];
+    const item = row as Record<string, unknown>;
+    const quote = normalizeQuote(item);
+    if (!quote.symbol) return [];
+    return [
+      {
+        symbol: quote.symbol,
+        pe: quote.pe,
+        marketCap: quote.marketCap,
+        dividendYieldPct: quote.dividendYieldPct,
+        roe: roeOf(item),
+      },
+    ];
+  });
+}
+
 export type TickerNewsItem = {
   id: string;
   headline: string;

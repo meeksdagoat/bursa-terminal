@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const payload = await cached(`bursa-quote:${entry.symbol}`, TTL_MS, () =>
+    const payload = await cached(`bursa-quote:v2:${entry.symbol}`, TTL_MS, () =>
       getBursaQuote(entry.symbol),
     );
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });

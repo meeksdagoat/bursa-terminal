@@ -59,7 +59,7 @@ export function StockPicker({
         className="relative z-10 flex max-h-[85vh] w-full min-h-0 flex-col overflow-hidden rounded-lg border border-neutral-800 bg-[#0d0d0d] shadow-2xl md:w-[min(600px,94vw)]"
         onWheel={(event) => event.stopPropagation()}
       >
-        <div className="flex-shrink-0 border-b border-neutral-800 bg-[#0d0d0d] p-4">
+        <div className="flex-shrink-0 z-10 border-b border-neutral-800 bg-[#0d0d0d] p-4">
           <div className="mb-3 flex min-h-11 items-center justify-between md:min-h-0">
             <h2 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
               Bursa Universe

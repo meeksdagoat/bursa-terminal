@@ -14,6 +14,7 @@ type CommandPaletteProps = {
 const PAGES = [
   { label: "Home", hint: "", href: "/" },
   { label: "Bursa MY", hint: "Alt+1", href: "/terminal" },
+  { label: "Screener", hint: "", href: "/screener" },
   { label: "My Portfolio", hint: "Alt+2", href: "/portfolio" },
   { label: "Economy", hint: "Alt+3", href: deskHref("my-economy") },
   { label: "Global Economy", hint: "", href: deskHref("global-economy") },

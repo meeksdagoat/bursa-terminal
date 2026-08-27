@@ -1,10 +1,13 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Eli5Block } from "@/components/eli5-summary";
+import { FilingsModal } from "@/components/FilingsModal";
 import { NewsFeedSkeleton } from "@/components/skeleton";
 import { summariseFiling } from "@/lib/eli5";
+import { announcementIdFromUrl, bursaAnnouncementUrl, klseViewUrl } from "@/lib/filing-id";
 import { formatKlStamp } from "@/lib/format";
-import type { Filing, FilingCategory, FilingsPayload } from "@/lib/types";
+import type { AnnouncementKind, Filing, FilingCategory, FilingsPayload, MarketAnnouncement } from "@/lib/types";
 
 type FilingsPanelProps = {
   payload: FilingsPayload | null;
@@ -23,41 +26,100 @@ const BADGE: Record<FilingCategory, string> = {
   OTHER: "border-line text-neutral-500",
 };
 
+function kindFromCategory(category: FilingCategory): AnnouncementKind {
+  if (category === "QR") return "financial";
+  if (category === "DIV") return "dividend";
+  if (category === "BOARD") return "director";
+  return "other";
+}
+
+function toViewerFiling(item: Filing, activeTicker: string, companyName: string): MarketAnnouncement | null {
+  const id = announcementIdFromUrl(item.url ?? item.id);
+  if (!id) return null;
+  const code = activeTicker.replace(/\.KL$/i, "");
+  return {
+    id,
+    title: item.title,
+    company: companyName,
+    companyName,
+    code,
+    symbol: activeTicker,
+    shariah: null,
+    filingType: item.category,
+    kind: kindFromCategory(item.category),
+    publishedAt: item.publishedAt,
+    url: item.url ?? klseViewUrl(id),
+    bursaUrl: bursaAnnouncementUrl(id),
+    pdfUrl: null,
+    pdfName: null,
+    source: item.source,
+  };
+}
+
 export function FilingsPanel({ payload, error, loading, companyName }: FilingsPanelProps) {
+  const activeTicker = payload?.symbol ?? "";
   const items = payload?.items ?? [];
+  const [selected, setSelected] = useState<MarketAnnouncement | null>(null);
+
+  useEffect(() => {
+    setSelected(null);
+  }, [activeTicker]);
 
   return (
     <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
       {loading && items.length === 0 && !error ? (
         <NewsFeedSkeleton rows={6} />
       ) : (
-      <ul className="divide-y divide-line">
-        {items.map((item) => (
-          <FilingRow key={item.id} item={item} />
-        ))}
-        {items.length === 0 ? (
-          <li className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">
-            {error
-              ? `FILINGS FEED UNAVAILABLE · ${error}`
-              : `NO RECENT FILINGS FOR ${companyName.toUpperCase()}`}
-          </li>
-        ) : null}
-      </ul>
+        <ul className="divide-y divide-line">
+          {items.map((item) => (
+            <FilingRow
+              key={item.id}
+              item={item}
+              activeTicker={activeTicker}
+              companyName={companyName}
+              onOpen={setSelected}
+            />
+          ))}
+          {items.length === 0 ? (
+            <li className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">
+              {error
+                ? `FILINGS FEED UNAVAILABLE · ${error}`
+                : `NO RECENT FILINGS FOR ${companyName.toUpperCase()}`}
+            </li>
+          ) : null}
+        </ul>
       )}
+      {selected && activeTicker ? (
+        <FilingsModal
+          key={`${activeTicker}-${selected.id}`}
+          activeTicker={activeTicker}
+          activeCompany={companyName}
+          selectedFilingId={selected.id}
+          selectedFiling={selected}
+          onClose={() => setSelected(null)}
+        />
+      ) : null}
     </div>
   );
 }
 
-function FilingRow({ item }: { item: Filing }) {
+function FilingRow({
+  item,
+  activeTicker,
+  companyName,
+  onOpen,
+}: {
+  item: Filing;
+  activeTicker: string;
+  companyName: string;
+  onOpen: (filing: MarketAnnouncement) => void;
+}) {
+  const filing = activeTicker ? toViewerFiling(item, activeTicker, companyName) : null;
   const body = (
     <div className="flex flex-col gap-2 px-2.5 py-2">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="shrink-0 font-mono text-[10px] text-zinc-400">
-          {formatKlStamp(item.publishedAt)}
-        </span>
-        <span
-          className={`shrink-0 rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${BADGE[item.category]}`}
-        >
+        <span className="shrink-0 font-mono text-[10px] text-zinc-400">{formatKlStamp(item.publishedAt)}</span>
+        <span className={`shrink-0 rounded-sm border px-1 py-px font-mono text-[9px] tracking-wider ${BADGE[item.category]}`}>
           {item.category}
         </span>
       </div>
@@ -68,12 +130,24 @@ function FilingRow({ item }: { item: Filing }) {
         {item.source}
         {item.url ? " ↗" : ""}
       </p>
-      <Eli5Block
-        build={() => summariseFiling(item.title, item.category)}
-        subject={item.title}
-      />
+      <Eli5Block build={() => summariseFiling(item.title, item.category)} subject={item.title} />
     </div>
   );
+
+  if (filing) {
+    return (
+      <li className="relative hover:bg-[#161616]">
+        <button
+          type="button"
+          onClick={() => onOpen(filing)}
+          aria-label={`${item.title} — open filing`}
+          title={item.title}
+          className="absolute inset-0 z-0 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
+        />
+        <div className="pointer-events-none relative z-10">{body}</div>
+      </li>
+    );
+  }
 
   if (!item.url) return <li>{body}</li>;
 

@@ -1,5 +1,5 @@
 import type { SectorPerformance } from "./types";
-import { universe } from "./universe";
+import { entryBySymbol, universe } from "./universe";
 
 /**
  * Equal-weighted average move per sector. Shared so the client can rebuild the
@@ -37,7 +37,27 @@ export const HEATMAP_GROUPS = [
   { label: "Energy", sectors: ["Energy"] },
 ] as const;
 
+/**
+ * Liquid blue-chips used when a sector index is missing. PETDAG is 5681.KL and
+ * Dayang is 5141.KL (the 5183/5222 codes in some briefs map to other names).
+ */
+export const SECTOR_BLUECHIPS: Record<(typeof HEATMAP_GROUPS)[number]["label"], string[]> = {
+  Technology: ["3867.KL", "0128.KL", "5286.KL"],
+  "Financial Services": ["1155.KL", "1295.KL", "1023.KL"],
+  Construction: ["5398.KL", "3336.KL", "5263.KL"],
+  Plantation: ["2445.KL", "1961.KL"],
+  Utilities: ["5347.KL", "6742.KL"],
+  Energy: ["5681.KL", "5141.KL"],
+};
+
 const PER_SECTOR_CAP = 6;
+
+function pushUnique(symbols: string[], seen: Set<string>, symbol: string): boolean {
+  if (seen.has(symbol) || !entryBySymbol(symbol)) return false;
+  seen.add(symbol);
+  symbols.push(symbol);
+  return true;
+}
 
 /** Representative names for the economy heatmap; keeps the quotes request bounded. */
 export function heatmapSymbols(): string[] {
@@ -46,17 +66,22 @@ export function heatmapSymbols(): string[] {
 
   for (const group of HEATMAP_GROUPS) {
     let taken = 0;
+    for (const symbol of SECTOR_BLUECHIPS[group.label]) {
+      if (pushUnique(symbols, seen, symbol)) taken += 1;
+    }
     for (const entry of universe) {
-      if (!group.sectors.includes(entry.sector as never)) continue;
-      if (seen.has(entry.symbol)) continue;
-      seen.add(entry.symbol);
-      symbols.push(entry.symbol);
-      taken += 1;
       if (taken >= PER_SECTOR_CAP) break;
+      if (!group.sectors.includes(entry.sector as never)) continue;
+      if (pushUnique(symbols, seen, entry.symbol)) taken += 1;
     }
   }
 
   return symbols;
+}
+
+function mean(values: number[]): number | null {
+  if (values.length === 0) return null;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 export function heatmapRows(sectors: SectorPerformance[]): Array<{
@@ -74,13 +99,47 @@ export function heatmapRows(sectors: SectorPerformance[]): Array<{
     const count = matched.reduce((sum, sector) => sum + sector.count, 0);
     return {
       label: group.label,
-      changePct:
-        weighted.length > 0
-          ? weighted.reduce((sum, value) => sum + value, 0) / weighted.length
-          : null,
+      changePct: mean(weighted),
       count,
     };
   });
+}
+
+/** Stock-weighted blue-chip average when a heatmap group has no sector print. */
+export function fillHeatmapFromQuotes(
+  rows: Array<{ label: string; changePct: number | null; count: number }>,
+  quotes: Array<{ symbol: string; changePct: number | null }>,
+): Array<{ label: string; changePct: number | null; count: number }> {
+  const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote.changePct]));
+
+  return rows.map((row) => {
+    if (row.changePct != null) return row;
+    const chips = SECTOR_BLUECHIPS[row.label as keyof typeof SECTOR_BLUECHIPS] ?? [];
+    const values = chips.flatMap((symbol) => {
+      const pct = bySymbol.get(symbol);
+      return pct == null ? [] : [pct];
+    });
+    return {
+      ...row,
+      changePct: mean(values),
+      count: values.length > 0 ? values.length : row.count,
+    };
+  });
+}
+
+export function formatHeatmapPct(value: number | null | undefined): string {
+  const n = Number.parseFloat(String(value ?? 0));
+  if (!Number.isFinite(n)) return "0.00%";
+  const formatted = Math.abs(n).toFixed(2);
+  if (n > 0) return `+${formatted}%`;
+  if (n < 0) return `-${formatted}%`;
+  return `${formatted}%`;
+}
+
+export function heatmapValueClass(value: number | null | undefined): string {
+  const n = Number.parseFloat(String(value ?? 0));
+  if (!Number.isFinite(n) || n === 0) return "text-neutral-400";
+  return n > 0 ? "text-emerald-400" : "text-rose-400";
 }
 
 /** Last-print seed for the desk heatmap when Yahoo is idle and history has not landed. */
@@ -97,5 +156,32 @@ export const LAST_SESSION_HEATMAP: SectorPerformance[] = [
 export function heatmapIsEmpty(
   rows: Array<{ changePct: number | null }>,
 ): boolean {
-  return rows.every((row) => row.changePct == null || row.changePct === 0);
+  return rows.every((row) => row.changePct == null);
+}
+
+/** When grouped sector prints are missing, average the representative blue-chips. */
+export function withBlueChipSectors(
+  sectors: SectorPerformance[],
+  quotes: Array<{ symbol: string; changePct: number | null }>,
+): SectorPerformance[] {
+  const byName = new Map(sectors.map((sector) => [sector.name, sector]));
+  const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote.changePct]));
+
+  for (const group of HEATMAP_GROUPS) {
+    const hasPrint = group.sectors.some((name) => byName.get(name)?.changePct != null);
+    if (hasPrint) continue;
+    const values = SECTOR_BLUECHIPS[group.label].flatMap((symbol) => {
+      const pct = bySymbol.get(symbol);
+      return pct == null ? [] : [pct];
+    });
+    if (values.length === 0) continue;
+    const primary = group.sectors[0];
+    byName.set(primary, {
+      name: primary,
+      changePct: mean(values),
+      count: values.length,
+    });
+  }
+
+  return [...byName.values()].sort((a, b) => (b.changePct ?? -Infinity) - (a.changePct ?? -Infinity));
 }

@@ -74,6 +74,7 @@ function mapBursaQuote(symbol: string, payload: unknown): BursaQuote {
     peRatio: num(summary?.trailingPE) ?? num(stats?.forwardPE),
     dividendYield: toPercent(num(summary?.dividendYield) ?? num(summary?.trailingAnnualDividendYield)),
     roe: toPercent(num(financials?.returnOnEquity)),
+    priceToBook: priceToBookOf(last, stats, summary),
     exDividendDate: formattedDate(calendar?.exDividendDate) ?? formattedDate(summary?.exDividendDate),
     earningsDate: formatEarningsRange(earningsDates),
     exDividendAt,
@@ -81,6 +82,19 @@ function mapBursaQuote(symbol: string, payload: unknown): BursaQuote {
     earningsAt: earningsDates,
     asOf: new Date().toISOString(),
   };
+}
+
+function priceToBookOf(
+  last: number | null,
+  stats: Record<string, unknown> | null,
+  summary: Record<string, unknown> | null,
+): number | null {
+  const quoted = num(stats?.priceToBook) ?? num(summary?.priceToBook);
+  if (quoted != null && quoted > 0) return quoted;
+  const book = num(stats?.bookValue) ?? num(summary?.bookValue);
+  if (last == null || book == null || book === 0) return null;
+  const ratio = last / book;
+  return Number.isFinite(ratio) && ratio > 0 ? ratio : null;
 }
 
 function unwrapResult(payload: unknown): Record<string, unknown> {

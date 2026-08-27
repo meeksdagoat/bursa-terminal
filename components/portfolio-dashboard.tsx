@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useMemo, useRef, useState, type ReactNode } from "react";
 import { AllocationDonut } from "@/components/allocation-donut";
+import { ExportCsvButton } from "@/components/export-csv-button";
 import { ExportMenu } from "@/components/export-menu";
 import { HeaderBar } from "@/components/header-bar";
 import { stickyCellClass, stickyHeadClass, tableCellClass, tableHeadClass } from "@/components/h-scroll";
@@ -11,6 +12,7 @@ import { MainNav } from "@/components/main-nav";
 import { SignedPct } from "@/components/signed-change";
 import { KpiSkeleton, SparklineSkeleton, TableSkeleton } from "@/components/skeleton";
 import { ValueSparkline } from "@/components/value-sparkline";
+import { csvFilename } from "@/hooks/useExportToCSV";
 import {
   downloadCsv,
   estimateDividends,
@@ -381,6 +383,26 @@ export function PortfolioDashboard() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <ExportCsvButton
+              disabled={rows.length === 0}
+              onClick={() =>
+                downloadCsv(
+                  csvFilename("Portfolio", "Holdings"),
+                  holdingsCsvRows(
+                    rows.map((row) => ({
+                      symbol: row.holding.symbol,
+                      name: row.entry?.name ?? row.holding.symbol,
+                      quantity: row.holding.quantity,
+                      costPerShare: row.holding.costPerShare,
+                      last: row.last,
+                      value: row.value,
+                      pnl: row.pnl,
+                      boughtAt: row.holding.boughtAt,
+                    })),
+                  ),
+                )
+              }
+            />
             <div className="flex w-full overflow-x-auto border border-line sm:w-auto sm:overflow-hidden">
               {PORTFOLIO_RANGES.map((key) => (
                 <button

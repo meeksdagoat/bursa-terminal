@@ -1,17 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { stickyCellClass, stickyHeadClass, tableCellClass, tableHeadClass } from "@/components/h-scroll";
+import { PeerComparison } from "@/components/PeerComparison";
 import { TableSkeleton } from "@/components/skeleton";
-import {
-  changeClass,
-  formatKlFullDate,
-  formatMarketCap,
-  formatPct,
-  formatPrice,
-  formatRatio,
-} from "@/lib/format";
+import { formatKlFullDate } from "@/lib/format";
 import type { BursaQuote } from "@/lib/types";
+import { sectorPeers } from "@/lib/universe";
 
 type DeepDiveTab = "peers" | "calendar";
 
@@ -32,15 +26,17 @@ type CalendarAction = {
 export function StockDeepDivePanel({ currentTicker, peerTickers }: StockDeepDivePanelProps) {
   const [tab, setTab] = useState<DeepDiveTab>("peers");
   const [rows, setRows] = useState<BursaQuote[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const symbols = useMemo(
-    () => [...new Set([currentTicker, ...peerTickers])],
+    () => [...new Set([currentTicker, ...(peerTickers.length > 0 ? peerTickers : sectorPeers(currentTicker, 4))])],
     [currentTicker, peerTickers],
   );
 
   useEffect(() => {
+    if (tab !== "calendar") return;
+
     let cancelled = false;
     const controller = new AbortController();
 
@@ -77,7 +73,7 @@ export function StockDeepDivePanel({ currentTicker, peerTickers }: StockDeepDive
       cancelled = true;
       controller.abort();
     };
-  }, [symbols]);
+  }, [symbols, tab]);
 
   const actions = useMemo(() => buildCalendar(rows), [rows]);
   const current = rows.find((row) => row.symbol === currentTicker) ?? null;
@@ -92,92 +88,19 @@ export function StockDeepDivePanel({ currentTicker, peerTickers }: StockDeepDive
           label="Corporate actions"
         />
         <span className="ml-auto font-mono text-[9px] uppercase tracking-wider text-neutral-700">
-          YAHOO LIVE · {rows.length}/{symbols.length}
+          YAHOO LIVE{tab === "calendar" ? ` · ${rows.length}/${symbols.length}` : ""}
         </span>
       </div>
 
-      {loading ? (
-        <TableSkeleton rows={5} cols={6} />
+      {tab === "peers" ? (
+        <PeerComparison currentTicker={currentTicker} />
+      ) : loading ? (
+        <TableSkeleton rows={6} cols={4} />
       ) : error ? (
         <p className="px-2.5 py-3 font-mono text-[10px] text-neutral-600">{error}</p>
-      ) : tab === "peers" ? (
-        <PeerMatrix rows={orderRows(rows, currentTicker)} currentTicker={currentTicker} />
       ) : (
         <ActionCalendar actions={actions} currentTicker={currentTicker} focus={current} />
       )}
-    </div>
-  );
-}
-
-function PeerMatrix({
-  rows,
-  currentTicker,
-}: {
-  rows: BursaQuote[];
-  currentTicker: string;
-}) {
-  return (
-    <div className="overflow-x-auto overscroll-x-contain touch-pan-x">
-      <table className="w-full min-w-[720px] border-separate border-spacing-0 text-left">
-        <thead>
-          <tr className="text-[9px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
-            <th className={`${stickyHeadClass} text-left`}>Ticker</th>
-            <th className={`${tableHeadClass} text-left`}>Company</th>
-            <th className={`${tableHeadClass} text-right`}>Price (MYR)</th>
-            <th className={`${tableHeadClass} text-right`}>Day chg</th>
-            <th className={`${tableHeadClass} text-right`}>Mkt cap</th>
-            <th className={`${tableHeadClass} text-right`}>P/E</th>
-            <th className={`${tableHeadClass} text-right`}>Div yld</th>
-            <th className={`${tableHeadClass} text-right`}>ROE</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row, index) => {
-            const current = row.symbol === currentTicker;
-            return (
-              <tr
-                key={row.symbol}
-                className={`${index % 2 === 1 ? "bg-[#101010]" : ""} ${
-                  current ? "bg-gain/[0.07]" : "hover:bg-[#161616]"
-                }`}
-              >
-                <td
-                  className={`${stickyCellClass} font-mono text-neutral-100 ${
-                    current ? "border-l-2 border-gain" : "border-l-2 border-transparent"
-                  }`}
-                >
-                  {row.symbol.replace(/\.KL$/, "")}
-                </td>
-                <td className={`${tableCellClass} max-w-[160px] truncate text-left text-neutral-200`}>
-                  {row.companyName}
-                </td>
-                <td className={`${tableCellClass} text-right font-mono text-neutral-100`}>
-                  {formatPrice(row.price)}
-                </td>
-                <td
-                  className={`${tableCellClass} text-right font-mono ${changeClass(row.dayChangePercent)}`}
-                >
-                  {formatPct(row.dayChangePercent)}
-                </td>
-                <td className={`${tableCellClass} text-right font-mono text-neutral-200`}>
-                  {formatMarketCap(row.marketCap)}
-                </td>
-                <td className={`${tableCellClass} text-right font-mono text-neutral-200`}>
-                  {formatRatio(row.peRatio)}
-                </td>
-                <td className={`${tableCellClass} text-right font-mono text-neutral-200`}>
-                  {formatPlainPct(row.dividendYield)}
-                </td>
-                <td
-                  className={`${tableCellClass} text-right font-mono ${changeClass(row.roe)}`}
-                >
-                  {formatPlainPct(row.roe)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
     </div>
   );
 }
@@ -256,14 +179,6 @@ function SubTab({
   );
 }
 
-function orderRows(rows: BursaQuote[], currentTicker: string): BursaQuote[] {
-  return [...rows].sort((a, b) => {
-    if (a.symbol === currentTicker) return -1;
-    if (b.symbol === currentTicker) return 1;
-    return a.symbol.localeCompare(b.symbol);
-  });
-}
-
 function buildCalendar(rows: BursaQuote[]): CalendarAction[] {
   const start = startOfKlToday();
   const items: CalendarAction[] = [];
@@ -312,8 +227,4 @@ function startOfKlToday(): number {
     day: "2-digit",
   }).format(new Date());
   return Date.parse(`${day}T00:00:00+08:00`);
-}
-
-function formatPlainPct(value: number | null | undefined): string {
-  return value != null && Number.isFinite(value) ? `${value.toFixed(2)}%` : "—";
 }

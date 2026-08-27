@@ -301,6 +301,49 @@ export type BursaAnnouncementsPayload = {
   items: BursaAnnouncement[];
 };
 
+/** Client filter on the market-wide Bursa filings wire. */
+export type AnnouncementKind = "financial" | "dividend" | "director" | "other";
+
+export type MarketAnnouncement = {
+  id: string;
+  title: string;
+  company: string | null;
+  /** Same as `company` — used by the Official Filing header. */
+  companyName?: string | null;
+  code: string | null;
+  symbol: string | null;
+  shariah: boolean | null;
+  filingType: string;
+  kind: AnnouncementKind;
+  publishedAt: string | null;
+  url: string;
+  bursaUrl: string;
+  pdfUrl: string | null;
+  pdfName: string | null;
+  source: string;
+};
+
+export type AnnouncementsPayload = {
+  source: "bursa";
+  asOf: string;
+  items: MarketAnnouncement[];
+  errors: string[];
+};
+
+/** Per-ticker filings for the charted stock (`/api/bursa/filings?symbol=`). */
+export type CompanyFilingsPayload = {
+  source: "bursa" | "google-news";
+  symbol: string;
+  company: string;
+  asOf: string;
+  items: MarketAnnouncement[];
+  errors: string[];
+};
+
+export type AnnouncementDetailPayload = MarketAnnouncement & {
+  excerpt: string | null;
+};
+
 export type WarrantType = "Call" | "Put";
 
 export type StructuredWarrant = {
@@ -472,6 +515,7 @@ export type BursaQuote = {
   peRatio: number | null;
   dividendYield: number | null;
   roe: number | null;
+  priceToBook: number | null;
   exDividendDate: string | null;
   earningsDate: string | null;
   /** ISO timestamps used by the corporate-action calendar. */
@@ -479,4 +523,78 @@ export type BursaQuote = {
   dividendAt: string | null;
   earningsAt: string[];
   asOf: string;
+};
+
+export type FinancialPeriodKind = "annual" | "quarterly";
+export type FinancialStatementKind = "income" | "balance" | "cashflow";
+
+export type FinancialCell = {
+  value: number | null;
+  yoyPct: number | null;
+};
+
+export type FinancialPeriodColumn = {
+  key: string;
+  label: string;
+  date: string | null;
+  fiscalYear: number;
+  quarter: 1 | 2 | 3 | 4 | null;
+};
+
+export type FinancialStatementRow = {
+  id: string;
+  label: string;
+  section: string;
+  emphasize?: boolean;
+  cells: FinancialCell[];
+};
+
+export type FinancialStatementTable = {
+  columns: FinancialPeriodColumn[];
+  rows: FinancialStatementRow[];
+};
+
+export type FinancialStatementsBundle = {
+  income: FinancialStatementTable;
+  balance: FinancialStatementTable;
+  cashflow: FinancialStatementTable;
+};
+
+/** Multi-year Yahoo fundamentals for the stock-detail financials tab. */
+export type FinancialStatementsPayload = {
+  source: "yahoo";
+  symbol: string;
+  company: string;
+  currency: string;
+  asOf: string;
+  annual: FinancialStatementsBundle;
+  quarterly: FinancialStatementsBundle;
+};
+
+export type ScreenerCapSize = "small" | "mid" | "large";
+
+export type ScreenerRow = {
+  symbol: string;
+  code: string;
+  name: string;
+  shortName: string;
+  sector: string;
+  shariah: boolean;
+  pe: number | null;
+  dividendYieldPct: number | null;
+  marketCap: number | null;
+  roe: number | null;
+  capSize: ScreenerCapSize | null;
+};
+
+export type ScreenerPayload = {
+  source: "yahoo";
+  asOf: string;
+  covered: number;
+  universe: number;
+  errors: string[];
+  sectors: string[];
+  peBounds: { min: number; max: number };
+  yieldBounds: { min: number; max: number };
+  rows: ScreenerRow[];
 };

@@ -37,13 +37,9 @@ export function CorporatePerformance({ symbol, companyName }: CorporatePerforman
   const quarterly = withComputedYoy(payload.quarterly);
 
   return (
-    <div className="flex flex-col gap-4 px-2.5 py-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-mono text-[9px] uppercase tracking-[0.14em] text-neutral-600">
-          {payload.source === "yahoo" ? "YAHOO FINANCE · REPORTED ACTUALS" : "LIVE SERIES"} ·{" "}
-          {payload.currency} · {symbol}
-        </p>
-        <div className="flex items-center gap-3">
+    <div className="flex min-h-0 flex-col overflow-hidden">
+      <div className="flex w-full items-center justify-between gap-3 overflow-hidden border-b border-line px-4 py-2">
+        <div className="flex min-w-0 items-center gap-3">
           <SeriesToggle
             label="Revenue"
             swatch="#38bdf8"
@@ -57,7 +53,12 @@ export function CorporatePerformance({ symbol, companyName }: CorporatePerforman
             onChange={() => setShowProfit((value) => !value)}
           />
         </div>
+        <p className="ml-auto mr-2 shrink-0 whitespace-nowrap font-mono text-xs uppercase tracking-wider text-neutral-400">
+          {payload.source === "yahoo" ? "YAHOO FINANCE · REPORTED ACTUALS" : "LIVE SERIES"} ·{" "}
+          {payload.currency} · {symbol}
+        </p>
       </div>
+      <div className="flex flex-col gap-4 overflow-x-auto px-2.5 py-3">
 
       <RevenueProfitChart
         rows={[...payload.annual].slice().reverse()}
@@ -186,6 +187,7 @@ export function CorporatePerformance({ symbol, companyName }: CorporatePerforman
           </tbody>
         </table>
       </DataTable>
+      </div>
     </div>
   );
 }

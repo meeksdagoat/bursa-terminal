@@ -69,7 +69,7 @@ export function MoversBoard({ payload, error, loading, size = 6, onRetry }: Move
         </div>
       </div>
 
-      <div className="grid grid-cols-1 divide-y divide-line lg:grid-cols-2 lg:divide-x lg:divide-y-0">
+      <div className="grid w-full max-w-full grid-cols-1 divide-y divide-line overflow-hidden md:grid-cols-2 md:divide-x md:divide-y-0 lg:divide-x">
         <Board title="Top Gainers" rows={gainers} loading={loading} tone="gain" />
         <Board title="Top Losers" rows={losers} loading={loading} tone="loss" />
       </div>
@@ -113,20 +113,20 @@ function Board({
               <Link
                 href={`/terminal?symbol=${encodeURIComponent(row.symbol)}`}
                 title={`Open ${row.name} in the market terminal`}
-                className="flex items-center gap-3 px-3 py-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
+                className="flex min-w-0 items-center gap-3 px-3 py-2 focus-visible:outline focus-visible:outline-1 focus-visible:outline-gain/60"
               >
                 <span className="w-3 shrink-0 font-mono text-[10px] text-neutral-700">
                   {position + 1}
                 </span>
 
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 pr-2">
                   <p className="truncate text-[13px] font-medium text-neutral-100">{row.name}</p>
-                  <p className="font-mono text-[9px] text-neutral-600">
+                  <p className="truncate font-mono text-[9px] text-neutral-600">
                     {row.code} · {row.sector} · VOL {displayVolume(row.quote.volume)}
                   </p>
                 </div>
 
-                <div className="shrink-0 text-right">
+                <div className="flex flex-shrink-0 items-center justify-end gap-2 text-right">
                   <p className="font-mono text-[13px] text-neutral-100">
                     RM {formatPrice(row.quote.price)}
                   </p>

@@ -1,7 +1,7 @@
 import type { NextRequest } from "next/server";
 import { cached } from "@/lib/cache";
 import { isBursaOpen } from "@/lib/market-status";
-import { sectorPerformance } from "@/lib/sectors";
+import { sectorPerformance, withBlueChipSectors } from "@/lib/sectors";
 import type { Quote, QuotesPayload, UniverseEntry } from "@/lib/types";
 import { DEFAULT_WATCHLIST, KLCI_SYMBOL, entryBySymbol } from "@/lib/universe";
 import { fetchLastSessionMoves, fetchQuotes } from "@/lib/yahoo";
@@ -105,11 +105,14 @@ async function buildPayload(entries: UniverseEntry[]): Promise<QuotesPayload> {
     marketState: reference?.marketState ?? null,
     quotes,
     index: bySymbol.get(KLCI_SYMBOL) ?? null,
-    sectors: sectorPerformance(
-      entries.map((entry) => ({
-        sector: entry.sector,
-        changePct: changeBySymbol.get(entry.symbol) ?? null,
-      })),
+    sectors: withBlueChipSectors(
+      sectorPerformance(
+        entries.map((entry) => ({
+          sector: entry.sector,
+          changePct: changeBySymbol.get(entry.symbol) ?? null,
+        })),
+      ),
+      quotes,
     ),
   };
 }

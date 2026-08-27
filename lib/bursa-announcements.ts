@@ -116,7 +116,13 @@ function parseNearbyDate(window: string): string | null {
   if (month == null) return null;
   const year = new Date().toLocaleString("en-CA", { timeZone: "Asia/Kuala_Lumpur", year: "numeric" });
   const day = `${year}-${String(month + 1).padStart(2, "0")}-${String(Number(short[1])).padStart(2, "0")}`;
-  return toIso(day, clock);
+  const iso = toIso(day, clock);
+  if (!iso) return null;
+  if (new Date(iso).getTime() > Date.now() + 12 * 60 * 60 * 1000) {
+    const prior = `${Number(year) - 1}-${String(month + 1).padStart(2, "0")}-${String(Number(short[1])).padStart(2, "0")}`;
+    return toIso(prior, clock);
+  }
+  return iso;
 }
 
 function field(html: string, className: string): string {

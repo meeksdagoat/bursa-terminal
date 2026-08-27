@@ -3,10 +3,12 @@
 import Link from "next/link";
 import { FormEvent, ReactNode, useEffect, useRef, useState } from "react";
 import { ConnectionStatus } from "@/components/connection-status";
+import { HeaderAuth } from "@/components/header-auth";
 import { Jargon } from "@/components/jargon-term";
 import { NAV_ITEMS, type NavActive } from "@/components/main-nav";
 import { SlideDrawer } from "@/components/slide-drawer";
 import { TickerSearchField } from "@/components/ticker-search";
+import { ToggleSwitch } from "@/components/toggle-switch";
 import { SignedPct } from "@/components/signed-change";
 import {
   formatFx,
@@ -69,7 +71,8 @@ export function HeaderBar({
 
   const placeholder = searchPlaceholder ?? "Search ticker — Maybank 1155.KL";
   const showShariahToggle = active === "market";
-  const showDelayedBadge = active === "market" || active === "my-economy";
+  const showDelayedBadge = active === "market";
+  const showLiveBadge = active === "my-economy" || active === "global-economy";
 
   return (
     <header className="w-full shrink-0 overflow-hidden border-b border-neutral-800 bg-[#0d0d0d]">
@@ -132,14 +135,18 @@ export function HeaderBar({
 
           {showDelayedBadge ? (
             <>
-              <span className="hidden flex-shrink-0 whitespace-nowrap lg:inline-flex">
+              <span className="hidden flex-shrink-0 whitespace-nowrap text-xs font-mono uppercase lg:inline-flex">
                 <ConnectionStatus status={status} latencyMs={latencyMs} />
               </span>
-              <span className="inline-flex flex-shrink-0 whitespace-nowrap lg:hidden">
+              <span className="inline-flex flex-shrink-0 whitespace-nowrap text-xs font-mono uppercase lg:hidden">
                 <ConnectionStatus status={status} compact latencyMs={latencyMs} />
               </span>
             </>
           ) : null}
+
+          {showLiveBadge ? <RealtimeBadge /> : null}
+
+          <HeaderAuth />
 
           {actions ? <div className="hidden flex-shrink-0 xl:block">{actions}</div> : null}
 
@@ -227,22 +234,27 @@ function ShariahToggle() {
       }`}
     >
       <span className="hidden font-mono text-[9px] uppercase tracking-wider lg:inline">
-        Shariah Only 🌙
+        Shariah Only
       </span>
       <span className="font-mono text-[9px] uppercase tracking-wider lg:hidden">🌙</span>
-      <span
-        aria-hidden
-        className={`relative hidden h-3 w-6 rounded-full transition-colors md:block ${
-          shariahOnly ? "bg-gain/40" : "bg-[#2a2a2a]"
-        }`}
-      >
-        <span
-          className={`absolute top-0.5 h-2 w-2 rounded-full transition-all ${
-            shariahOnly ? "left-3.5 bg-gain" : "left-0.5 bg-neutral-500"
-          }`}
-        />
-      </span>
+      <ToggleSwitch checked={shariahOnly} />
     </button>
+  );
+}
+
+function RealtimeBadge() {
+  return (
+    <span
+      title="Macro indicators stream live from TradingView and official APIs"
+      className="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-mono uppercase tracking-[0.12em] text-emerald-400"
+    >
+      <span className="relative flex h-1.5 w-1.5">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      </span>
+      <span className="hidden sm:inline">Realtime · Live</span>
+      <span className="sm:hidden">Live</span>
+    </span>
   );
 }
 

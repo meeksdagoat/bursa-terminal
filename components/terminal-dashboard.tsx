@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { Panel, PanelGroup } from "react-resizable-panels";
+import { AnnouncementsDrawer } from "@/components/AnnouncementsDrawer";
 import { ChartWidget } from "@/components/chart-widget";
 import { ExportMenu } from "@/components/export-menu";
 import { HeaderBar } from "@/components/header-bar";
@@ -37,7 +38,7 @@ type TerminalDashboardProps = {
   initialSymbol: string;
 };
 
-type CompactDrawer = "watchlist" | "news" | null;
+type CompactDrawer = "watchlist" | "news" | "filings" | null;
 
 export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   const router = useRouter();
@@ -213,6 +214,10 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
     />
   );
 
+  const filingsPane = (
+    <AnnouncementsDrawer activeTicker={selected.symbol} activeCompany={selected.fullName || selected.name} />
+  );
+
   return (
     <div
       data-app-shell
@@ -268,6 +273,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
           chartPane={chartPane}
           intelPane={intelPane}
           newsPane={newsPane}
+          filingsPane={filingsPane}
         />
       ) : (
         <CompactWorkspace
@@ -275,6 +281,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
           intelPane={intelPane}
           watchlistPane={watchlistPane}
           newsPane={newsPane}
+          filingsPane={filingsPane}
           drawer={compactDrawer}
           onDrawer={setCompactDrawer}
         />
@@ -310,11 +317,13 @@ function DesktopWorkspace({
   chartPane,
   intelPane,
   newsPane,
+  filingsPane,
 }: {
   watchlistPane: ReactNode;
   chartPane: ReactNode;
   intelPane: ReactNode;
   newsPane: ReactNode;
+  filingsPane: ReactNode;
 }) {
   return (
     <PanelGroup
@@ -358,7 +367,7 @@ function DesktopWorkspace({
         className="flex min-h-0 flex-col overflow-hidden"
       >
         <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
-          {newsPane}
+          <RightRail newsPane={newsPane} filingsPane={filingsPane} />
         </div>
       </Panel>
     </PanelGroup>
@@ -370,6 +379,7 @@ function CompactWorkspace({
   intelPane,
   watchlistPane,
   newsPane,
+  filingsPane,
   drawer,
   onDrawer,
 }: {
@@ -377,6 +387,7 @@ function CompactWorkspace({
   intelPane: ReactNode;
   watchlistPane: ReactNode;
   newsPane: ReactNode;
+  filingsPane: ReactNode;
   drawer: CompactDrawer;
   onDrawer: (drawer: CompactDrawer) => void;
 }) {
@@ -401,9 +412,16 @@ function CompactWorkspace({
         <button
           type="button"
           onClick={() => onDrawer("news")}
-          className="min-h-11 flex-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400"
+          className="min-h-11 flex-1 border-r border-line px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400"
         >
           News
+        </button>
+        <button
+          type="button"
+          onClick={() => onDrawer("filings")}
+          className="min-h-11 flex-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-neutral-400"
+        >
+          Filings
         </button>
       </nav>
 
@@ -420,6 +438,47 @@ function CompactWorkspace({
       <SlideDrawer open={drawer === "news"} onClose={() => onDrawer(null)} side="bottom" title="News">
         {newsPane}
       </SlideDrawer>
+      <SlideDrawer open={drawer === "filings"} onClose={() => onDrawer(null)} side="bottom" title="Bursa filings">
+        {filingsPane}
+      </SlideDrawer>
+    </div>
+  );
+}
+
+function RightRail({
+  newsPane,
+  filingsPane,
+}: {
+  newsPane: ReactNode;
+  filingsPane: ReactNode;
+}) {
+  const [tab, setTab] = useState<"news" | "filings">("news");
+
+  return (
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="flex shrink-0 border-b border-line">
+        <button
+          type="button"
+          aria-pressed={tab === "news"}
+          onClick={() => setTab("news")}
+          className={`min-h-11 flex-1 border-r border-line px-2 font-mono text-[10px] uppercase tracking-[0.14em] md:min-h-7 ${
+            tab === "news" ? "bg-[#1a1a1a] text-gain" : "text-neutral-500 hover:text-neutral-300"
+          }`}
+        >
+          News
+        </button>
+        <button
+          type="button"
+          aria-pressed={tab === "filings"}
+          onClick={() => setTab("filings")}
+          className={`min-h-11 flex-1 px-2 font-mono text-[10px] uppercase tracking-[0.14em] md:min-h-7 ${
+            tab === "filings" ? "bg-[#1a1a1a] text-gain" : "text-neutral-500 hover:text-neutral-300"
+          }`}
+        >
+          Filings
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-hidden">{tab === "news" ? newsPane : filingsPane}</div>
     </div>
   );
 }

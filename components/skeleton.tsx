@@ -87,6 +87,40 @@ export function PanelSkeleton({ rows = 6 }: { rows?: number }) {
   );
 }
 
+export function FinancialGridSkeleton({
+  rows = 8,
+  cols = 5,
+}: {
+  rows?: number;
+  cols?: number;
+}) {
+  return (
+    <div
+      className="min-h-[280px] overflow-hidden border-t border-line"
+      aria-busy="true"
+      aria-label="Loading financial statements"
+    >
+      <div className="flex items-center gap-2 border-b border-line px-2.5 py-2">
+        <Pulse className="h-3 w-28" />
+        {Array.from({ length: cols }, (_, col) => (
+          <Pulse key={col} className="ml-auto h-3 w-14" />
+        ))}
+      </div>
+      {Array.from({ length: rows }, (_, row) => (
+        <div key={row} className="flex items-center gap-2 border-b border-line/60 px-2.5 py-2">
+          <Pulse className={`h-3.5 ${row % 3 === 0 ? "w-32" : "w-24"}`} />
+          {Array.from({ length: cols }, (_, col) => (
+            <div key={col} className="ml-auto flex w-16 flex-col items-end gap-1">
+              <Pulse className="h-3 w-12" />
+              <Pulse className="h-2 w-8" />
+            </div>
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export function EventRowSkeleton() {
   return (
     <li className="flex flex-col gap-2 px-2.5 py-2">

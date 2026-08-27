@@ -103,6 +103,11 @@ export function formatOpr(value: number | null | undefined): string {
   return isNumber(value) ? `${value.toFixed(2)}%` : DASH;
 }
 
+/** Unsigned percent for yields and ROE — not a signed P&L move. */
+export function formatUnsignedPct(value: number | null | undefined): string {
+  return isNumber(value) ? `${value.toFixed(2)}%` : DASH;
+}
+
 /**
  * Yahoo quotes the CBOE 10-year (^TNX) as either the yield (4.25) or 10× the
  * yield (42.5). Values above 20 are treated as the 10× convention.
@@ -115,10 +120,10 @@ export function formatYield(value: number | null | undefined): string {
 
 /** High-contrast P&L text against the dark terminal background. */
 export function changeClass(value: number | null | undefined): string {
-  if (!isNumber(value)) return "text-zinc-400";
+  if (!isNumber(value)) return "text-neutral-400";
   if (value > 0) return "text-emerald-400";
   if (value < 0) return "text-rose-400";
-  return "text-zinc-400";
+  return "text-neutral-400";
 }
 
 export function changeArrow(value: number | null | undefined): "▲" | "▼" | null {

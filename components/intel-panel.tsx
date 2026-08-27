@@ -8,6 +8,9 @@ import { useShariahOnly } from "@/lib/use-shariah";
 const CorporatePerformance = lazy(() =>
   import("@/components/corporate-performance").then((mod) => ({ default: mod.CorporatePerformance })),
 );
+const FinancialStatements = lazy(() =>
+  import("@/components/FinancialStatements").then((mod) => ({ default: mod.FinancialStatements })),
+);
 const StockDeepDivePanel = lazy(() =>
   import("@/components/StockDeepDivePanel").then((mod) => ({ default: mod.StockDeepDivePanel })),
 );
@@ -26,7 +29,7 @@ const TechnicalGauge = lazy(() =>
   import("@/components/technical-gauge").then((mod) => ({ default: mod.TechnicalGauge })),
 );
 
-type Tab = "technicals" | "performance" | "peers" | "events" | "filings" | "warrants";
+type Tab = "technicals" | "performance" | "financials" | "peers" | "events" | "filings" | "warrants";
 
 type IntelPanelProps = {
   symbol: string;
@@ -45,13 +48,19 @@ function IntelPanelInner({ symbol, companyName, companyShariah }: IntelPanelProp
   const filingsBlocked = shariahOnly && !companyShariah;
 
   return (
-    <section className="flex h-full min-h-0 flex-col bg-panel">
-      <div className="no-scrollbar flex min-h-11 shrink-0 items-center overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-none snap-x border-b border-line md:h-7 md:min-h-0">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden bg-panel">
+      <div className="no-scrollbar flex h-11 w-full shrink-0 items-center overflow-x-auto overscroll-x-contain touch-pan-x scrollbar-none snap-x border-b border-line md:h-7">
         <TabButton
           active={tab === "performance"}
           onClick={() => setTab("performance")}
           label="Corporate Performance"
           shortLabel="Performance"
+        />
+        <TabButton
+          active={tab === "financials"}
+          onClick={() => setTab("financials")}
+          label="Financials"
+          shortLabel="Financials"
         />
         <TabButton
           active={tab === "peers"}
@@ -83,22 +92,6 @@ function IntelPanelInner({ symbol, companyName, companyShariah }: IntelPanelProp
           label="Technical Analysis"
           shortLabel="Tech"
         />
-
-        <span className="ml-auto hidden pr-2 font-mono text-[9px] text-neutral-700 md:inline">
-          {tab === "technicals"
-            ? `1Y DAILY · ${symbol}`
-            : tab === "performance"
-              ? `REPORTED · ${symbol}`
-              : tab === "peers"
-                ? `YAHOO LIVE · ${symbol}`
-                : tab === "events"
-                  ? `TIMELINE · ${symbol}`
-                  : tab === "warrants"
-                    ? `SW · ${symbol}`
-                    : filingsBlocked
-                      ? "HIDDEN BY SHARIAH FILTER"
-                      : `LIVE · ${symbol}`}
-        </span>
       </div>
 
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain touch-pan-y">
@@ -107,6 +100,8 @@ function IntelPanelInner({ symbol, companyName, companyShariah }: IntelPanelProp
             <TechnicalGauge symbol={symbol} companyName={companyName} />
           ) : tab === "performance" ? (
             <CorporatePerformance key={symbol} symbol={symbol} companyName={companyName} />
+          ) : tab === "financials" ? (
+            <FinancialStatements key={symbol} symbol={symbol} companyName={companyName} />
           ) : tab === "peers" ? (
             <StockDeepDivePanel
               key={symbol}

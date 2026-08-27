@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const payload = await cached(`fundamentals:yahoo:v2:${entry.symbol}`, TTL_MS, () =>
+    const payload = await cached(`fundamentals:yahoo:v3:${entry.symbol}`, TTL_MS, () =>
       getCompanyFundamentals(entry),
     );
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });

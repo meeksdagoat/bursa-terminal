@@ -265,12 +265,14 @@ export function LandingPage() {
             </Link>
           </div>
 
-          <div className="mt-10 grid gap-4 lg:grid-cols-2">
-            <MarketOverview />
+          <div className="mt-10 grid w-full max-w-full grid-cols-1 gap-4 overflow-x-hidden lg:grid-cols-2">
+            <div className="min-w-0 w-full max-w-full overflow-hidden">
+              <MarketOverview />
+            </div>
 
             <div
               id="news"
-              className="scroll-mt-20 rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl"
+              className="min-w-0 w-full max-w-full scroll-mt-20 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03] backdrop-blur-xl"
             >
               <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
                 <h3 className="text-[12px] font-semibold uppercase tracking-[0.14em] text-white">
@@ -341,6 +343,9 @@ export function LandingPage() {
             </a>
             <Link href="/news" className="hover:text-white">
               News desk
+            </Link>
+            <Link href="/screener" className="hover:text-white">
+              Screener
             </Link>
             <Link href="/portfolio" className="hover:text-white">
               Portfolio

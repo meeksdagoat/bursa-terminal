@@ -95,13 +95,30 @@ export function isTrackedSymbol(symbol: string): boolean {
   return entryBySymbol(symbol) != null;
 }
 
-/** Same-sector names first, then other tracked tickers, so thin sectors still fill a matrix. */
+/**
+ * Same-sector comparables for the deep-dive matrix. Watchlist and curated
+ * liquid names are preferred so Maybank pairs with CIMB, Public Bank and RHB
+ * rather than an arbitrary later roster code. Other sectors are never mixed in.
+ */
 export function sectorPeers(symbol: string, limit = 4): string[] {
   const entry = entryBySymbol(symbol);
   if (!entry) return [];
-  const same = universe.filter((row) => row.sector === entry.sector && row.symbol !== symbol);
-  const rest = universe.filter((row) => row.sector !== entry.sector && row.symbol !== symbol);
-  return [...same, ...rest].slice(0, limit).map((row) => row.symbol);
+
+  const watchRank = new Map(DEFAULT_WATCHLIST.map((ticker, index) => [ticker, index]));
+  const liquidRank = new Map(liquidSymbols.map((ticker, index) => [ticker, index]));
+  const rosterRank = new Map(universe.map((row, index) => [row.symbol, index]));
+
+  return universe
+    .filter((row) => row.sector === entry.sector && row.symbol !== symbol)
+    .sort((a, b) => {
+      const byWatch = (watchRank.get(a.symbol) ?? 1_000) - (watchRank.get(b.symbol) ?? 1_000);
+      if (byWatch !== 0) return byWatch;
+      const byLiquid = (liquidRank.get(a.symbol) ?? 1_000) - (liquidRank.get(b.symbol) ?? 1_000);
+      if (byLiquid !== 0) return byLiquid;
+      return (rosterRank.get(a.symbol) ?? 0) - (rosterRank.get(b.symbol) ?? 0);
+    })
+    .slice(0, limit)
+    .map((row) => row.symbol);
 }
 
 /** High-density chart workspace. Optional ticker is applied as `?symbol=`. */
