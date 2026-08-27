@@ -18,11 +18,14 @@ export function usePanXLock(scrollerSelector?: string) {
       unbindRef.current = null;
       if (!node) return;
 
+      // Capture after the null guard — nested closures don't keep the narrowing.
+      const root: HTMLElement = node;
+
       function scroller(): HTMLElement {
-        if (!scrollerSelector) return node;
-        const child = node.querySelector<HTMLElement>(scrollerSelector);
-        if (!child) return node;
-        return getComputedStyle(child).display === "none" ? node : child;
+        if (!scrollerSelector) return root;
+        const child = root.querySelector<HTMLElement>(scrollerSelector);
+        if (!child) return root;
+        return getComputedStyle(child).display === "none" ? root : child;
       }
 
       function onWheel(event: WheelEvent) {
@@ -36,11 +39,11 @@ export function usePanXLock(scrollerSelector?: string) {
         event.stopPropagation();
       }
 
-      node.addEventListener("wheel", onWheel, { passive: false, capture: true });
-      node.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
+      root.addEventListener("wheel", onWheel, { passive: false, capture: true });
+      root.addEventListener("touchmove", onTouchMove, { passive: false, capture: true });
       unbindRef.current = () => {
-        node.removeEventListener("wheel", onWheel, true);
-        node.removeEventListener("touchmove", onTouchMove, true);
+        root.removeEventListener("wheel", onWheel, true);
+        root.removeEventListener("touchmove", onTouchMove, true);
       };
     },
     [scrollerSelector],
