@@ -99,6 +99,10 @@ export function FilingsModal({
   const upstreamPdfUrl = belongsToTicker ? (detail?.pdfUrl ?? selectedFiling.pdfUrl) : null;
   const downloadPdfUrl =
     belongsToTicker && upstreamPdfUrl ? filingPdfPath(activeTicker, selectedFilingId, true) : null;
+  // Prefer the symbol-bound same-origin route — same path as Download, and avoids
+  // fragile contentDocument sniffing on the raw disclosure URL proxy.
+  const previewPdfUrl =
+    belongsToTicker && upstreamPdfUrl ? filingPdfPath(activeTicker, selectedFilingId) : null;
   const title = detail?.title ?? selectedFiling.title;
   const company =
     detail?.company ??
@@ -178,9 +182,10 @@ export function FilingsModal({
             <p className="px-3 py-4 font-mono text-[10px] uppercase tracking-wider text-neutral-600">
               Loading filing…
             </p>
-          ) : upstreamPdfUrl ? (
+          ) : previewPdfUrl && upstreamPdfUrl ? (
             <FilingPdfViewer
-              pdfUrl={upstreamPdfUrl}
+              pdfUrl={previewPdfUrl}
+              upstreamPdfUrl={upstreamPdfUrl}
               title={detail?.pdfName ?? "Filing Preview"}
               downloadHref={downloadPdfUrl ?? upstreamPdfUrl}
             />
