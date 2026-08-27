@@ -100,8 +100,6 @@ export function FilingsModal({
   // Prefer the Bursa disclosure URL for Download — the user's Chrome can fetch
   // it when Cloudflare 403s our server-side proxy (common on hosted deploys).
   const downloadPdfUrl = upstreamPdfUrl;
-  const proxyDownloadUrl =
-    belongsToTicker && upstreamPdfUrl ? filingPdfPath(activeTicker, selectedFilingId, true) : null;
   const previewPdfUrl =
     belongsToTicker && upstreamPdfUrl ? filingPdfPath(activeTicker, selectedFilingId) : null;
   const title = detail?.title ?? selectedFiling.title;
@@ -148,53 +146,25 @@ export function FilingsModal({
           </div>
           <p className="mt-1.5 text-[13px] font-medium leading-snug text-neutral-100">{title}</p>
           <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-neutral-500">{company}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {downloadPdfUrl ? (
+              <a
+                href={downloadPdfUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-500/20"
+              >
+                Open PDF ↗
+              </a>
+            ) : null}
             <a
               href={selectedFiling.bursaUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-mono text-[10px] uppercase tracking-wider text-gain hover:underline"
-            >
-              Open on Bursa ↗
-            </a>
-            <a
-              href={selectedFiling.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-gain"
+              className="inline-flex items-center border border-slate-700 bg-transparent px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-slate-300 hover:border-slate-500 hover:text-gain"
             >
               Filing page ↗
             </a>
-            {downloadPdfUrl ? (
-              <>
-                <a
-                  href={downloadPdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-gain"
-                >
-                  Open PDF directly on Bursa Malaysia ↗
-                </a>
-                <a
-                  href={downloadPdfUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-gain"
-                >
-                  Download Official PDF ↗
-                </a>
-              </>
-            ) : null}
-            {proxyDownloadUrl ? (
-              <a
-                href={proxyDownloadUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-[10px] uppercase tracking-wider text-neutral-600 hover:text-gain"
-              >
-                Proxy download ↗
-              </a>
-            ) : null}
           </div>
         </div>
 

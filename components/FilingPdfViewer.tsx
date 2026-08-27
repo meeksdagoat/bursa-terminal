@@ -221,10 +221,6 @@ function DocumentCarrierPanel({
           <p className="font-mono text-[10px] text-slate-500">{publishedLabel}</p>
         </div>
 
-        <p className="mt-5 max-w-sm text-[12px] leading-snug text-slate-500">
-          Direct server preview restricted by exchange security policies.
-        </p>
-
         <div className="mt-6 flex w-full max-w-sm flex-col gap-2.5">
           {officialPdfUrl ? (
             <button
@@ -232,7 +228,7 @@ function DocumentCarrierPanel({
               onClick={() => window.open(officialPdfUrl, "_blank", "noopener,noreferrer")}
               className="w-full border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-500/20"
             >
-              Open PDF on Bursa Malaysia ↗
+              Open PDF directly on Bursa Malaysia ↗
             </button>
           ) : null}
           <button
@@ -240,7 +236,7 @@ function DocumentCarrierPanel({
             onClick={() => window.open(announcementUrl, "_blank", "noopener,noreferrer")}
             className="w-full border border-slate-600 bg-slate-900/60 px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-slate-300 hover:border-slate-400 hover:text-gain"
           >
-            View Official Filing Page ↗
+            View Announcement Page on Bursa ↗
           </button>
         </div>
       </div>
