@@ -10,7 +10,7 @@ type FilingPdfViewerProps = {
   /** Document / PDF display name. */
   title: string;
   downloadHref: string;
-  /** Filing metadata for the interactive fallback panel. */
+  /** Filing metadata for the document-carrier fallback panel. */
   companyName: string;
   publishedLabel: string;
   categoryLabel: string;
@@ -47,9 +47,8 @@ function isErrorPayload(response: Response, blob: Blob, peek: string): boolean {
 }
 
 /**
- * Prefer the same-origin proxy (works on local). Never embed Google Docs gview
- * (also blocked by Bursa). Never render JSON errors in an iframe. On failure,
- * show an Interactive Filing Panel that opens Bursa in the user's browser.
+ * Same-origin proxy blob when it works. Never third-party embeds (Bursa WAF
+ * blocks them). On 403 / failure, show an in-app document carrier panel.
  */
 export function FilingPdfViewer({
   pdfUrl,
@@ -71,72 +70,41 @@ export function FilingPdfViewer({
     setMode("loading");
     setBlobUrl(null);
 
-    async function tryProxy(): Promise<boolean> {
-      const response = await fetch(pdfUrl, {
-        cache: "no-store",
-        signal: AbortSignal.timeout(45_000),
-      });
-      if (cancelled) return false;
-
-      const blob = await response.blob();
-      if (cancelled) return false;
-
-      const peek = await blob.slice(0, 512).text().catch(() => "");
-      if (isErrorPayload(response, blob, peek)) return false;
-
-      const type = (blob.type || response.headers.get("content-type") || "").toLowerCase();
-      const looksPdf =
-        type.includes("pdf") || type.includes("octet-stream") || (await blobLooksLikePdf(blob));
-      if (!looksPdf) return false;
-
-      objectUrl = URL.createObjectURL(blob);
-      if (cancelled) {
-        URL.revokeObjectURL(objectUrl);
-        return false;
-      }
-      setBlobUrl(objectUrl);
-      setMode("proxy");
-      return true;
-    }
-
-    /** Browser-side fetch of Bursa — usually CORS-blocked; succeed only if a PDF blob returns. */
-    async function tryClientUpstream(): Promise<boolean> {
-      if (!officialPdfUrl) return false;
+    async function load() {
       try {
-        const response = await fetch(officialPdfUrl, {
-          mode: "cors",
+        const response = await fetch(pdfUrl, {
           cache: "no-store",
-          credentials: "omit",
-          signal: AbortSignal.timeout(20_000),
+          signal: AbortSignal.timeout(45_000),
         });
-        if (cancelled || !response.ok) return false;
+        if (cancelled) return;
+
         const blob = await response.blob();
-        if (cancelled) return false;
+        if (cancelled) return;
+
+        const peek = await blob.slice(0, 512).text().catch(() => "");
+        if (isErrorPayload(response, blob, peek)) {
+          setMode("panel");
+          return;
+        }
+
         const type = (blob.type || response.headers.get("content-type") || "").toLowerCase();
         const looksPdf =
           type.includes("pdf") || type.includes("octet-stream") || (await blobLooksLikePdf(blob));
-        if (!looksPdf) return false;
+        if (!looksPdf) {
+          setMode("panel");
+          return;
+        }
+
         objectUrl = URL.createObjectURL(blob);
         if (cancelled) {
           URL.revokeObjectURL(objectUrl);
-          return false;
+          return;
         }
         setBlobUrl(objectUrl);
         setMode("proxy");
-        return true;
       } catch {
-        return false;
+        if (!cancelled) setMode("panel");
       }
-    }
-
-    async function load() {
-      try {
-        if (await tryProxy()) return;
-        if (await tryClientUpstream()) return;
-      } catch {
-        // Fall through to panel.
-      }
-      if (!cancelled) setMode("panel");
     }
 
     void load();
@@ -144,30 +112,29 @@ export function FilingPdfViewer({
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [pdfUrl, officialPdfUrl]);
+  }, [pdfUrl]);
 
   if (mode === "proxy" && blobUrl) {
     return (
-      <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
-        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-1.5">
-          <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+      <div className="flex h-full min-h-0 flex-col bg-[#121212]">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-slate-700/80 px-3 py-1.5">
+          <span className="font-mono text-[9px] uppercase tracking-wider text-slate-500">
             Proxy preview
           </span>
           {officialPdfUrl ? (
-            <a
-              href={officialPdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
+            <button
+              type="button"
+              onClick={() => window.open(officialPdfUrl, "_blank", "noopener,noreferrer")}
               className="font-mono text-[9px] uppercase tracking-wider text-emerald-400 hover:underline"
             >
               Open on Bursa ↗
-            </a>
+            </button>
           ) : null}
         </div>
         <iframe
           title={title}
           src={blobUrl}
-          className="h-full w-full flex-1 border-0 bg-[#0d0d0d]"
+          className="h-full w-full flex-1 border-0 bg-[#121212]"
         />
       </div>
     );
@@ -175,15 +142,15 @@ export function FilingPdfViewer({
 
   if (mode === "loading") {
     return (
-      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-[#0d0d0d] px-6 text-center">
-        <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-600">
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-[#121212] px-6 text-center">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-slate-600">
           Fetching filing…
         </p>
         {officialPdfUrl ? (
           <button
             type="button"
             onClick={() => window.open(officialPdfUrl, "_blank", "noopener,noreferrer")}
-            className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-emerald-400"
+            className="font-mono text-[10px] uppercase tracking-wider text-slate-400 hover:text-emerald-400"
           >
             Don&apos;t wait — open on Bursa ↗
           </button>
@@ -193,7 +160,7 @@ export function FilingPdfViewer({
   }
 
   return (
-    <InteractiveFilingPanel
+    <DocumentCarrierPanel
       title={title}
       companyName={companyName}
       publishedLabel={publishedLabel}
@@ -204,7 +171,28 @@ export function FilingPdfViewer({
   );
 }
 
-function InteractiveFilingPanel({
+function DocumentIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 48 56"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden="true"
+    >
+      <path
+        d="M8 2h22l12 12v38a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4V6a4 4 0 0 1 4-4Z"
+        stroke="currentColor"
+        strokeWidth="2"
+        strokeLinejoin="round"
+      />
+      <path d="M30 2v10a2 2 0 0 0 2 2h10" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" />
+      <path d="M14 28h20M14 36h20M14 44h12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function DocumentCarrierPanel({
   title,
   companyName,
   publishedLabel,
@@ -220,53 +208,41 @@ function InteractiveFilingPanel({
   announcementUrl: string;
 }) {
   return (
-    <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
-      <div className="flex shrink-0 items-center border-b border-neutral-800 px-3 py-1.5">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
-          Interactive filing panel
-        </span>
-      </div>
+    <div className="flex h-full min-h-0 flex-col bg-[#121212] p-4 sm:p-6">
+      <div className="flex min-h-0 flex-1 flex-col items-center justify-center border border-slate-700/80 bg-[#121212] px-5 py-8 text-center sm:px-8">
+        <DocumentIcon className="mb-5 h-14 w-12 text-slate-400" />
 
-      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-8 text-center">
         <div className="max-w-md space-y-2">
-          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-amber-400/90">
-            Official disclosure
-          </p>
           <h3 className="text-[15px] font-medium leading-snug text-neutral-100">{title}</h3>
-          <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-            {companyName}
+          <p className="font-mono text-[10px] uppercase tracking-wider text-slate-400">
+            {categoryLabel}
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
-            <span className="rounded-sm border border-line px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-neutral-400">
-              {categoryLabel}
-            </span>
-            <span className="font-mono text-[10px] text-neutral-500">{publishedLabel}</span>
-          </div>
+          <p className="font-mono text-[11px] uppercase tracking-wider text-slate-300">{companyName}</p>
+          <p className="font-mono text-[10px] text-slate-500">{publishedLabel}</p>
         </div>
 
-        <div className="flex w-full max-w-sm flex-col gap-2">
+        <p className="mt-5 max-w-sm text-[12px] leading-snug text-slate-500">
+          Direct server preview restricted by exchange security policies.
+        </p>
+
+        <div className="mt-6 flex w-full max-w-sm flex-col gap-2.5">
           {officialPdfUrl ? (
             <button
               type="button"
               onClick={() => window.open(officialPdfUrl, "_blank", "noopener,noreferrer")}
-              className="w-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-500/20"
+              className="w-full border border-emerald-500/50 bg-emerald-500/10 px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-500/20"
             >
-              Open PDF directly on Bursa Malaysia ↗
+              Open PDF on Bursa Malaysia ↗
             </button>
           ) : null}
           <button
             type="button"
             onClick={() => window.open(announcementUrl, "_blank", "noopener,noreferrer")}
-            className="w-full border border-neutral-700 bg-neutral-900/80 px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-neutral-300 hover:border-neutral-500 hover:text-gain"
+            className="w-full border border-slate-600 bg-slate-900/60 px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-slate-300 hover:border-slate-400 hover:text-gain"
           >
-            View Announcement Page on Bursa ↗
+            View Official Filing Page ↗
           </button>
         </div>
-
-        <p className="max-w-sm text-[12px] leading-snug text-neutral-400">
-          Bursa Malaysia restricts direct server embedding. Click above to view the official PDF in a
-          new tab.
-        </p>
       </div>
     </div>
   );
