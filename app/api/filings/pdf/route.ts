@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { filingMatchesSymbol, getAnnouncementDetail, isAnnouncementId } from "@/lib/announcements";
 import { cached } from "@/lib/cache";
-import { fetchFilingPdf, FilingPdfError, pdfResponse } from "@/lib/fetch-filing-pdf";
+import { fetchFilingPdf, FilingPdfError, pdfErrorResponse, pdfResponse } from "@/lib/fetch-filing-pdf";
 import { entryBySymbol } from "@/lib/universe";
 
 export const runtime = "nodejs";
@@ -41,9 +41,12 @@ export async function GET(request: NextRequest) {
     return pdfResponse(pdf.body, pdf.filename, download);
   } catch (error) {
     if (error instanceof FilingPdfError) {
-      return Response.json({ error: error.message }, { status: error.status });
+      return pdfErrorResponse(error);
     }
     const detail = error instanceof Error ? error.message : "Unknown error";
-    return Response.json({ error: `PDF lookup failed: ${detail}` }, { status: 502 });
+    return Response.json(
+      { error: `PDF lookup failed: ${detail}`, code: "UPSTREAM_ERROR" },
+      { status: 502 },
+    );
   }
 }

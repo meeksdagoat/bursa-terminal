@@ -5,11 +5,25 @@ import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
+/** Chrome-like headers — Bursa WAF rejects bare Node / datacenter fingerprints. */
 const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
-const REFERER =
+const REFERER = "https://www.bursamalaysia.com/";
+
+const ANNOUNCEMENTS_PAGE =
   "https://www.bursamalaysia.com/market_information/announcements/company_announcement";
+
+const BROWSER_HEADERS: Record<string, string> = {
+  "User-Agent": USER_AGENT,
+  Accept: "application/pdf,application/xhtml+xml,text/html;q=0.9,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+  Referer: REFERER,
+  "Sec-Fetch-Dest": "document",
+  "Sec-Fetch-Mode": "navigate",
+  "Sec-Fetch-Site": "cross-site",
+  "Upgrade-Insecure-Requests": "1",
+};
 
 const ALLOWED_HOSTS = new Set([
   "disclosure.bursamalaysia.com",
@@ -24,10 +38,12 @@ const MAX_BYTES = 25 * 1024 * 1024;
 
 export class FilingPdfError extends Error {
   status: number;
+  upstreamStatus?: number;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, upstreamStatus?: number) {
     super(message);
     this.status = status;
+    this.upstreamStatus = upstreamStatus;
   }
 }
 
@@ -85,6 +101,17 @@ function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
 }
 
+function collectSetCookies(response: Response): string | undefined {
+  const headers = response.headers as Headers & { getSetCookie?: () => string[] };
+  const listed = headers.getSetCookie?.() ?? [];
+  if (listed.length > 0) {
+    return listed.map((cookie) => cookie.split(";")[0]?.trim()).filter(Boolean).join("; ");
+  }
+  const single = response.headers.get("set-cookie");
+  if (!single) return undefined;
+  return single.split(",").map((part) => part.split(";")[0]?.trim()).filter(Boolean).join("; ");
+}
+
 function runCurl(args: string[]): Promise<{ code: number | null; stderr: string }> {
   const bin = process.platform === "win32" ? "curl.exe" : "curl";
   return new Promise((resolve, reject) => {
@@ -101,8 +128,8 @@ function runCurl(args: string[]): Promise<{ code: number | null; stderr: string 
 }
 
 /**
- * Cloudflare often 403s Node's TLS fingerprint. curl + a warmed cookie jar
- * from the Bursa announcements page succeeds more often on the same host.
+ * Local Windows: curl often clears Cloudflare where Node's TLS fingerprint
+ * cannot. Vercel/datacenter IPs are still frequently 403'd regardless.
  */
 async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
   const dir = await mkdtemp(join(tmpdir(), "bursa-pdf-"));
@@ -110,8 +137,28 @@ async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
   const out = join(dir, "filing.pdf");
 
   try {
-    // Skip HTML warm-up — Bursa disclosure downloads usually work with a
-    // browser UA + Referer alone, and the warm-up was adding hang risk.
+    await runCurl([
+      "-sS",
+      "-L",
+      "--connect-timeout",
+      "5",
+      "--max-time",
+      "8",
+      "-A",
+      USER_AGENT,
+      "-c",
+      jar,
+      "-b",
+      jar,
+      "-H",
+      `Accept: ${BROWSER_HEADERS.Accept}`,
+      "-H",
+      `Accept-Language: ${BROWSER_HEADERS["Accept-Language"]}`,
+      "-H",
+      `Referer: ${REFERER}`,
+      ANNOUNCEMENTS_PAGE,
+    ]);
+
     const download = await runCurl([
       "-sS",
       "-L",
@@ -129,22 +176,25 @@ async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
       "-b",
       jar,
       "-H",
-      "Accept: application/pdf,application/octet-stream;q=0.9,*/*;q=0.8",
+      `Accept: ${BROWSER_HEADERS.Accept}`,
       "-H",
-      "Accept-Language: en-MY,en;q=0.9",
+      `Accept-Language: ${BROWSER_HEADERS["Accept-Language"]}`,
       "-H",
       `Referer: ${REFERER}`,
+      "-H",
+      "Sec-Fetch-Dest: document",
+      "-H",
+      "Sec-Fetch-Mode: navigate",
+      "-H",
+      "Sec-Fetch-Site: cross-site",
       "-o",
       out,
       target.href,
     ]);
 
     if (download.code !== 0) {
-      const status = download.stderr.match(/\b(\d{3})\b/)?.[1];
-      throw new FilingPdfError(
-        status ? `Upstream PDF responded ${status}` : "Upstream PDF responded 403",
-        502,
-      );
+      const status = Number(download.stderr.match(/\b(\d{3})\b/)?.[1] ?? 403);
+      throw new FilingPdfError(`Upstream PDF responded ${status}`, 502, status);
     }
 
     const body = bufferToArrayBuffer(await readFile(out));
@@ -157,25 +207,38 @@ async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
   }
 }
 
-/** Quick Node fetch — often 403'd by Cloudflare; keep the budget small. */
+/** Node fetch with Chrome headers + optional cookie warm-up from Bursa HTML. */
 async function fetchPdfViaHttp(target: URL): Promise<{ body: ArrayBuffer; filename: string }> {
+  let cookieHeader: string | undefined;
+  try {
+    const warm = await fetch(ANNOUNCEMENTS_PAGE, {
+      headers: {
+        ...BROWSER_HEADERS,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-Dest": "document",
+      },
+      cache: "no-store",
+      redirect: "follow",
+      signal: AbortSignal.timeout(8_000),
+    });
+    cookieHeader = collectSetCookies(warm);
+  } catch {
+    // Warm-up is best-effort.
+  }
+
   const response = await fetch(target, {
     headers: {
-      "User-Agent": USER_AGENT,
-      Accept: "application/pdf,application/octet-stream;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-MY,en;q=0.9",
-      Referer: REFERER,
-      "Sec-Fetch-Dest": "document",
-      "Sec-Fetch-Mode": "navigate",
-      "Sec-Fetch-Site": "same-site",
+      ...BROWSER_HEADERS,
+      ...(cookieHeader ? { Cookie: cookieHeader } : {}),
     },
     cache: "no-store",
     redirect: "follow",
-    signal: AbortSignal.timeout(6_000),
+    signal: AbortSignal.timeout(20_000),
   });
 
   if (!response.ok) {
-    throw new FilingPdfError(`Upstream PDF responded ${response.status}`, 502);
+    throw new FilingPdfError(`Upstream PDF responded ${response.status}`, 502, response.status);
   }
 
   const finalUrl = response.url ? new URL(response.url) : target;
@@ -202,33 +265,46 @@ async function fetchPdfViaHttp(target: URL): Promise<{ body: ArrayBuffer; filena
 }
 
 /**
- * Fetch a Bursa disclosure PDF. Prefer curl first — Node's fetch is frequently
- * 403'd while the same machine's curl still succeeds (local Windows).
+ * Fetch a Bursa disclosure PDF.
+ * - Local: prefer curl (clears WAF more often on residential paths).
+ * - Vercel: prefer HTTP with browser headers (no reliable curl / same DC IP block).
  */
 export async function fetchFilingPdf(rawUrl: string): Promise<{
   body: ArrayBuffer;
   filename: string;
 }> {
   const target = assertAllowedPdfUrl(rawUrl);
+  const onVercel = Boolean(process.env.VERCEL);
 
-  try {
+  const viaHttp = () => fetchPdfViaHttp(target);
+  const viaCurl = async () => {
     const body = await fetchPdfViaCurl(target);
     if (!bodyLooksLikePdf(body)) {
       throw new FilingPdfError("Upstream did not return a PDF", 502);
     }
     return { body, filename: filenameFromUrl(target) };
-  } catch (curlError) {
-    if (curlError instanceof FilingPdfError && (curlError.status === 400 || curlError.status === 413)) {
-      throw curlError;
+  };
+
+  const primary = onVercel ? viaHttp : viaCurl;
+  const secondary = onVercel ? viaCurl : viaHttp;
+
+  try {
+    return await primary();
+  } catch (primaryError) {
+    if (
+      primaryError instanceof FilingPdfError &&
+      (primaryError.status === 400 || primaryError.status === 413)
+    ) {
+      throw primaryError;
     }
     try {
-      return await fetchPdfViaHttp(target);
-    } catch (httpError) {
-      throw curlError instanceof FilingPdfError
-        ? curlError
-        : httpError instanceof FilingPdfError
-          ? httpError
-          : new FilingPdfError("Upstream PDF responded 403", 502);
+      return await secondary();
+    } catch (secondaryError) {
+      throw secondaryError instanceof FilingPdfError
+        ? secondaryError
+        : primaryError instanceof FilingPdfError
+          ? primaryError
+          : new FilingPdfError("Upstream PDF responded 403", 502, 403);
     }
   }
 }
@@ -243,4 +319,20 @@ export function pdfResponse(body: ArrayBuffer, filename: string, download = fals
       "X-Content-Type-Options": "nosniff",
     },
   });
+}
+
+/** Structured error body for clients that need a Bursa fallback CTA. */
+export function pdfErrorResponse(error: FilingPdfError): Response {
+  return Response.json(
+    {
+      error: error.message,
+      code:
+        error.upstreamStatus === 403 || /403/.test(error.message)
+          ? "UPSTREAM_FORBIDDEN"
+          : "UPSTREAM_ERROR",
+      upstreamStatus: error.upstreamStatus ?? null,
+      fallback: "open_upstream",
+    },
+    { status: error.status },
+  );
 }

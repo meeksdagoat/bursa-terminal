@@ -172,7 +172,7 @@ export function FilingsModal({
                 rel="noopener noreferrer"
                 className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-gain"
               >
-                Download PDF ↗
+                Open PDF directly on Bursa Malaysia ↗
               </a>
             ) : null}
             {proxyDownloadUrl ? (
