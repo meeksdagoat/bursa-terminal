@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { formatKlStamp } from "@/lib/format";
-import { filingPdfPath } from "@/lib/filing-id";
+import { resolveBursaAnnouncementUrl } from "@/lib/filing-id";
 import { FilingPdfViewer } from "@/components/FilingPdfViewer";
 import { terminalHref } from "@/lib/universe";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
@@ -97,11 +97,18 @@ export function FilingsModal({
 
   const belongsToTicker = !detail?.symbol || detail.symbol === activeTicker;
   const upstreamPdfUrl = belongsToTicker ? (detail?.pdfUrl ?? selectedFiling.pdfUrl) : null;
-  // Prefer the Bursa disclosure URL for Download — the user's Chrome can fetch
-  // it when Cloudflare 403s our server-side proxy (common on hosted deploys).
-  const downloadPdfUrl = upstreamPdfUrl;
-  const previewPdfUrl =
-    belongsToTicker && upstreamPdfUrl ? filingPdfPath(activeTicker, selectedFilingId) : null;
+  const hasPdf = Boolean(upstreamPdfUrl);
+  // Prefer the working KLSE / explicit filing URL — Bursa announcement_details
+  // often 403/404s from browsers behind their WAF.
+  const filingPageUrl =
+    detail?.url ??
+    selectedFiling.url ??
+    resolveBursaAnnouncementUrl({
+      id: selectedFilingId,
+      bursaUrl: detail?.bursaUrl ?? selectedFiling.bursaUrl,
+      url: detail?.url ?? selectedFiling.url,
+      stockCode: detail?.code ?? selectedFiling.code ?? activeTicker.replace(/\.KL$/i, ""),
+    });
   const title = detail?.title ?? selectedFiling.title;
   const company =
     detail?.company ??
@@ -147,9 +154,9 @@ export function FilingsModal({
           <p className="mt-1.5 text-[13px] font-medium leading-snug text-neutral-100">{title}</p>
           <p className="mt-0.5 font-mono text-[10px] uppercase tracking-wider text-neutral-500">{company}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
-            {downloadPdfUrl ? (
+            {hasPdf ? (
               <a
-                href={downloadPdfUrl}
+                href={upstreamPdfUrl!}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-500/20"
@@ -158,7 +165,7 @@ export function FilingsModal({
               </a>
             ) : null}
             <a
-              href={selectedFiling.bursaUrl}
+              href={filingPageUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="inline-flex items-center border border-slate-700 bg-transparent px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-slate-300 hover:border-slate-500 hover:text-gain"
@@ -173,46 +180,17 @@ export function FilingsModal({
             <p className="px-3 py-4 font-mono text-[10px] uppercase tracking-wider text-neutral-600">
               Loading filing…
             </p>
-          ) : previewPdfUrl && upstreamPdfUrl ? (
+          ) : (
             <FilingPdfViewer
-              pdfUrl={previewPdfUrl}
               upstreamPdfUrl={upstreamPdfUrl}
               title={detail?.pdfName ?? title}
-              downloadHref={downloadPdfUrl ?? upstreamPdfUrl}
               companyName={company}
               publishedLabel={formatKlStamp(selectedFiling.publishedAt)}
               categoryLabel={
                 detail?.filingType ?? selectedFiling.filingType ?? selectedFiling.kind ?? "Filing"
               }
-              announcementUrl={detail?.bursaUrl ?? selectedFiling.bursaUrl}
+              announcementUrl={filingPageUrl}
             />
-          ) : (
-            <div className="custom-scrollbar h-full overflow-y-auto px-3 py-3">
-              {error ? <p className="font-mono text-[10px] text-neutral-500">{error}</p> : null}
-              {detail?.excerpt ? (
-                <p className="whitespace-pre-wrap text-[12px] leading-relaxed text-neutral-300">
-                  {detail.excerpt}
-                </p>
-              ) : (
-                <div className="flex h-full min-h-[240px] flex-col items-center justify-center gap-3 px-6 text-center">
-                  <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
-                    No PDF attached for this filing
-                  </p>
-                  <p className="max-w-sm text-[12px] leading-snug text-neutral-400">
-                    Bursa has not published a downloadable document for this announcement. Open the
-                    company announcements page for the official text.
-                  </p>
-                  <a
-                    href={selectedFiling.bursaUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="font-mono text-[10px] uppercase tracking-wider text-emerald-400 hover:underline"
-                  >
-                    Open Bursa announcements ↗
-                  </a>
-                </div>
-              )}
-            </div>
           )}
         </div>
       </div>

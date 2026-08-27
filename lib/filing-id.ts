@@ -20,6 +20,37 @@ export function bursaCompanyAnnouncementsUrl(stockCode: string): string {
   return `https://www.bursamalaysia.com/market_information/announcements/company_announcement?company=${encodeURIComponent(stockCode)}`;
 }
 
+export function isBursaAnnouncementDetailUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /\/announcement_details\?[^#]*ann_id=\d{6,12}/i.test(url);
+}
+
+/**
+ * Prefer an explicit announcement detail link. Rebuild from `ann_id` when the
+ * payload only has a company-wide announcements search URL.
+ */
+export function resolveBursaAnnouncementUrl(input: {
+  id?: string | null;
+  bursaUrl?: string | null;
+  url?: string | null;
+  stockCode?: string | null;
+}): string {
+  if (isBursaAnnouncementDetailUrl(input.bursaUrl)) {
+    return input.bursaUrl as string;
+  }
+
+  const id =
+    announcementIdFromUrl(input.id) ??
+    announcementIdFromUrl(input.bursaUrl) ??
+    announcementIdFromUrl(input.url);
+
+  if (id) return bursaAnnouncementUrl(id);
+
+  if (input.stockCode) return bursaCompanyAnnouncementsUrl(input.stockCode);
+  if (input.url) return input.url;
+  return input.bursaUrl ?? "https://www.bursamalaysia.com/market_information/announcements/company_announcement";
+}
+
 export function klseViewUrl(id: string): string {
   return `https://www.klsescreener.com/v2/announcements/view/${id}`;
 }
@@ -121,7 +152,7 @@ export function toViewerFiling(
     kind: kindFromCategory(item.category),
     publishedAt: item.publishedAt,
     url: item.url ?? klseViewUrl(id),
-    bursaUrl: bursaCompanyAnnouncementsUrl(code),
+    bursaUrl: bursaAnnouncementUrl(id),
     pdfUrl: null,
     pdfName: null,
     source: item.source,

@@ -1,7 +1,7 @@
 import "server-only";
 
 import { getBursaAnnouncements } from "./bursa-announcements";
-import { announcementIdFromUrl, bursaCompanyAnnouncementsUrl, isFutureOrPlaceholderFiling, klseViewUrl } from "./filing-id";
+import { announcementIdFromUrl, bursaAnnouncementUrl, isFutureOrPlaceholderFiling, klseViewUrl } from "./filing-id";
 import type {
   AnnouncementCategory,
   AnnouncementKind,
@@ -58,7 +58,7 @@ export function toCompanyFilings(
       kind: kindFromCategory(item.category),
       publishedAt: item.publishedAt,
       url: item.url ?? klseViewUrl(id),
-      bursaUrl: bursaCompanyAnnouncementsUrl(entry.code),
+      bursaUrl: bursaAnnouncementUrl(id),
       pdfUrl: null,
       pdfName: null,
       source: item.source,
