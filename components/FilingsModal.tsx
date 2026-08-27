@@ -166,14 +166,24 @@ export function FilingsModal({
               Filing page ↗
             </a>
             {downloadPdfUrl ? (
-              <a
-                href={downloadPdfUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-gain"
-              >
-                Open PDF directly on Bursa Malaysia ↗
-              </a>
+              <>
+                <a
+                  href={downloadPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-gain"
+                >
+                  Open PDF directly on Bursa Malaysia ↗
+                </a>
+                <a
+                  href={downloadPdfUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-gain"
+                >
+                  Download Official PDF ↗
+                </a>
+              </>
             ) : null}
             {proxyDownloadUrl ? (
               <a
