@@ -3,7 +3,7 @@ import { fetchFilingPdf, FilingPdfError, pdfResponse } from "@/lib/fetch-filing-
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 function errorResponse(message: string, status: number) {
   return new Response(message, {

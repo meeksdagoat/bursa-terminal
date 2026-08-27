@@ -6,7 +6,7 @@ import { entryBySymbol } from "@/lib/universe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   const symbol = request.nextUrl.searchParams.get("symbol") ?? "";

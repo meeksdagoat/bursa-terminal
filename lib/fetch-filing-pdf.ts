@@ -90,6 +90,8 @@ function runCurl(args: string[]): Promise<{ code: number | null; stderr: string 
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, { windowsHide: true });
     const errChunks: Buffer[] = [];
+    // Drain stdout so a full pipe never blocks the child.
+    child.stdout?.on("data", () => undefined);
     child.stderr.on("data", (chunk: Buffer) => errChunks.push(chunk));
     child.on("error", () => reject(new FilingPdfError("PDF fetch tool unavailable", 500)));
     child.on("close", (code) => {
@@ -108,35 +110,16 @@ async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
   const out = join(dir, "filing.pdf");
 
   try {
-    // Warm Cloudflare / session cookies against the public announcements shell.
-    await runCurl([
-      "-sS",
-      "-L",
-      "--connect-timeout",
-      "8",
-      "--max-time",
-      "12",
-      "-A",
-      USER_AGENT,
-      "-c",
-      jar,
-      "-b",
-      jar,
-      "-H",
-      "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-      "-H",
-      "Accept-Language: en-MY,en;q=0.9",
-      REFERER,
-    ]);
-
+    // Skip HTML warm-up — Bursa disclosure downloads usually work with a
+    // browser UA + Referer alone, and the warm-up was adding hang risk.
     const download = await runCurl([
       "-sS",
       "-L",
       "--fail",
       "--connect-timeout",
-      "8",
+      "10",
       "--max-time",
-      "18",
+      "25",
       "--max-filesize",
       String(MAX_BYTES),
       "-A",
@@ -151,16 +134,8 @@ async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
       "Accept-Language: en-MY,en;q=0.9",
       "-H",
       `Referer: ${REFERER}`,
-      "-H",
-      "Sec-Fetch-Dest: document",
-      "-H",
-      "Sec-Fetch-Mode: navigate",
-      "-H",
-      "Sec-Fetch-Site: same-site",
       "-o",
       out,
-      "-w",
-      "%{http_code}",
       target.href,
     ]);
 
@@ -182,24 +157,8 @@ async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
   }
 }
 
+/** Quick Node fetch — often 403'd by Cloudflare; keep the budget small. */
 async function fetchPdfViaHttp(target: URL): Promise<{ body: ArrayBuffer; filename: string }> {
-  // Warm a lightweight HTML hit first so subsequent disclosure downloads
-  // sometimes inherit Cloudflare clearance cookies in the undici jar.
-  try {
-    await fetch(REFERER, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-        "Accept-Language": "en-MY,en;q=0.9",
-      },
-      cache: "no-store",
-      redirect: "follow",
-      signal: AbortSignal.timeout(8_000),
-    });
-  } catch {
-    // Warm-up is best-effort.
-  }
-
   const response = await fetch(target, {
     headers: {
       "User-Agent": USER_AGENT,
@@ -212,7 +171,7 @@ async function fetchPdfViaHttp(target: URL): Promise<{ body: ArrayBuffer; filena
     },
     cache: "no-store",
     redirect: "follow",
-    signal: AbortSignal.timeout(15_000),
+    signal: AbortSignal.timeout(6_000),
   });
 
   if (!response.ok) {
@@ -242,7 +201,10 @@ async function fetchPdfViaHttp(target: URL): Promise<{ body: ArrayBuffer; filena
   return { body, filename: filenameFromDisposition(response.headers.get("content-disposition")) };
 }
 
-/** Fetch a Bursa disclosure PDF and return the bytes. Hosts are allowlisted to avoid an open proxy. */
+/**
+ * Fetch a Bursa disclosure PDF. Prefer curl first — Node's fetch is frequently
+ * 403'd while the same machine's curl still succeeds (local Windows).
+ */
 export async function fetchFilingPdf(rawUrl: string): Promise<{
   body: ArrayBuffer;
   filename: string;
@@ -250,24 +212,22 @@ export async function fetchFilingPdf(rawUrl: string): Promise<{
   const target = assertAllowedPdfUrl(rawUrl);
 
   try {
-    return await fetchPdfViaHttp(target);
-  } catch (error) {
-    if (error instanceof FilingPdfError && (error.status === 400 || error.status === 413)) {
-      throw error;
+    const body = await fetchPdfViaCurl(target);
+    if (!bodyLooksLikePdf(body)) {
+      throw new FilingPdfError("Upstream did not return a PDF", 502);
+    }
+    return { body, filename: filenameFromUrl(target) };
+  } catch (curlError) {
+    if (curlError instanceof FilingPdfError && (curlError.status === 400 || curlError.status === 413)) {
+      throw curlError;
     }
     try {
-      const body = await fetchPdfViaCurl(target);
-      if (!bodyLooksLikePdf(body)) {
-        throw error instanceof FilingPdfError
-          ? error
-          : new FilingPdfError("Upstream did not return a PDF", 502);
-      }
-      return { body, filename: filenameFromUrl(target) };
-    } catch (curlError) {
+      return await fetchPdfViaHttp(target);
+    } catch (httpError) {
       throw curlError instanceof FilingPdfError
         ? curlError
-        : error instanceof FilingPdfError
-          ? error
+        : httpError instanceof FilingPdfError
+          ? httpError
           : new FilingPdfError("Upstream PDF responded 403", 502);
     }
   }
@@ -281,7 +241,6 @@ export function pdfResponse(body: ArrayBuffer, filename: string, download = fals
       "Content-Disposition": `${download ? "attachment" : "inline"}; filename="${filename}"`,
       "Cache-Control": "private, max-age=120",
       "X-Content-Type-Options": "nosniff",
-      "Access-Control-Allow-Origin": "*",
     },
   });
 }
