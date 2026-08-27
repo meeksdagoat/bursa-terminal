@@ -35,10 +35,6 @@ export function filingProxyPdfPath(pdfUrl: string): string {
   return `/api/filings/proxy-pdf?url=${encodeURIComponent(pdfUrl)}`;
 }
 
-export function googleDocsPdfViewerUrl(pdfUrl: string): string {
-  return `https://docs.google.com/viewer?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-}
-
 const MONTHS: Record<string, number> = {
   jan: 0,
   feb: 1,

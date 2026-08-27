@@ -1,9 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { googleDocsPdfViewerUrl } from "@/lib/filing-id";
-
-type PreviewMode = "proxy" | "google";
 
 type FilingPdfViewerProps = {
   /** Same-origin proxy URL (`/api/filings/pdf` or `/api/filings/proxy-pdf`). */
@@ -14,10 +11,29 @@ type FilingPdfViewerProps = {
   downloadHref: string;
 };
 
+type LoadState = "loading" | "ready" | "failed";
+
+function blobLooksLikePdf(blob: Blob): Promise<boolean> {
+  return blob.slice(0, 8).arrayBuffer().then((buffer) => {
+    const head = new Uint8Array(buffer);
+    for (let i = 0; i <= head.length - 5; i++) {
+      if (
+        head[i] === 0x25 &&
+        head[i + 1] === 0x50 &&
+        head[i + 2] === 0x44 &&
+        head[i + 3] === 0x46 &&
+        head[i + 4] === 0x2d
+      ) {
+        return true;
+      }
+    }
+    return false;
+  });
+}
+
 /**
- * Same-origin PDF iframe. Bursa/Cloudflare often 403s datacenter proxies while
- * the user's own Chrome can open the disclosure URL — so we always surface a
- * direct upstream escape hatch when the proxy fails.
+ * Loads the same-origin proxy as a blob and embeds it. Bursa blocks Google Docs
+ * embeds and often 403s datacenter proxies — never auto-failover to Google.
  */
 export function FilingPdfViewer({
   pdfUrl,
@@ -25,56 +41,63 @@ export function FilingPdfViewer({
   title,
   downloadHref,
 }: FilingPdfViewerProps) {
-  const [mode, setMode] = useState<PreviewMode>("proxy");
-  const [proxyFailed, setProxyFailed] = useState(false);
-  const googleUrl = upstreamPdfUrl ? googleDocsPdfViewerUrl(upstreamPdfUrl) : null;
-  const src = mode === "google" && googleUrl ? googleUrl : pdfUrl;
+  const [state, setState] = useState<LoadState>("loading");
+  const [blobUrl, setBlobUrl] = useState<string | null>(null);
   const openHref = upstreamPdfUrl ?? downloadHref;
 
   useEffect(() => {
     let cancelled = false;
-    setMode("proxy");
-    setProxyFailed(false);
+    let objectUrl: string | null = null;
+    setState("loading");
+    setBlobUrl(null);
 
-    async function probe() {
+    async function load() {
       try {
-        const response = await fetch(pdfUrl, {
-          method: "GET",
-          headers: { Range: "bytes=0-7" },
-          cache: "no-store",
-        });
+        const response = await fetch(pdfUrl, { cache: "no-store" });
         if (cancelled) return;
-        const type = (response.headers.get("content-type") ?? "").toLowerCase();
-        const ok =
-          response.ok && (type.includes("pdf") || type.includes("octet-stream") || type.includes("octet"));
-        if (!ok) {
-          // Range may be ignored and still return JSON error bodies.
-          const peek = type.includes("json") || type.includes("text") ? await response.clone().text() : "";
-          if (!response.ok || /upstream pdf|error fetching|not allowed/i.test(peek)) {
-            setProxyFailed(true);
-          }
+
+        if (!response.ok) {
+          setState("failed");
+          return;
         }
+
+        const blob = await response.blob();
+        if (cancelled) return;
+
+        const type = (blob.type || response.headers.get("content-type") || "").toLowerCase();
+        const looksPdf =
+          type.includes("pdf") || type.includes("octet-stream") || (await blobLooksLikePdf(blob));
+        if (!looksPdf) {
+          setState("failed");
+          return;
+        }
+
+        objectUrl = URL.createObjectURL(blob);
+        if (cancelled) {
+          URL.revokeObjectURL(objectUrl);
+          return;
+        }
+        setBlobUrl(objectUrl);
+        setState("ready");
       } catch {
-        if (!cancelled) setProxyFailed(true);
+        if (!cancelled) setState("failed");
       }
     }
 
-    void probe();
+    void load();
     return () => {
       cancelled = true;
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
   }, [pdfUrl]);
 
-  if (proxyFailed && mode === "proxy") {
+  if (state === "failed") {
     return (
       <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
         <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-1.5">
-          <div className="flex items-center gap-1">
-            <PreviewTab label="Proxy preview" active onSelect={() => undefined} />
-            {googleUrl ? (
-              <PreviewTab label="Google viewer" active={false} onSelect={() => setMode("google")} />
-            ) : null}
-          </div>
+          <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+            Preview
+          </span>
           <span className="font-mono text-[9px] uppercase tracking-wider text-amber-300">
             Proxy blocked by Bursa
           </span>
@@ -84,27 +107,17 @@ export function FilingPdfViewer({
             In-app preview unavailable
           </p>
           <p className="max-w-sm text-[12px] leading-snug text-neutral-400">
-            Bursa is blocking the server proxy (HTTP 403). Open the PDF in your browser instead —
-            that uses your PC&apos;s connection, which usually works.
+            Bursa is blocking the server proxy. Open the PDF in Chrome instead — that uses your
+            PC&apos;s connection.
           </p>
-          <div className="flex flex-wrap items-center justify-center gap-3">
-            <a
-              href={openHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-[10px] uppercase tracking-wider text-emerald-400 hover:underline"
-            >
-              Open PDF in browser ↗
-            </a>
-            <a
-              href={downloadHref}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-gain"
-            >
-              Retry proxy download ↗
-            </a>
-          </div>
+          <a
+            href={openHref}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-500/20"
+          >
+            Open PDF in browser ↗
+          </a>
         </div>
       </div>
     );
@@ -113,23 +126,9 @@ export function FilingPdfViewer({
   return (
     <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-1.5">
-        <div className="flex items-center gap-1">
-          <PreviewTab
-            label="Proxy preview"
-            active={mode === "proxy"}
-            onSelect={() => {
-              setMode("proxy");
-              setProxyFailed(false);
-            }}
-          />
-          {googleUrl ? (
-            <PreviewTab
-              label="Google viewer"
-              active={mode === "google"}
-              onSelect={() => setMode("google")}
-            />
-          ) : null}
-        </div>
+        <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+          {state === "loading" ? "Loading PDF…" : "Proxy preview"}
+        </span>
         {upstreamPdfUrl ? (
           <a
             href={upstreamPdfUrl}
@@ -142,39 +141,19 @@ export function FilingPdfViewer({
         ) : null}
       </div>
 
-      <iframe
-        key={src}
-        title={title}
-        src={src}
-        className="h-full w-full flex-1 border-0 bg-[#0d0d0d]"
-        onError={() => {
-          if (mode === "proxy") setProxyFailed(true);
-        }}
-      />
-
-      <p className="sr-only">If the preview stays blank, open the PDF directly: {openHref}</p>
+      {state === "ready" && blobUrl ? (
+        <iframe
+          title={title}
+          src={blobUrl}
+          className="h-full w-full flex-1 border-0 bg-[#0d0d0d]"
+        />
+      ) : (
+        <div className="flex flex-1 items-center justify-center">
+          <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-600">
+            Fetching filing…
+          </p>
+        </div>
+      )}
     </div>
-  );
-}
-
-function PreviewTab({
-  label,
-  active,
-  onSelect,
-}: {
-  label: string;
-  active: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onSelect}
-      className={`min-h-9 px-2 font-mono text-[9px] uppercase tracking-wider md:min-h-0 ${
-        active ? "text-emerald-400" : "text-neutral-500 hover:text-neutral-300"
-      }`}
-    >
-      {label}
-    </button>
   );
 }
