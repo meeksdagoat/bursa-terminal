@@ -97,10 +97,11 @@ export function FilingsModal({
 
   const belongsToTicker = !detail?.symbol || detail.symbol === activeTicker;
   const upstreamPdfUrl = belongsToTicker ? (detail?.pdfUrl ?? selectedFiling.pdfUrl) : null;
-  const downloadPdfUrl =
+  // Prefer the Bursa disclosure URL for Download — the user's Chrome can fetch
+  // it when Cloudflare 403s our server-side proxy (common on hosted deploys).
+  const downloadPdfUrl = upstreamPdfUrl;
+  const proxyDownloadUrl =
     belongsToTicker && upstreamPdfUrl ? filingPdfPath(activeTicker, selectedFilingId, true) : null;
-  // Prefer the symbol-bound same-origin route — same path as Download, and avoids
-  // fragile contentDocument sniffing on the raw disclosure URL proxy.
   const previewPdfUrl =
     belongsToTicker && upstreamPdfUrl ? filingPdfPath(activeTicker, selectedFilingId) : null;
   const title = detail?.title ?? selectedFiling.title;
@@ -172,6 +173,16 @@ export function FilingsModal({
                 className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-gain"
               >
                 Download PDF ↗
+              </a>
+            ) : null}
+            {proxyDownloadUrl ? (
+              <a
+                href={proxyDownloadUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-mono text-[10px] uppercase tracking-wider text-neutral-600 hover:text-gain"
+              >
+                Proxy download ↗
               </a>
             ) : null}
           </div>

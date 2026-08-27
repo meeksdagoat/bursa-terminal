@@ -1,9 +1,12 @@
 import "server-only";
 
 import { spawn } from "node:child_process";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const USER_AGENT =
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36";
 
 const REFERER =
   "https://www.bursamalaysia.com/market_information/announcements/company_announcement";
@@ -82,68 +85,126 @@ function bufferToArrayBuffer(buffer: Buffer): ArrayBuffer {
   return buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
 }
 
-/**
- * Cloudflare often 403s Node's TLS fingerprint while curl from the same host succeeds.
- * Allowlisted URL only; no shell interpolation.
- */
-function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
+function runCurl(args: string[]): Promise<{ code: number | null; stderr: string }> {
   const bin = process.platform === "win32" ? "curl.exe" : "curl";
   return new Promise((resolve, reject) => {
-    const child = spawn(
-      bin,
-      [
-        "-sS",
-        "-L",
-        "--fail",
-        "--max-time",
-        "25",
-        "--max-filesize",
-        String(MAX_BYTES),
-        "-A",
-        USER_AGENT,
-        "-H",
-        "Accept: application/pdf,application/octet-stream;q=0.9,*/*;q=0.8",
-        "-H",
-        `Referer: ${REFERER}`,
-        target.href,
-      ],
-      { windowsHide: true },
-    );
-
-    const chunks: Buffer[] = [];
-    let total = 0;
-
-    child.stdout.on("data", (chunk: Buffer) => {
-      total += chunk.length;
-      if (total > MAX_BYTES) {
-        child.kill("SIGTERM");
-        reject(new FilingPdfError("PDF is too large to preview", 413));
-        return;
-      }
-      chunks.push(chunk);
-    });
-
-    child.on("error", () => {
-      reject(new FilingPdfError("Error fetching PDF", 500));
-    });
-
+    const child = spawn(bin, args, { windowsHide: true });
+    const errChunks: Buffer[] = [];
+    child.stderr.on("data", (chunk: Buffer) => errChunks.push(chunk));
+    child.on("error", () => reject(new FilingPdfError("PDF fetch tool unavailable", 500)));
     child.on("close", (code) => {
-      if (code !== 0) {
-        reject(new FilingPdfError("Upstream PDF responded 403", 502));
-        return;
-      }
-      resolve(bufferToArrayBuffer(Buffer.concat(chunks)));
+      resolve({ code, stderr: Buffer.concat(errChunks).toString("utf8") });
     });
   });
 }
 
+/**
+ * Cloudflare often 403s Node's TLS fingerprint. curl + a warmed cookie jar
+ * from the Bursa announcements page succeeds more often on the same host.
+ */
+async function fetchPdfViaCurl(target: URL): Promise<ArrayBuffer> {
+  const dir = await mkdtemp(join(tmpdir(), "bursa-pdf-"));
+  const jar = join(dir, "cookies.txt");
+  const out = join(dir, "filing.pdf");
+
+  try {
+    // Warm Cloudflare / session cookies against the public announcements shell.
+    await runCurl([
+      "-sS",
+      "-L",
+      "--max-time",
+      "15",
+      "-A",
+      USER_AGENT,
+      "-c",
+      jar,
+      "-b",
+      jar,
+      "-H",
+      "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "-H",
+      "Accept-Language: en-MY,en;q=0.9",
+      REFERER,
+    ]);
+
+    const download = await runCurl([
+      "-sS",
+      "-L",
+      "--fail",
+      "--max-time",
+      "25",
+      "--max-filesize",
+      String(MAX_BYTES),
+      "-A",
+      USER_AGENT,
+      "-c",
+      jar,
+      "-b",
+      jar,
+      "-H",
+      "Accept: application/pdf,application/octet-stream;q=0.9,*/*;q=0.8",
+      "-H",
+      "Accept-Language: en-MY,en;q=0.9",
+      "-H",
+      `Referer: ${REFERER}`,
+      "-H",
+      "Sec-Fetch-Dest: document",
+      "-H",
+      "Sec-Fetch-Mode: navigate",
+      "-H",
+      "Sec-Fetch-Site: same-site",
+      "-o",
+      out,
+      "-w",
+      "%{http_code}",
+      target.href,
+    ]);
+
+    if (download.code !== 0) {
+      const status = download.stderr.match(/\b(\d{3})\b/)?.[1];
+      throw new FilingPdfError(
+        status ? `Upstream PDF responded ${status}` : "Upstream PDF responded 403",
+        502,
+      );
+    }
+
+    const body = bufferToArrayBuffer(await readFile(out));
+    if (body.byteLength === 0) {
+      throw new FilingPdfError("Upstream returned an empty PDF", 502);
+    }
+    return body;
+  } finally {
+    await rm(dir, { recursive: true, force: true }).catch(() => undefined);
+  }
+}
+
 async function fetchPdfViaHttp(target: URL): Promise<{ body: ArrayBuffer; filename: string }> {
+  // Warm a lightweight HTML hit first so subsequent disclosure downloads
+  // sometimes inherit Cloudflare clearance cookies in the undici jar.
+  try {
+    await fetch(REFERER, {
+      headers: {
+        "User-Agent": USER_AGENT,
+        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "en-MY,en;q=0.9",
+      },
+      cache: "no-store",
+      redirect: "follow",
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch {
+    // Warm-up is best-effort.
+  }
+
   const response = await fetch(target, {
     headers: {
       "User-Agent": USER_AGENT,
       Accept: "application/pdf,application/octet-stream;q=0.9,*/*;q=0.8",
-      "Accept-Language": "en-US,en;q=0.9",
+      "Accept-Language": "en-MY,en;q=0.9",
       Referer: REFERER,
+      "Sec-Fetch-Dest": "document",
+      "Sec-Fetch-Mode": "navigate",
+      "Sec-Fetch-Site": "same-site",
     },
     cache: "no-store",
     redirect: "follow",
@@ -190,11 +251,21 @@ export async function fetchFilingPdf(rawUrl: string): Promise<{
     if (error instanceof FilingPdfError && (error.status === 400 || error.status === 413)) {
       throw error;
     }
-    const body = await fetchPdfViaCurl(target);
-    if (!bodyLooksLikePdf(body)) {
-      throw error instanceof FilingPdfError ? error : new FilingPdfError("Upstream did not return a PDF", 502);
+    try {
+      const body = await fetchPdfViaCurl(target);
+      if (!bodyLooksLikePdf(body)) {
+        throw error instanceof FilingPdfError
+          ? error
+          : new FilingPdfError("Upstream did not return a PDF", 502);
+      }
+      return { body, filename: filenameFromUrl(target) };
+    } catch (curlError) {
+      throw curlError instanceof FilingPdfError
+        ? curlError
+        : error instanceof FilingPdfError
+          ? error
+          : new FilingPdfError("Upstream PDF responded 403", 502);
     }
-    return { body, filename: filenameFromUrl(target) };
   }
 }
 
