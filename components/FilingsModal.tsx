@@ -207,8 +207,14 @@ export function FilingsModal({
             <FilingPdfViewer
               pdfUrl={previewPdfUrl}
               upstreamPdfUrl={upstreamPdfUrl}
-              title={detail?.pdfName ?? "Filing Preview"}
+              title={detail?.pdfName ?? title}
               downloadHref={downloadPdfUrl ?? upstreamPdfUrl}
+              companyName={company}
+              publishedLabel={formatKlStamp(selectedFiling.publishedAt)}
+              categoryLabel={
+                detail?.filingType ?? selectedFiling.filingType ?? selectedFiling.kind ?? "Filing"
+              }
+              announcementUrl={detail?.bursaUrl ?? selectedFiling.bursaUrl}
             />
           ) : (
             <div className="custom-scrollbar h-full overflow-y-auto px-3 py-3">

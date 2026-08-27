@@ -35,11 +35,6 @@ export function filingProxyPdfPath(pdfUrl: string): string {
   return `/api/filings/proxy-pdf?url=${encodeURIComponent(pdfUrl)}`;
 }
 
-/** Google Docs / gview embed — fetches the upstream PDF from Google's network, not Vercel. */
-export function googleDocsPdfViewerUrl(pdfUrl: string): string {
-  return `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true`;
-}
-
 const MONTHS: Record<string, number> = {
   jan: 0,
   feb: 1,

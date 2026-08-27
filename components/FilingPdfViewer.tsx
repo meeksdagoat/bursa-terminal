@@ -1,18 +1,24 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { googleDocsPdfViewerUrl } from "@/lib/filing-id";
 
 type FilingPdfViewerProps = {
-  /** Same-origin proxy URL (`/api/filings/pdf` or `/api/filings/proxy-pdf`). */
+  /** Same-origin proxy URL (`/api/filings/pdf`). */
   pdfUrl: string;
-  /** Upstream Bursa disclosure URL — used for Google Docs embed + direct open. */
+  /** Upstream Bursa disclosure PDF URL. */
   upstreamPdfUrl?: string | null;
+  /** Document / PDF display name. */
   title: string;
   downloadHref: string;
+  /** Filing metadata for the interactive fallback panel. */
+  companyName: string;
+  publishedLabel: string;
+  categoryLabel: string;
+  /** Bursa announcement details page (not the raw PDF). */
+  announcementUrl: string;
 };
 
-type ViewMode = "loading" | "proxy" | "google" | "actions";
+type ViewMode = "loading" | "proxy" | "panel";
 
 function blobLooksLikePdf(blob: Blob): Promise<boolean> {
   return blob.slice(0, 8).arrayBuffer().then((buffer) => {
@@ -32,96 +38,105 @@ function blobLooksLikePdf(blob: Blob): Promise<boolean> {
   });
 }
 
-async function isUpstreamForbidden(response: Response, blob: Blob): Promise<boolean> {
+function isErrorPayload(response: Response, blob: Blob, peek: string): boolean {
   const type = (blob.type || response.headers.get("content-type") || "").toLowerCase();
-  const looksLikeErrorBody = type.includes("json") || type.includes("text");
-
-  if (response.status === 403 || response.status === 502 || !response.ok) {
-    if (!looksLikeErrorBody) return !response.ok;
-    try {
-      const text = await blob.slice(0, 2048).text();
-      if (/UPSTREAM_FORBIDDEN|Upstream PDF responded 403|"code"\s*:\s*"UPSTREAM_FORBIDDEN"/i.test(text)) {
-        return true;
-      }
-      if (/403|forbidden/i.test(text)) return true;
-    } catch {
-      return true;
-    }
-    return true;
-  }
-
-  // Proxy must never surface JSON/text errors as a "PDF" iframe.
-  return looksLikeErrorBody;
+  if (!response.ok) return true;
+  if (type.includes("json") || type.includes("text/plain") || type.includes("text/html")) return true;
+  if (/UPSTREAM_FORBIDDEN|Upstream PDF responded 403|"error"\s*:/i.test(peek)) return true;
+  return false;
 }
 
 /**
- * Never render proxy JSON errors in the iframe. On Vercel 403, fall back to
- * Google Docs gview (Google fetches Bursa), then surface Bursa open/download CTAs.
+ * Prefer the same-origin proxy (works on local). Never embed Google Docs gview
+ * (also blocked by Bursa). Never render JSON errors in an iframe. On failure,
+ * show an Interactive Filing Panel that opens Bursa in the user's browser.
  */
 export function FilingPdfViewer({
   pdfUrl,
   upstreamPdfUrl,
   title,
   downloadHref,
+  companyName,
+  publishedLabel,
+  categoryLabel,
+  announcementUrl,
 }: FilingPdfViewerProps) {
   const [mode, setMode] = useState<ViewMode>("loading");
   const [blobUrl, setBlobUrl] = useState<string | null>(null);
-  const [googleStale, setGoogleStale] = useState(false);
   const officialPdfUrl = upstreamPdfUrl ?? downloadHref;
-  const googleUrl = upstreamPdfUrl ? googleDocsPdfViewerUrl(upstreamPdfUrl) : null;
 
   useEffect(() => {
     let cancelled = false;
     let objectUrl: string | null = null;
     setMode("loading");
     setBlobUrl(null);
-    setGoogleStale(false);
 
-    async function load() {
+    async function tryProxy(): Promise<boolean> {
+      const response = await fetch(pdfUrl, {
+        cache: "no-store",
+        signal: AbortSignal.timeout(45_000),
+      });
+      if (cancelled) return false;
+
+      const blob = await response.blob();
+      if (cancelled) return false;
+
+      const peek = await blob.slice(0, 512).text().catch(() => "");
+      if (isErrorPayload(response, blob, peek)) return false;
+
+      const type = (blob.type || response.headers.get("content-type") || "").toLowerCase();
+      const looksPdf =
+        type.includes("pdf") || type.includes("octet-stream") || (await blobLooksLikePdf(blob));
+      if (!looksPdf) return false;
+
+      objectUrl = URL.createObjectURL(blob);
+      if (cancelled) {
+        URL.revokeObjectURL(objectUrl);
+        return false;
+      }
+      setBlobUrl(objectUrl);
+      setMode("proxy");
+      return true;
+    }
+
+    /** Browser-side fetch of Bursa — usually CORS-blocked; succeed only if a PDF blob returns. */
+    async function tryClientUpstream(): Promise<boolean> {
+      if (!officialPdfUrl) return false;
       try {
-        const response = await fetch(pdfUrl, {
+        const response = await fetch(officialPdfUrl, {
+          mode: "cors",
           cache: "no-store",
-          signal: AbortSignal.timeout(45_000),
+          credentials: "omit",
+          signal: AbortSignal.timeout(20_000),
         });
-        if (cancelled) return;
-
+        if (cancelled || !response.ok) return false;
         const blob = await response.blob();
-        if (cancelled) return;
-
-        if (await isUpstreamForbidden(response, blob)) {
-          setMode(googleUrl ? "google" : "actions");
-          return;
-        }
-
-        if (!response.ok) {
-          setMode(googleUrl ? "google" : "actions");
-          return;
-        }
-
+        if (cancelled) return false;
         const type = (blob.type || response.headers.get("content-type") || "").toLowerCase();
-        // Never put JSON / plain-text error bodies into the iframe.
-        if (type.includes("json") || type.includes("text/plain") || type.includes("text/html")) {
-          setMode(googleUrl ? "google" : "actions");
-          return;
-        }
-
         const looksPdf =
           type.includes("pdf") || type.includes("octet-stream") || (await blobLooksLikePdf(blob));
-        if (!looksPdf) {
-          setMode(googleUrl ? "google" : "actions");
-          return;
-        }
-
+        if (!looksPdf) return false;
         objectUrl = URL.createObjectURL(blob);
         if (cancelled) {
           URL.revokeObjectURL(objectUrl);
-          return;
+          return false;
         }
         setBlobUrl(objectUrl);
         setMode("proxy");
+        return true;
       } catch {
-        if (!cancelled) setMode(googleUrl ? "google" : "actions");
+        return false;
       }
+    }
+
+    async function load() {
+      try {
+        if (await tryProxy()) return;
+        if (await tryClientUpstream()) return;
+      } catch {
+        // Fall through to panel.
+      }
+      if (!cancelled) setMode("panel");
     }
 
     void load();
@@ -129,139 +144,130 @@ export function FilingPdfViewer({
       cancelled = true;
       if (objectUrl) URL.revokeObjectURL(objectUrl);
     };
-  }, [pdfUrl, googleUrl]);
+  }, [pdfUrl, officialPdfUrl]);
 
-  useEffect(() => {
-    if (mode !== "google") {
-      setGoogleStale(false);
-      return;
-    }
-    const timer = window.setTimeout(() => setGoogleStale(true), 12_000);
-    return () => window.clearTimeout(timer);
-  }, [mode, googleUrl]);
-
-  const showActions = mode === "actions" || mode === "google" || mode === "loading";
-
-  return (
-    <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-1.5">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
-          {mode === "loading"
-            ? "Loading proxy…"
-            : mode === "proxy"
-              ? "Proxy preview"
-              : mode === "google"
-                ? "Google Docs preview"
-                : "Preview unavailable"}
-        </span>
-        {officialPdfUrl ? (
-          <a
-            href={officialPdfUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="font-mono text-[9px] uppercase tracking-wider text-emerald-400 hover:underline"
-          >
-            Open on Bursa ↗
-          </a>
-        ) : null}
-      </div>
-
-      {mode === "proxy" && blobUrl ? (
+  if (mode === "proxy" && blobUrl) {
+    return (
+      <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-neutral-800 px-3 py-1.5">
+          <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+            Proxy preview
+          </span>
+          {officialPdfUrl ? (
+            <a
+              href={officialPdfUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-mono text-[9px] uppercase tracking-wider text-emerald-400 hover:underline"
+            >
+              Open on Bursa ↗
+            </a>
+          ) : null}
+        </div>
         <iframe
           title={title}
           src={blobUrl}
           className="h-full w-full flex-1 border-0 bg-[#0d0d0d]"
         />
-      ) : null}
+      </div>
+    );
+  }
 
-      {mode === "google" && googleUrl ? (
-        <div className="relative flex min-h-0 flex-1 flex-col">
-          <iframe
-            key={googleUrl}
-            title={title}
-            src={googleUrl}
-            className="h-full w-full flex-1 border-0 bg-[#0d0d0d]"
-          />
-          {googleStale ? (
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 to-transparent p-4 pt-16">
-              <div className="pointer-events-auto">
-                <ActionBar officialPdfUrl={officialPdfUrl} />
-              </div>
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+  if (mode === "loading") {
+    return (
+      <div className="flex h-full min-h-0 flex-col items-center justify-center gap-3 bg-[#0d0d0d] px-6 text-center">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-600">
+          Fetching filing…
+        </p>
+        {officialPdfUrl ? (
+          <button
+            type="button"
+            onClick={() => window.open(officialPdfUrl, "_blank", "noopener,noreferrer")}
+            className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-emerald-400"
+          >
+            Don&apos;t wait — open on Bursa ↗
+          </button>
+        ) : null}
+      </div>
+    );
+  }
 
-      {mode === "loading" || mode === "actions" ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-4 px-6 text-center">
-          {mode === "loading" ? (
-            <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-600">
-              Fetching filing…
-            </p>
-          ) : (
-            <>
-              <p className="font-mono text-[10px] uppercase tracking-wider text-amber-300">
-                Proxy blocked by Bursa WAF
-              </p>
-              <p className="max-w-sm text-[12px] leading-snug text-neutral-400">
-                Cloud servers cannot fetch this disclosure. Open or download the official PDF
-                directly from Bursa Malaysia.
-              </p>
-            </>
-          )}
-          {showActions && mode !== "loading" ? <ActionBar officialPdfUrl={officialPdfUrl} /> : null}
-          {mode === "loading" && officialPdfUrl ? (
-            <a
-              href={officialPdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="font-mono text-[10px] uppercase tracking-wider text-neutral-400 hover:text-emerald-400"
-            >
-              Don&apos;t wait — open on Bursa ↗
-            </a>
-          ) : null}
-        </div>
-      ) : null}
-
-      {mode === "google" && !googleStale ? (
-        <div className="shrink-0 border-t border-neutral-800 px-3 py-2">
-          <ActionBar officialPdfUrl={officialPdfUrl} compact />
-        </div>
-      ) : null}
-    </div>
+  return (
+    <InteractiveFilingPanel
+      title={title}
+      companyName={companyName}
+      publishedLabel={publishedLabel}
+      categoryLabel={categoryLabel}
+      officialPdfUrl={officialPdfUrl}
+      announcementUrl={announcementUrl}
+    />
   );
 }
 
-function ActionBar({
+function InteractiveFilingPanel({
+  title,
+  companyName,
+  publishedLabel,
+  categoryLabel,
   officialPdfUrl,
-  compact = false,
+  announcementUrl,
 }: {
+  title: string;
+  companyName: string;
+  publishedLabel: string;
+  categoryLabel: string;
   officialPdfUrl: string;
-  compact?: boolean;
+  announcementUrl: string;
 }) {
-  if (!officialPdfUrl) return null;
-
   return (
-    <div
-      className={`flex flex-wrap items-center justify-center gap-2 ${compact ? "" : "mt-1"}`}
-    >
-      <a
-        href={officialPdfUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-500/20"
-      >
-        Open PDF directly on Bursa Malaysia ↗
-      </a>
-      <a
-        href={officialPdfUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        download
-        className="border border-neutral-700 bg-neutral-900/80 px-3 py-2 font-mono text-[10px] uppercase tracking-wider text-neutral-300 hover:border-neutral-500 hover:text-gain"
-      >
-        Download Official PDF ↗
-      </a>
+    <div className="flex h-full min-h-0 flex-col bg-[#0d0d0d]">
+      <div className="flex shrink-0 items-center border-b border-neutral-800 px-3 py-1.5">
+        <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+          Interactive filing panel
+        </span>
+      </div>
+
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 px-6 py-8 text-center">
+        <div className="max-w-md space-y-2">
+          <p className="font-mono text-[9px] uppercase tracking-[0.18em] text-amber-400/90">
+            Official disclosure
+          </p>
+          <h3 className="text-[15px] font-medium leading-snug text-neutral-100">{title}</h3>
+          <p className="font-mono text-[10px] uppercase tracking-wider text-neutral-500">
+            {companyName}
+          </p>
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-1">
+            <span className="rounded-sm border border-line px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-neutral-400">
+              {categoryLabel}
+            </span>
+            <span className="font-mono text-[10px] text-neutral-500">{publishedLabel}</span>
+          </div>
+        </div>
+
+        <div className="flex w-full max-w-sm flex-col gap-2">
+          {officialPdfUrl ? (
+            <button
+              type="button"
+              onClick={() => window.open(officialPdfUrl, "_blank", "noopener,noreferrer")}
+              className="w-full border border-emerald-500/40 bg-emerald-500/10 px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-emerald-400 hover:bg-emerald-500/20"
+            >
+              Open PDF directly on Bursa Malaysia ↗
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={() => window.open(announcementUrl, "_blank", "noopener,noreferrer")}
+            className="w-full border border-neutral-700 bg-neutral-900/80 px-4 py-3 font-mono text-[10px] uppercase tracking-wider text-neutral-300 hover:border-neutral-500 hover:text-gain"
+          >
+            View Announcement Page on Bursa ↗
+          </button>
+        </div>
+
+        <p className="max-w-sm text-[12px] leading-snug text-neutral-400">
+          Bursa Malaysia restricts direct server embedding. Click above to view the official PDF in a
+          new tab.
+        </p>
+      </div>
     </div>
   );
 }
