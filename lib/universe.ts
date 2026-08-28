@@ -5,9 +5,10 @@ import {
   DEFAULT_WATCHLIST,
   KLCI_SYMBOL,
   SHARIAH_SOURCE,
+  TOP_BURSA_RIBBON,
 } from "./universe-curated";
 
-export { DEFAULT_WATCHLIST, KLCI_SYMBOL, SHARIAH_SOURCE };
+export { DEFAULT_WATCHLIST, KLCI_SYMBOL, SHARIAH_SOURCE, TOP_BURSA_RIBBON };
 
 type RosterRow = {
   code: string;
@@ -158,6 +159,33 @@ export function searchUniverse(query: string, limit = HEADER_RESULT_LIMIT): Univ
     .sort((a, b) => a.score - b.score || a.entry.name.localeCompare(b.entry.name))
     .slice(0, limit)
     .map(({ entry }) => entry);
+}
+
+/** Full ranked matches with a separate render cap for autocomplete dropdowns. */
+export function searchUniverseResults(
+  query: string,
+  renderLimit = 20,
+): { results: UniverseEntry[]; totalMatches: number } {
+  const needle = query.trim().toLowerCase().replace(/\.kl$/, "");
+  if (!needle) {
+    return { results: universe.slice(0, renderLimit), totalMatches: universe.length };
+  }
+
+  const exact = byCode.get(needle) ?? byShortName.get(needle) ?? bySymbol.get(`${needle}.KL`);
+  const matches: Array<{ entry: UniverseEntry; score: number }> = [];
+  if (exact) matches.push({ entry: exact, score: -1 });
+
+  for (const entry of indexed) {
+    if (exact && entry.symbol === exact.symbol) continue;
+    const score = rankMatch(entry.needles, needle);
+    if (score >= 0) matches.push({ entry, score });
+  }
+
+  const sorted = matches
+    .sort((a, b) => a.score - b.score || a.entry.name.localeCompare(b.entry.name))
+    .map(({ entry }) => entry);
+
+  return { results: sorted.slice(0, renderLimit), totalMatches: sorted.length };
 }
 
 export function findEntry(

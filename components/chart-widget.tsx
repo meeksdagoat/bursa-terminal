@@ -115,10 +115,10 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden bg-panel">
       <div className="border-b border-line">
-        <div className="flex flex-col gap-2 px-3 py-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
+        <div className="flex flex-col gap-1.5 px-3 py-1.5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between">
           <div className="min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-[15px] font-semibold tracking-tight text-white">{row.name}</h2>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <h2 className="text-[13px] font-semibold tracking-tight text-white">{row.name}</h2>
               <span className="font-mono text-[11px] text-neutral-500">{row.symbol}</span>
               {quote?.marketState ? (
                 <span className="font-mono text-[9px] text-neutral-600">{quote.marketState}</span>
@@ -139,11 +139,11 @@ function ChartWidgetInner({ row, saved, onToggleSave, ticks = {} }: ChartWidgetP
             </div>
 
             <div className="mt-0.5 flex items-baseline gap-2">
-              <span className={`rounded-sm px-1 font-mono text-[22px] leading-none text-white ${priceFlash}`}>
+              <span className={`rounded-sm px-1 font-mono text-[17px] leading-none text-white ${priceFlash}`}>
                 {formatPrice(quote?.price)}
               </span>
               <span className="text-[11px] text-neutral-500">{quote?.currency ?? "MYR"}</span>
-              <SignedPct value={quote?.changePct} className="font-mono text-[12px]" />
+              <SignedPct value={quote?.changePct} className="font-mono text-[11px]" />
               <span className="font-mono text-[9px] text-neutral-600">
                 LAST {formatKlTime(quote?.quoteTime)} MYT
                 {quote?.delayMinutes ? ` · ${quote.delayMinutes}M DELAY` : ""}
@@ -351,13 +351,13 @@ function ChartToolbarSelect<T extends string>({
 
 function Stat({ label, term, value }: { label: string; term: JargonTerm; value: string }) {
   return (
-    <div className="shrink-0 bg-panel px-1.5 py-1 sm:min-w-[92px] sm:px-3 sm:py-1.5">
+    <div className="shrink-0 bg-panel px-1.5 py-1 sm:min-w-[84px] sm:px-2 sm:py-1">
       <dt className="text-[9px] uppercase tracking-wider text-neutral-500">
         <Jargon term={term} align="right" className="min-h-0! sm:min-h-0">
           {label}
         </Jargon>
       </dt>
-      <dd className="font-mono text-[11px] whitespace-nowrap text-neutral-100 sm:text-[12px]">{value}</dd>
+      <dd className="font-mono text-[11px] whitespace-nowrap text-neutral-100">{value}</dd>
     </div>
   );
 }
@@ -375,7 +375,7 @@ function WeekRangeBar({
   const pct = ready ? Math.min(100, Math.max(0, ((last - low) / (high - low)) * 100)) : 50;
 
   return (
-    <div id="chart-week-range" className="flex min-w-0 flex-1 flex-col justify-center bg-panel px-1.5 py-1 sm:px-3 sm:py-1.5">
+    <div id="chart-week-range" className="flex min-w-0 flex-1 flex-col justify-center bg-panel px-1.5 py-1 sm:px-2 sm:py-1">
       <dt className="text-[9px] uppercase tracking-wider text-neutral-500">
         <Jargon term="week52" align="right" className="min-h-0!">
           52W Range

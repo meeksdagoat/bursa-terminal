@@ -17,11 +17,6 @@ export const HEADLINE_CATEGORIES = [
     blurb: "Fed, ECB, Treasuries and global risk assets",
   },
   {
-    id: "my-companies",
-    label: "Companies",
-    blurb: "Bursa-listed corporates, earnings and deals",
-  },
-  {
     id: "world-politics",
     label: "Global Politics",
     blurb: "Geopolitics, elections and diplomacy worldwide",

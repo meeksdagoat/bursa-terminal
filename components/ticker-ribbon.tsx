@@ -4,6 +4,7 @@ import { memo } from "react";
 import { HScroll } from "@/components/h-scroll";
 import { SignedPct } from "@/components/signed-change";
 import { formatPrice } from "@/lib/format";
+import { getStockName } from "@/lib/stock-names";
 import type { WatchlistRow } from "@/lib/types";
 import { usePanXLock } from "@/lib/use-pan-x-lock";
 import { usePriceFlash } from "@/lib/use-price-flash";
@@ -15,7 +16,7 @@ type TickerRibbonProps = {
   onSelect?: (symbol: string) => void;
 };
 
-const TAPE_CAP = 24;
+const TAPE_CAP = 20;
 
 const TAPE_FRAME =
   "h-10 max-h-10 min-h-10 shrink-0 overflow-x-clip overflow-y-clip select-none touch-pan-x";
@@ -37,7 +38,7 @@ function TickerRibbonInner({ rows, ticks, onSelect }: TickerRibbonProps) {
       <HScroll
         snap
         className="flex h-full min-w-0 flex-1 flex-nowrap items-center overflow-x-auto overflow-y-clip overscroll-none whitespace-nowrap md:hidden"
-        aria-label="Watchlist tape"
+        aria-label="Market tape"
         data-ticker-scroller=""
       >
         {visible.map((row) => (
@@ -82,7 +83,9 @@ function RibbonItem({
         snap ? "snap-start" : ""
       } ${flash}`}
     >
-      <span className="text-[10px] uppercase tracking-wider text-neutral-500">{row.code}</span>
+      <span className="max-w-[8rem] truncate text-[10px] tracking-wide text-neutral-400">
+        {getStockName(row.symbol)}
+      </span>
       <span className="text-[11px] text-neutral-100">{formatPrice(row.quote?.price)}</span>
       <SignedPct value={row.quote?.changePct} className="text-[10px]" />
     </button>

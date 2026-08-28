@@ -51,9 +51,9 @@ export function ShowMoreBar({
 }
 
 export const tableHeadClass =
-  "sticky top-0 z-10 whitespace-nowrap border-b border-line bg-slate-900 px-1.5 py-1 text-xs font-semibold md:px-2 md:py-1.5 md:text-sm";
+  "sticky top-0 z-10 whitespace-nowrap border-b border-line bg-slate-900 px-1.5 py-1 text-[10px] font-semibold md:px-2";
 export const stickyHeadClass = `${tableHeadClass} left-0 z-20`;
 export const stickyCellClass =
-  "sticky left-0 z-10 whitespace-nowrap bg-slate-900 px-1.5 py-1 text-xs md:px-2 md:py-1.5 md:text-sm";
+  "sticky left-0 z-10 whitespace-nowrap bg-slate-900 px-1.5 py-1 text-[10px] md:px-2";
 export const tableCellClass =
-  "px-1.5 py-1 text-xs tabular-nums md:px-2 md:py-1.5 md:text-sm";
+  "px-1.5 py-1 text-[10px] tabular-nums md:px-2";

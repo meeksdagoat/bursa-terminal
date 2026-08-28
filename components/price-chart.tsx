@@ -15,7 +15,8 @@ import {
   type UTCTimestamp,
 } from "lightweight-charts";
 import { Jargon } from "@/components/jargon-term";
-import { formatKlTime, formatPrice, formatVolume } from "@/lib/format";
+import { formatKlChartCrosshairTime, formatPrice, formatVolume } from "@/lib/format";
+import { formatChartCrosshairTime } from "@/lib/chart-ui";
 import type { Candle } from "@/lib/types";
 
 const GAIN = "#22c55e";
@@ -59,6 +60,10 @@ export default function PriceChart({ candles, style, intraday, up }: PriceChartP
         horzLines: { color: GRID, style: LineStyle.Dotted },
       },
       rightPriceScale: { borderColor: GRID, entireTextOnly: true },
+      localization: {
+        locale: "en-US",
+        timeFormatter: formatChartCrosshairTime,
+      },
       timeScale: {
         borderColor: GRID,
         timeVisible: intraday,
@@ -141,7 +146,7 @@ export default function PriceChart({ candles, style, intraday, up }: PriceChartP
 
       {readout ? (
         <div className="pointer-events-none absolute left-2 top-1.5 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 font-mono text-[9px] text-neutral-500">
-          <span className="text-neutral-400">{formatKlTime(readout.time * 1000)}</span>
+          <span className="text-neutral-400">{formatKlChartCrosshairTime(readout.time * 1000)}</span>
           {style === "candles" ? (
             <>
               <span>

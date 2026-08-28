@@ -80,7 +80,7 @@ export function HeaderBar({
     <header className="w-full shrink-0 overflow-x-clip overflow-y-clip border-b border-neutral-800 bg-[#0d0d0d]">
       <div
         ref={lockHeaderRow}
-        className="flex h-14 max-h-14 min-h-14 w-full items-center justify-between gap-2 overflow-x-clip overflow-y-clip px-3 md:gap-4"
+        className="flex h-12 max-h-12 min-h-12 w-full items-center justify-between gap-2 overflow-x-clip overflow-y-clip px-3 md:gap-3"
       >
         <div className="flex shrink-0 items-center gap-2 md:gap-4">
           <button
@@ -140,10 +140,10 @@ export function HeaderBar({
 
           {showDelayedBadge ? (
             <>
-              <span className="hidden flex-shrink-0 whitespace-nowrap text-xs font-mono uppercase lg:inline-flex">
+              <span className="hidden flex-shrink-0 whitespace-nowrap lg:inline-flex">
                 <ConnectionStatus status={status} latencyMs={latencyMs} />
               </span>
-              <span className="inline-flex flex-shrink-0 whitespace-nowrap text-xs font-mono uppercase lg:hidden">
+              <span className="inline-flex flex-shrink-0 whitespace-nowrap lg:hidden">
                 <ConnectionStatus status={status} compact latencyMs={latencyMs} />
               </span>
             </>
@@ -236,7 +236,7 @@ function ShariahToggle() {
           ? "Showing Shariah-compliant names only"
           : "Show Shariah-compliant names only — hides conventional banks, insurers, gaming and brewers"
       }
-      className={`flex min-h-11 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 py-1 transition-colors md:min-h-0 md:px-2 ${
+      className={`flex min-h-8 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 py-0.5 transition-colors md:min-h-0 md:px-2 ${
         shariahOnly
           ? "border-gain/50 bg-gain/10 text-gain"
           : "border-neutral-800 text-neutral-500 hover:border-neutral-600 hover:text-neutral-300"
@@ -255,7 +255,7 @@ function RealtimeBadge() {
   return (
     <span
       title="Macro indicators stream live from TradingView and official APIs"
-      className="inline-flex flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-xs font-mono uppercase tracking-[0.12em] text-emerald-400"
+      className="inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full border border-emerald-500/30 bg-emerald-500/10 px-1.5 py-px font-mono text-[8px] uppercase tracking-[0.1em] text-emerald-400"
     >
       <span className="relative flex h-1.5 w-1.5">
         <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-70" />

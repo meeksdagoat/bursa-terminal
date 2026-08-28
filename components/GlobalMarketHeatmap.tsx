@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import {
+  geSectionHeader,
+  geSectionShell,
+  geSectionSubheader,
+} from "@/lib/global-economy-ui";
 
 const TV_HEATMAP_SRC = "https://s3.tradingview.com/external-embedding/embed-widget-stock-heatmap.js";
 
@@ -59,17 +64,15 @@ export function GlobalMarketHeatmap() {
   }, []);
 
   return (
-    <section className="relative flex h-[400px] w-full min-w-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d] sm:h-[500px] lg:h-full lg:min-h-0">
-      <header className="relative z-10 shrink-0 border-b border-neutral-800 p-3 sm:px-3 sm:py-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
-          S&P 500 Heatmap
-        </h3>
-        <p className="mt-0.5 text-[10px] text-neutral-500">Sector grouping · TradingView live</p>
+    <section className="relative flex h-[320px] w-full min-w-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d] sm:h-[360px] lg:h-full lg:min-h-[240px]">
+      <header className={`relative z-10 ${geSectionShell}`}>
+        <h3 className={geSectionHeader}>S&P 500 Heatmap</h3>
+        <p className={geSectionSubheader}>Sector grouping · TradingView live</p>
       </header>
       <div
         ref={hostRef}
         data-tv-heatmap
-        className="relative isolate block h-full min-h-0 w-full flex-1 overflow-hidden bg-transparent [&_.tradingview-widget-container]:relative [&_.tradingview-widget-container]:h-full [&_.tradingview-widget-container]:w-full [&_.tradingview-widget-container]:overflow-hidden [&_.tradingview-widget-container__widget]:relative [&_.tradingview-widget-container__widget]:h-full [&_.tradingview-widget-container__widget]:w-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:block [&_iframe]:!h-full [&_iframe]:!w-full [&_iframe]:max-h-full [&_iframe]:max-w-full [&_iframe]:border-0"
+        className="relative isolate block h-full min-h-0 w-full min-w-0 flex-1 overflow-hidden bg-transparent [&_.tradingview-widget-container]:relative [&_.tradingview-widget-container]:h-full [&_.tradingview-widget-container]:w-full [&_.tradingview-widget-container]:overflow-hidden [&_.tradingview-widget-container__widget]:relative [&_.tradingview-widget-container__widget]:h-full [&_.tradingview-widget-container__widget]:w-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:block [&_iframe]:!h-full [&_iframe]:!w-full [&_iframe]:max-h-full [&_iframe]:max-w-full [&_iframe]:origin-top-left [&_iframe]:scale-[0.92] [&_iframe]:border-0"
         aria-label="S&P 500 sector heatmap"
       />
     </section>

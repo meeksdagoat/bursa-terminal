@@ -38,7 +38,7 @@ export function CorporatePerformance({ symbol, companyName }: CorporatePerforman
 
   return (
     <div className="flex min-h-0 flex-col overflow-hidden">
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-4 py-2 font-mono text-xs text-neutral-400 border-b border-line">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1.5 font-mono text-[10px] text-neutral-400 border-b border-line">
         <SeriesToggle
           label="Revenue"
           swatch="#38bdf8"

@@ -10,6 +10,12 @@ import { Indicator } from "@/components/economy-desk";
 import { PanelSplitter } from "@/components/panel-resize-handle";
 import { SlideDrawer } from "@/components/slide-drawer";
 import { formatKlDate, formatOpr } from "@/lib/format";
+import {
+  geSectionHeader,
+  geSectionShell,
+  geSectionSubheader,
+  geStreamBadge,
+} from "@/lib/global-economy-ui";
 import type { BnmPayload, EconomyPayload, GlobalEconomyPayload, HeadlinesPayload } from "@/lib/types";
 import { useBreakpoint } from "@/lib/use-media-query";
 
@@ -42,11 +48,9 @@ export function GlobalEconomyDesk({
 
   const banks = (
     <div className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-panel">
-      <div className="shrink-0 border-b border-line p-3 sm:px-3 sm:py-2">
-        <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
-          Central Banks
-        </h2>
-        <p className="mt-0.5 text-[11px] text-neutral-500">Fed · ECB · BOJ · PBOC</p>
+      <div className={`${geSectionShell} border-line`}>
+        <h2 className={geSectionHeader}>Central Banks</h2>
+        <p className={geSectionSubheader}>Fed · ECB · BOJ · PBOC</p>
       </div>
       <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto">
         <div className="grid grid-cols-1 gap-px bg-neutral-800">
@@ -73,22 +77,18 @@ export function GlobalEconomyDesk({
 
   const marketBoard = (
     <div className="flex h-full min-h-[200px] min-w-0 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-line p-3 sm:px-3 sm:py-2">
-        <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
-            Global Economy
-          </h2>
-          <span className="inline-flex items-center gap-1 rounded-sm border border-gain/40 bg-gain/10 px-1.5 py-0.5 font-mono text-[8px] tracking-wider text-gain">
-            <span className="relative inline-flex h-2 w-2" aria-hidden>
-              <span className="absolute inline-flex h-2 w-2 animate-ping rounded-full bg-emerald-500 opacity-75 motion-reduce:animate-none" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+      <div className={`${geSectionShell} border-line`}>
+        <div className="flex min-w-0 items-center justify-between gap-1.5">
+          <h2 className={`${geSectionHeader} mb-0 min-w-0 flex-1 truncate`}>Global Economy</h2>
+          <span className={`${geStreamBadge} font-mono`}>
+            <span className="relative mr-0.5 inline-flex h-1.5 w-1.5" aria-hidden>
+              <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-emerald-500 opacity-75 motion-reduce:animate-none" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
             </span>
             STREAMING
           </span>
         </div>
-        <p className="mt-0.5 text-[11px] text-neutral-500">
-          US 10Y · S&P 500 · Nasdaq 100 · Brent · Gold
-        </p>
+        <p className={geSectionSubheader}>US 10Y · S&P 500 · Nasdaq 100 · Brent · Gold</p>
       </div>
 
       <div className="custom-scrollbar min-h-0 flex-1 overflow-hidden bg-[#0a0a0a]">

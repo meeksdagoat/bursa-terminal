@@ -11,6 +11,7 @@ import { summariseDosmStat, summariseMacroEvent } from "@/lib/eli5";
 import { changeClass, formatKlDate, formatKlStamp, formatOpr, formatPct, formatPrice } from "@/lib/format";
 import { FX_PAIRS, ratesHaveValues } from "@/lib/fx-live";
 import type { JargonTerm } from "@/lib/jargon";
+import { geBadge, geMeta, gePrimaryMetric } from "@/lib/global-economy-ui";
 import { formatHeatmapPct, heatmapRows, heatmapValueClass } from "@/lib/sectors";
 import type { BnmPayload, EconomyPayload, HeadlinesPayload, SectorPerformance } from "@/lib/types";
 import { useEconomyLive } from "@/lib/use-economy-live";
@@ -333,19 +334,17 @@ export function Indicator({
   term?: JargonTerm;
 }) {
   return (
-    <div className="bg-[#0a0a0a] px-3 py-3">
-      <div className="flex items-center justify-between gap-2">
-        <span className="font-mono text-[9px] uppercase tracking-wider text-neutral-500">
+    <div className="min-w-0 overflow-hidden bg-[#0a0a0a] px-2 py-1.5">
+      <div className="flex min-w-0 items-center justify-between gap-1.5">
+        <span className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[9px] uppercase tracking-wider text-zinc-500">
           {term ? <Jargon term={term}>{label}</Jargon> : label}
         </span>
         {live ? (
-          <span className="rounded-sm border border-gain/40 bg-gain/10 px-1 font-mono text-[8px] tracking-wider text-gain">
-            LIVE
-          </span>
+          <span className={`${geBadge} border-gain/40 bg-gain/10 font-mono text-gain`}>LIVE</span>
         ) : null}
       </div>
-      <p className="mt-1 font-mono text-[18px] text-neutral-100">{value}</p>
-      <p className="mt-0.5 font-mono text-[10px] text-neutral-500">
+      <p className={`mt-0.5 ${gePrimaryMetric}`}>{value}</p>
+      <p className={`mt-0.5 ${geMeta} font-mono`}>
         {hint}
         {change ? ` · ${change}` : ""}
       </p>

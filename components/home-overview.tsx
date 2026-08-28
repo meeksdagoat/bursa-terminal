@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { EconomyDesk } from "@/components/economy-desk";
+import { GlobalPoliticsTab } from "@/components/GlobalPoliticsTab";
 import { HeadlineList } from "@/components/headline-list";
 import { HeaderBar } from "@/components/header-bar";
 import { MainNav } from "@/components/main-nav";
@@ -16,6 +17,7 @@ import type {
   OfficialPayload,
   QuotesPayload,
 } from "@/lib/types";
+import type { GlobalPoliticsNewsPayload } from "@/lib/geopolitics/types";
 import { feedStatusFromQuote } from "@/lib/market-status";
 import { heatmapSymbols } from "@/lib/sectors";
 import { findEntry, terminalHref, universe } from "@/lib/universe";
@@ -45,9 +47,12 @@ export function HomeOverview({ category }: HomeOverviewProps) {
     category === "my-politics"
       ? "/api/news/politics"
       : category === "world-politics"
-        ? "/api/news/politics?scope=world"
+        ? "/api/news/global-politics"
         : `/api/headlines?category=${category}`;
-  const headlines = useLiveData<HeadlinesPayload>(headlinesUrl, HEADLINES_REFRESH_MS);
+  const headlines = useLiveData<HeadlinesPayload | GlobalPoliticsNewsPayload>(
+    headlinesUrl,
+    HEADLINES_REFRESH_MS,
+  );
   const economy = useLiveData<EconomyPayload>("/api/economy", BNM_REFRESH_MS);
   const official = useLiveData<OfficialPayload>("/api/official", HEADLINES_REFRESH_MS);
 
@@ -112,10 +117,16 @@ export function HomeOverview({ category }: HomeOverviewProps) {
             headlinesError={headlines.error}
             headlinesLoading={headlines.loading}
           />
+        ) : category === "world-politics" ? (
+          <GlobalPoliticsTab
+            headlines={(headlines.data as GlobalPoliticsNewsPayload | null) ?? null}
+            headlinesError={headlines.error}
+            headlinesLoading={headlines.loading}
+          />
         ) : (
           <HeadlineList
             category={category}
-            payload={headlines.data}
+            payload={headlines.data as HeadlinesPayload | null}
             error={headlines.error}
             loading={headlines.loading}
           />

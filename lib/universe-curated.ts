@@ -309,3 +309,27 @@ export const DEFAULT_WATCHLIST = [
   "6012.KL",
 ];
 
+/** Top 20 liquid Bursa blue-chips for the terminal price ribbon. */
+export const TOP_BURSA_RIBBON = [
+  "1155.KL",
+  "1295.KL",
+  "1023.KL",
+  "5347.KL",
+  "5183.KL",
+  "5681.KL",
+  "6888.KL",
+  "6012.KL",
+  "3182.KL",
+  "2445.KL",
+  "1961.KL",
+  "5285.KL",
+  "1066.KL",
+  "5819.KL",
+  "4707.KL",
+  "0166.KL",
+  "8869.KL",
+  "5398.KL",
+  "5225.KL",
+  "1818.KL",
+] as const;
+

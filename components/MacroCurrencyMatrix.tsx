@@ -1,6 +1,14 @@
 "use client";
 
 import { changeClass, formatFx, formatPct, formatPrice } from "@/lib/format";
+import {
+  geCardShell,
+  geMeta,
+  gePrimaryMetric,
+  geSectionHeader,
+  geSectionShell,
+  geSectionSubheader,
+} from "@/lib/global-economy-ui";
 import type { BnmPayload, CommodityQuote, GlobalMarketQuote } from "@/lib/types";
 
 type MacroCurrencyMatrixProps = {
@@ -40,11 +48,9 @@ export function MacroCurrencyMatrix({ markets, bnm, cpo }: MacroCurrencyMatrixPr
 
   return (
     <section className="flex h-auto min-w-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d] lg:h-full lg:min-h-0">
-      <header className="shrink-0 border-b border-neutral-800 p-3 sm:px-3 sm:py-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
-          Currency & Commodity
-        </h3>
-        <p className="mt-0.5 text-[10px] text-neutral-500">DXY · USD/MYR · FCPO · MGS–UST spread</p>
+      <header className={geSectionShell}>
+        <h3 className={geSectionHeader}>Currency & Commodity</h3>
+        <p className={geSectionSubheader}>DXY · USD/MYR · FCPO · MGS–UST spread</p>
       </header>
 
       <div className="min-h-0 lg:flex-1 lg:overflow-y-auto">
@@ -105,22 +111,20 @@ function MatrixCard({
   valueClass?: string;
 }) {
   return (
-    <article className="min-w-0 overflow-hidden bg-[#0d0d0d] p-3 sm:p-5 lg:px-3 lg:py-2.5">
-      <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:items-start sm:justify-between sm:gap-2">
-        <p className="min-w-0 text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-neutral-400">
+    <article className={`${geCardShell} bg-[#0d0d0d]`}>
+      <div className="flex min-w-0 items-start justify-between gap-1.5">
+        <p className="min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.12em] text-zinc-400">
           {label}
         </p>
         {change != null ? (
-          <span className={`shrink-0 font-mono text-[9px] leading-tight ${changeTone}`}>{formatPct(change)}</span>
+          <span className={`shrink-0 font-mono text-[9px] leading-tight ${changeTone}`}>
+            {formatPct(change)}
+          </span>
         ) : null}
       </div>
-      <p className={`mt-1 font-mono text-[18px] leading-tight break-all tabular-nums ${valueClass}`}>{value}</p>
-      <p className="mt-1 font-mono text-[9px] leading-tight uppercase tracking-wider break-words text-neutral-600">
-        {subvalue ?? hint}
-      </p>
-      {subvalue ? (
-        <p className="mt-0.5 font-mono text-[8px] uppercase tracking-wider text-neutral-700">{hint}</p>
-      ) : null}
+      <p className={`mt-0.5 ${gePrimaryMetric} ${valueClass}`}>{value}</p>
+      <p className={`mt-0.5 ${geMeta} uppercase tracking-wider`}>{subvalue ?? hint}</p>
+      {subvalue ? <p className={`mt-0.5 ${geMeta} text-[9px] text-zinc-500`}>{hint}</p> : null}
     </article>
   );
 }

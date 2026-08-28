@@ -2,6 +2,13 @@
 
 import { buildPolicyRows, type PolicyStance } from "@/lib/global-policy";
 import { formatKlDate, formatOpr } from "@/lib/format";
+import {
+  geBadge,
+  geMeta,
+  geSectionHeader,
+  geSectionShell,
+  geSectionSubheader,
+} from "@/lib/global-economy-ui";
 import type { BnmPayload, CpiSnapshot, PolicyRate } from "@/lib/types";
 
 type GlobalPolicyMatrixProps = {
@@ -11,8 +18,8 @@ type GlobalPolicyMatrixProps = {
 };
 
 const STANCE_CLASS: Record<PolicyStance, string> = {
-  HAWKISH: "border-rose-400/40 bg-rose-500/10 text-rose-400",
-  DOVISH: "border-emerald-400/40 bg-emerald-500/10 text-emerald-400",
+  BEARISH: "border-rose-400/40 bg-rose-500/10 text-rose-400",
+  BULLISH: "border-emerald-400/40 bg-emerald-500/10 text-emerald-400",
   NEUTRAL: "border-neutral-700 bg-neutral-900 text-neutral-400",
 };
 
@@ -21,11 +28,9 @@ export function GlobalPolicyMatrix({ rates, opr, malaysiaCpi }: GlobalPolicyMatr
 
   return (
     <section className="flex h-auto min-w-0 flex-col overflow-hidden border border-neutral-800 bg-[#0d0d0d] lg:h-full lg:min-h-0">
-      <header className="shrink-0 border-b border-neutral-800 p-3 sm:px-3 sm:py-2">
-        <h3 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
-          Inflation & Policy Spread
-        </h3>
-        <p className="mt-0.5 text-[10px] text-neutral-500">Real rate = policy − CPI YoY</p>
+      <header className={geSectionShell}>
+        <h3 className={geSectionHeader}>Inflation & Policy Spread</h3>
+        <p className={geSectionSubheader}>Real rate = policy − CPI YoY</p>
       </header>
 
       <div className="min-h-0 lg:flex-1 lg:overflow-y-auto">
@@ -43,21 +48,19 @@ export function GlobalPolicyMatrix({ rates, opr, malaysiaCpi }: GlobalPolicyMatr
           <tbody>
             {rows.map((row) => (
               <tr key={row.id} className="border-b border-neutral-800 last:border-b-0">
-                <td className="p-3 sm:px-3 sm:py-2">
-                  <div className="flex min-w-0 items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="text-[11px] leading-snug text-neutral-200">{row.region}</p>
-                      <p className="font-mono text-[8px] uppercase tracking-wider text-neutral-600">
-                        {row.policyLabel}
+                <td className="min-w-0 px-2 py-1.5">
+                  <div className="flex min-w-0 items-start justify-between gap-1.5">
+                    <div className="min-w-0 flex-1">
+                      <p className="overflow-hidden text-ellipsis whitespace-nowrap text-[11px] leading-snug text-zinc-200">
+                        {row.region}
                       </p>
+                      <p className={`${geMeta} uppercase tracking-wider`}>{row.policyLabel}</p>
                     </div>
-                    <span
-                      className={`inline-flex shrink-0 rounded-sm border px-1.5 py-0.5 font-mono text-[8px] tracking-wider ${STANCE_CLASS[row.stance]}`}
-                    >
+                    <span className={`${geBadge} font-mono ${STANCE_CLASS[row.stance]}`}>
                       {row.stance}
                     </span>
                   </div>
-                  <dl className="mt-1.5 grid grid-cols-2 gap-1 sm:grid-cols-4">
+                  <dl className="mt-1 grid grid-cols-2 gap-1 sm:grid-cols-4">
                     <Metric label="Policy" value={formatOpr(row.policyRate)} />
                     <Metric label="CPI YoY" value={formatOpr(row.cpiYoy)} />
                     <Metric
@@ -97,9 +100,15 @@ function Metric({
   tone?: string;
 }) {
   return (
-    <div>
-      <dt className="font-mono text-[7px] uppercase tracking-[0.14em] text-neutral-600">{label}</dt>
-      <dd className={`font-mono text-[11px] leading-tight break-words ${tone}`}>{value}</dd>
+    <div className="min-w-0">
+      <dt className="overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[7px] uppercase tracking-[0.14em] text-zinc-500">
+        {label}
+      </dt>
+      <dd
+        className={`overflow-hidden text-ellipsis whitespace-nowrap font-mono text-[10px] leading-tight tabular-nums ${tone}`}
+      >
+        {value}
+      </dd>
     </div>
   );
 }

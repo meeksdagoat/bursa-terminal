@@ -21,7 +21,7 @@ import {
   type WhitespaceData,
 } from "lightweight-charts";
 import { Jargon } from "@/components/jargon-term";
-import { formatKlTime, formatPrice, formatVolume } from "@/lib/format";
+import { formatKlChartCrosshairTime, formatPrice, formatVolume } from "@/lib/format";
 import {
   FIB_LEVELS,
   alignToTimes,
@@ -37,7 +37,13 @@ import {
 } from "@/lib/chart-overlays";
 import type { ChartType } from "@/lib/ranges";
 import type { Candle } from "@/lib/types";
-import { EMPTY_OVERLAYS, type ChartOverlays, type DrawingTool } from "@/lib/chart-ui";
+import {
+  EMPTY_OVERLAYS,
+  chartTimeToDate,
+  formatChartCrosshairTime,
+  type ChartOverlays,
+  type DrawingTool,
+} from "@/lib/chart-ui";
 
 const GAIN = "#22c55e";
 const LOSS = "#ef4444";
@@ -59,26 +65,7 @@ const klClock = new Intl.DateTimeFormat("en-GB", {
   minute: "2-digit",
   hour12: false,
 });
-const klCrosshair = new Intl.DateTimeFormat("en-GB", {
-  timeZone: KL_TZ,
-  day: "2-digit",
-  month: "short",
-  hour: "2-digit",
-  minute: "2-digit",
-  hour12: false,
-});
-
-function toChartDate(time: Time): Date | null {
-  if (typeof time === "number") return new Date(time * 1000);
-  if (typeof time === "string") {
-    const date = new Date(time);
-    return Number.isNaN(date.getTime()) ? null : date;
-  }
-  if (time && typeof time === "object" && "year" in time) {
-    return new Date(Date.UTC(time.year, time.month - 1, time.day));
-  }
-  return null;
-}
+const toChartDate = chartTimeToDate;
 
 function formatKlTick(time: Time, tickMarkType: TickMarkType): string | null {
   const date = toChartDate(time);
@@ -96,11 +83,6 @@ function formatKlTick(time: Time, tickMarkType: TickMarkType): string | null {
     default:
       return null;
   }
-}
-
-function formatKlCrosshairTime(time: Time): string {
-  const date = toChartDate(time);
-  return date ? klCrosshair.format(date) : "";
 }
 
 type ChartPoint = { time: number; price: number };
@@ -331,7 +313,8 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
         scaleMargins: PRICE_SCALE_MARGINS,
       },
       localization: {
-        timeFormatter: formatKlCrosshairTime,
+        locale: "en-US",
+        timeFormatter: formatChartCrosshairTime,
       },
       timeScale: {
         ...TIME_SCALE,
@@ -801,7 +784,7 @@ export const StockCandlestickChart = memo(function StockCandlestickChart({
 
       {readout ? (
         <div className="pointer-events-none absolute left-10 top-1 flex flex-wrap items-baseline gap-x-3 gap-y-0.5 font-mono text-[9px] text-neutral-500 md:left-10">
-          <span className="text-neutral-400">{formatKlTime(readout.time * 1000)}</span>
+          <span className="text-neutral-400">{formatKlChartCrosshairTime(readout.time * 1000)}</span>
           <span>
             O <span className="text-neutral-200">{formatPrice(readout.open)}</span>
           </span>

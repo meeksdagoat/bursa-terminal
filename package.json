@@ -13,17 +13,23 @@
   "dependencies": {
     "@clerk/nextjs": "^7.8.2",
     "@clerk/themes": "^2.4.57",
+    "d3-geo": "^3.1.1",
+    "d3-scale": "^4.0.2",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.2.1",
+    "katex": "^0.18.4",
     "lightweight-charts": "^5.2.1",
     "next": "16.3.2",
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "react-resizable-panels": "^2.1.9",
+    "react-simple-maps": "^3.0.0",
+    "recharts": "^3.10.1",
     "yahoo-finance2": "^4.0.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/d3-geo": "^3.1.1",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

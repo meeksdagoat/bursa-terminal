@@ -3,7 +3,13 @@
 import Link from "next/link";
 import { HEADLINE_CATEGORIES, deskHref, type HeadlineCategory } from "@/lib/categories";
 
-export type NavActive = "market" | "market-hub" | "screener" | "portfolio" | HeadlineCategory;
+export type NavActive =
+  | "market"
+  | "market-hub"
+  | "quant-hub"
+  | "screener"
+  | "portfolio"
+  | HeadlineCategory;
 
 export const NAV_ITEMS: {
   id: NavActive;
@@ -18,6 +24,12 @@ export const NAV_ITEMS: {
     href: "/terminal/market-hub",
     label: "Market Hub",
     blurb: "Indices, BMD, REITs, ETFs and institutional flows",
+  },
+  {
+    id: "quant-hub",
+    href: "/terminal/quant-hub",
+    label: "Quant Hub",
+    blurb: "Multi-factor signals, alternative data and rolling correlations",
   },
   { id: "screener", href: "/screener", label: "Screener" },
   { id: "portfolio", href: "/portfolio", label: "My Portfolio", shortcut: "Alt+2" },
@@ -44,6 +56,7 @@ export function MainNav({ active }: MainNavProps) {
         const desk =
           item.id !== "market" &&
           item.id !== "market-hub" &&
+          item.id !== "quant-hub" &&
           item.id !== "screener" &&
           item.id !== "portfolio";
         return (

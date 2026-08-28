@@ -127,7 +127,7 @@ export function formatMytEventTime(
 }
 
 export const MYT_TIME_BADGE_CLASS =
-  "inline-flex shrink-0 items-center rounded border border-emerald-800/50 bg-emerald-950/60 px-2 py-0.5 font-mono text-xs leading-none text-emerald-400";
+  "inline-flex shrink-0 items-center rounded border border-emerald-800/50 bg-emerald-950/60 px-1.5 py-px font-mono text-[9px] leading-none text-emerald-400";
 
 export const MYT_TIME_BADGE_COMPACT_CLASS =
   "inline-flex whitespace-nowrap rounded border border-emerald-800/50 bg-emerald-950/60 px-0.5 py-px font-mono text-[6px] leading-none tracking-tight text-emerald-400";

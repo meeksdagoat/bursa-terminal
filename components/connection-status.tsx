@@ -73,7 +73,7 @@ function ConnectionStatusInner({ status, compact, latencyMs }: ConnectionStatusP
   return (
     <span
       title={look.label}
-      className={`inline-flex min-h-11 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border px-1.5 py-0.5 md:min-h-0 md:px-2 ${look.border}`}
+      className={`inline-flex flex-shrink-0 items-center gap-1 whitespace-nowrap rounded-full border px-1.5 py-px ${look.border}`}
     >
       <span className="relative flex h-1.5 w-1.5">
         {look.pulse ? (
@@ -81,13 +81,13 @@ function ConnectionStatusInner({ status, compact, latencyMs }: ConnectionStatusP
         ) : null}
         <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${look.dot}`} />
       </span>
-      <span className={`font-mono text-[9px] font-semibold uppercase tracking-[0.12em] ${look.text}`}>
+      <span className={`font-mono text-[8px] font-semibold uppercase tracking-[0.1em] ${look.text}`}>
         {compact ? look.short : look.label}
       </span>
       {showLatency ? (
         <span
           title="Quote feed round-trip"
-          className="font-mono text-[9px] tabular-nums tracking-tight text-neutral-500"
+          className="font-mono text-[8px] tabular-nums tracking-tight text-neutral-500"
         >
           {latencyMs}ms
         </span>

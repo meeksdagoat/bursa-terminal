@@ -13,10 +13,12 @@ const MAX_SYMBOLS = 40;
 function parseSymbols(raw: string | null): string[] {
   const seen = new Set<string>();
   const symbols: string[] = [];
+  const benchmarkAllowlist = new Set(["^KLSE", "^GSPC"]);
 
   for (const token of (raw ?? "").split(",")) {
     const symbol = token.trim();
-    if (!symbol || seen.has(symbol) || !isTrackedSymbol(symbol)) continue;
+    if (!symbol || seen.has(symbol)) continue;
+    if (!isTrackedSymbol(symbol) && !benchmarkAllowlist.has(symbol)) continue;
     seen.add(symbol);
     symbols.push(symbol);
     if (symbols.length >= MAX_SYMBOLS) break;

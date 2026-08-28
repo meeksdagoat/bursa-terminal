@@ -24,7 +24,7 @@ import type {
   WatchlistRow,
 } from "@/lib/types";
 import { useBreakpoint } from "@/lib/use-media-query";
-import { entryBySymbol, findEntry, terminalHref, universe } from "@/lib/universe";
+import { entryBySymbol, findEntry, terminalHref, TOP_BURSA_RIBBON, universe } from "@/lib/universe";
 import { useLiveData } from "@/lib/use-live-data";
 import { useMarketData } from "@/lib/use-market-data";
 import { useShariahOnly } from "@/lib/use-shariah";
@@ -69,7 +69,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   // The charted ticker is quoted even when it is not saved, so browsing the
   // universe still shows a live price.
   const quoteSymbols = useMemo(
-    () => [...new Set([...watchlist.symbols, selectedSymbol])].sort(),
+    () => [...new Set([...TOP_BURSA_RIBBON, ...watchlist.symbols, selectedSymbol])].sort(),
     [watchlist.symbols, selectedSymbol],
   );
 
@@ -91,6 +91,15 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
         return entry ? [{ ...entry, quote: quoteBySymbol.get(symbol) ?? null }] : [];
       }),
     [watchlist.symbols, quoteBySymbol],
+  );
+
+  const ribbonRows = useMemo<WatchlistRow[]>(
+    () =>
+      TOP_BURSA_RIBBON.flatMap((symbol) => {
+        const entry = entryBySymbol(symbol);
+        return entry ? [{ ...entry, quote: quoteBySymbol.get(symbol) ?? null }] : [];
+      }),
+    [quoteBySymbol],
   );
 
   const selected = useMemo<WatchlistRow>(() => {
@@ -263,7 +272,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
 
       <MainNav active="market" />
 
-      <TickerRibbon rows={rows} ticks={quotes.ticks} onSelect={handleSelectFromList} />
+      <TickerRibbon rows={ribbonRows} ticks={quotes.ticks} onSelect={handleSelectFromList} />
 
       {searchHint || feedError ? (
         <div className="flex shrink-0 items-center gap-3 border-b border-line bg-[#1a1208] px-3 py-1 font-mono text-[10px] text-amber-400">

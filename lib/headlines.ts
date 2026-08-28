@@ -227,15 +227,6 @@ const FEEDS: Record<HeadlineCategory, CategoryFeed> = {
     ],
     tagger: tagGlobalEconomyHeadline,
   },
-  "my-companies": {
-    edition: "MY",
-    withinDays: NEWS_WINDOW_DAYS,
-    queries: [
-      "Malaysia Bursa listed company quarterly results earnings",
-      "Petronas Maybank CIMB Tenaga Sime Darby Genting Axiata",
-      "Malaysia company acquisition merger contract award expansion",
-    ],
-  },
   "world-politics": {
     edition: "WORLD",
     withinDays: NEWS_WINDOW_DAYS,
@@ -251,7 +242,6 @@ const BACKUPS: Record<HeadlineCategory, string[]> = {
   "my-politics": [yahooNewsRss("politics"), yahooNewsRss("malaysia"), reutersWorldRss()],
   "my-economy": [yahooNewsRss("malaysia"), yahooNewsRss("business"), reutersBusinessRss()],
   "global-economy": [yahooNewsRss("business"), yahooNewsRss("world"), reutersBusinessRss()],
-  "my-companies": [yahooNewsRss("malaysia"), yahooNewsRss("business")],
   "world-politics": [yahooNewsRss("world"), yahooNewsRss("politics"), reutersWorldRss()],
 };
 

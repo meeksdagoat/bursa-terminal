@@ -32,7 +32,7 @@ export function GlobalEconomyTab({
   return (
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {snapshotError ? (
-        <p className="shrink-0 border-b border-neutral-800 px-3 py-1.5 font-mono text-[10px] text-loss">
+        <p className="shrink-0 border-b border-neutral-800 px-2 py-1 font-mono text-[10px] text-loss">
           MACRO FEED · {snapshotError}
         </p>
       ) : null}
@@ -40,12 +40,12 @@ export function GlobalEconomyTab({
       <div className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
         <div className="shrink-0">
           <GlobalTickerCards />
-          <p className="px-3 py-1.5 font-mono text-[9px] uppercase tracking-wider text-neutral-700 sm:py-2">
+          <p className="px-2 py-1 font-mono text-[9px] uppercase tracking-wider text-zinc-600">
             LIVE TAPE · TRADINGVIEW WEBSOCKET · FLASH ON TICK
           </p>
         </div>
 
-        <div className="grid h-auto w-full shrink-0 grid-cols-1 gap-6 p-3 sm:p-5 lg:min-h-[220px] lg:flex-1 lg:shrink lg:grid-cols-3 lg:gap-4 lg:overflow-y-auto lg:p-3">
+        <div className="grid h-auto w-full shrink-0 grid-cols-1 gap-2 p-2 lg:min-h-[200px] lg:flex-1 lg:shrink lg:grid-cols-3 lg:gap-2 lg:overflow-y-auto">
           <div className="relative min-w-0 lg:min-h-0">
             <MacroCurrencyMatrix markets={snapshot?.markets ?? []} bnm={bnm} cpo={cpo} />
           </div>

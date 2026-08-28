@@ -34,6 +34,16 @@ const klFullDateFormatter = new Intl.DateTimeFormat("en-GB", {
   year: "numeric",
 });
 
+const klChartCrosshairPartsFormatter = new Intl.DateTimeFormat("en-GB", {
+  timeZone: "Asia/Kuala_Lumpur",
+  day: "2-digit",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+  hour12: false,
+});
+
 function isNumber(value: number | null | undefined): value is number {
   return value != null && Number.isFinite(value);
 }
@@ -154,6 +164,18 @@ export function formatKlTime(iso: string | number | null | undefined): string {
   if (iso == null) return DASH;
   const date = typeof iso === "number" ? new Date(iso) : new Date(iso);
   return Number.isNaN(date.getTime()) ? DASH : klTimeFormatter.format(date);
+}
+
+/** Chart crosshair/readout stamp: `16 Nov 2016, 00:00` (KL, always includes year). */
+export function formatKlChartCrosshairTime(iso: string | number | null | undefined): string {
+  if (iso == null) return DASH;
+  const date = typeof iso === "number" ? new Date(iso) : new Date(iso);
+  if (Number.isNaN(date.getTime())) return DASH;
+
+  const parts = klChartCrosshairPartsFormatter.formatToParts(date);
+  const get = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "";
+  return `${get("day")} ${get("month")} ${get("year")}, ${get("hour")}:${get("minute")}`;
 }
 
 export function formatKlDate(iso: string | null | undefined): string {

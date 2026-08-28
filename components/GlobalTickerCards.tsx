@@ -3,6 +3,13 @@
 import { useEffect, useRef, useState } from "react";
 import { GLOBAL_TICKER_SPECS } from "@/lib/global-ticker-catalog";
 import { formatPct, formatPrice, formatYield } from "@/lib/format";
+import {
+  geCardShell,
+  geLiveBadge,
+  geMeta,
+  gePrimaryMetric,
+  geSectionHeader,
+} from "@/lib/global-economy-ui";
 import type { GlobalTickerQuote } from "@/lib/types";
 import { useTradingViewTickers } from "@/lib/use-tradingview-tickers";
 
@@ -25,14 +32,14 @@ export function GlobalTickerCards() {
   const byId = new Map(feed.data.tickers.map((row) => [row.id, row]));
 
   return (
-    <div data-tape="native">
+    <div data-tape="native" className="min-w-0">
       {feed.error ? (
-        <p className="border-b border-neutral-800 px-3 py-1.5 font-mono text-[10px] text-loss">
+        <p className="border-b border-neutral-800 px-2 py-1 font-mono text-[10px] text-loss">
           TICKER FEED · {feed.error}
         </p>
       ) : null}
 
-      <div className="grid min-w-0 grid-cols-2 gap-2 p-2 sm:grid-cols-2 sm:p-3 lg:grid-cols-3 lg:p-3 xl:grid-cols-5">
+      <div className="grid min-w-0 grid-cols-2 gap-1.5 p-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {GLOBAL_TICKER_SPECS.map((spec) => (
           <TickerCard
             key={spec.id}
@@ -70,7 +77,7 @@ function TickerCard({
   const change = ticker?.changePct ?? null;
   const changeTone =
     change == null || change === 0
-      ? "text-neutral-500"
+      ? "text-zinc-400"
       : change > 0
         ? "text-emerald-400"
         : "text-rose-400";
@@ -83,41 +90,35 @@ function TickerCard({
         : "border-neutral-800 bg-[#0d0d0d]";
 
   const priceTone =
-    flash === "up" ? "text-emerald-400" : flash === "down" ? "text-rose-400" : "text-white";
+    flash === "up" ? "text-emerald-400" : flash === "down" ? "text-rose-400" : "text-zinc-100";
 
   return (
     <article
-      className={`flex min-w-0 flex-col gap-2 overflow-hidden border p-3 transition-colors duration-300 last:col-span-2 lg:last:col-span-1 ${flashClass}`}
+      className={`flex min-w-0 flex-col gap-1 overflow-hidden border transition-colors duration-300 last:col-span-2 lg:last:col-span-1 ${geCardShell} ${flashClass}`}
       aria-label={`${ticker?.label ?? fallbackLabel} live quote`}
     >
-      <div className="flex min-w-0 items-center justify-between gap-2">
-        <p className="min-w-0 truncate text-[10px] font-semibold uppercase leading-tight tracking-[0.12em] text-neutral-500">
+      <div className="flex min-w-0 items-center justify-between gap-1.5">
+        <p className={`${geSectionHeader} mb-0 min-w-0 truncate font-semibold normal-case tracking-[0.12em] text-zinc-500`}>
           {ticker?.label ?? fallbackLabel}
         </p>
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-sm border border-emerald-500/40 bg-emerald-500/10 px-1.5 py-0.5 font-mono text-[8px] tracking-wider text-emerald-400">
-          <span className="relative inline-flex h-1.5 w-1.5" aria-hidden>
+        <span className={`${geLiveBadge} font-mono`}>
+          <span className="relative mr-0.5 inline-flex h-1.5 w-1.5" aria-hidden>
             <span className="absolute inline-flex h-1.5 w-1.5 animate-ping rounded-full bg-emerald-400 opacity-75 motion-reduce:animate-none" />
-            <span className="relative inline-flex h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+            <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
           </span>
           LIVE
         </span>
       </div>
 
-      <p
-        className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap font-mono text-2xl font-bold leading-none tracking-tight tabular-nums xl:text-xl 2xl:text-2xl ${priceTone}`}
-        aria-live="polite"
-        title={formatPrint(ticker)}
-      >
+      <p className={`${gePrimaryMetric} ${priceTone}`} aria-live="polite" title={formatPrint(ticker)}>
         {formatPrint(ticker)}
       </p>
 
-      <div
-        className={`flex min-w-0 flex-col gap-0.5 font-mono text-[10px] leading-tight sm:flex-row sm:items-center sm:gap-2 sm:text-xs xl:flex-col xl:items-stretch xl:gap-0.5 xl:text-[10px] 2xl:flex-row 2xl:items-center 2xl:gap-2 2xl:text-xs ${changeTone}`}
-      >
-        <span className="min-w-0 truncate">
+      <div className={`flex min-w-0 items-center gap-1.5 font-mono ${changeTone}`}>
+        <span className={`${geMeta} font-mono`}>
           {ticker?.symbol ?? "—"} · {ticker?.unit ?? "—"}
         </span>
-        <span className="shrink-0 tabular-nums">{formatPct(change)}</span>
+        <span className="shrink-0 text-[10px] tabular-nums">{formatPct(change)}</span>
       </div>
     </article>
   );

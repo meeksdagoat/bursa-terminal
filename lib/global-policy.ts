@@ -2,7 +2,7 @@ import { countdownLabel, MACRO_EVENTS } from "./economy-calendar";
 import { GLOBAL_MACRO_EVENTS } from "./global-calendar";
 import type { BnmPayload, CpiSnapshot, PolicyRate } from "./types";
 
-export type PolicyStance = "HAWKISH" | "DOVISH" | "NEUTRAL";
+export type PolicyStance = "BEARISH" | "BULLISH" | "NEUTRAL";
 
 export type PolicyRow = {
   id: string;
@@ -47,11 +47,11 @@ function nextEvent(sources: string[]): { date: string; source: string } | null {
 }
 
 function stanceOf(realRate: number | null, changeBps: number | null): PolicyStance {
-  if (changeBps != null && changeBps > 0) return "HAWKISH";
-  if (changeBps != null && changeBps < 0) return "DOVISH";
+  if (changeBps != null && changeBps > 0) return "BEARISH";
+  if (changeBps != null && changeBps < 0) return "BULLISH";
   if (realRate == null) return "NEUTRAL";
-  if (realRate >= 1.5) return "HAWKISH";
-  if (realRate <= 0) return "DOVISH";
+  if (realRate >= 1.5) return "BEARISH";
+  if (realRate <= 0) return "BULLISH";
   return "NEUTRAL";
 }
 

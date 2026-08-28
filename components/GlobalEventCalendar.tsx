@@ -51,8 +51,8 @@ export function GlobalEventCalendar() {
         </div>
       </div>
 
-      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-3 sm:p-5 lg:overflow-hidden lg:p-3">
-        <div className="grid min-h-0 grid-cols-1 gap-3 sm:gap-4 lg:h-full lg:grid-cols-12">
+      <div className="custom-scrollbar min-h-0 flex-1 overflow-y-auto p-2 lg:overflow-hidden">
+        <div className="grid min-h-0 grid-cols-1 gap-2 lg:h-full lg:grid-cols-12">
           <section
             className="order-2 min-h-0 min-w-0 lg:order-1 lg:col-span-7 lg:overflow-y-auto"
             aria-label="Upcoming macro events"
@@ -72,7 +72,7 @@ export function GlobalEventCalendar() {
             ) : (
               <ul className="divide-y divide-neutral-800 border border-neutral-800 bg-[#0d0d0d]">
                 {visible.map((event) => (
-                  <li key={event.id} className="min-w-0 px-2.5 py-2 sm:px-3">
+                  <li key={event.id} className="min-w-0 px-2 py-1.5 sm:px-2.5">
                     <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
                       <div className="min-w-0">
                         <p className="text-[11px] leading-snug break-words text-neutral-200">
