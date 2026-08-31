@@ -1,6 +1,6 @@
 /** Rolling 30D drift + volatility-clustering regime labels (HMM-style persistence). */
 
-import type { PriceBar } from "./client-history";
+import { toIsoDateKey, uniqueBarsByIsoDate, type PriceBar } from "./client-history";
 
 export const REGIME_WINDOW = 30;
 export const REGIME_VOL_BASELINE = 90;
@@ -15,11 +15,16 @@ export type RegimePoint = {
   vol30: number;
   vol90: number;
   regime: MarketRegime;
+  /** Dummy series for Recharts background bars (always 1). */
+  band: number;
+  idx: number;
 };
 
 export type RegimeSegment = {
   start: string;
   end: string;
+  startIdx: number;
+  endIdx: number;
   regime: MarketRegime;
 };
 
@@ -31,9 +36,9 @@ export type RegimeResult = {
 };
 
 export const REGIME_COLORS: Record<MarketRegime, { fill: string; stroke: string; label: string }> = {
-  bull: { fill: "rgba(16, 185, 129, 0.16)", stroke: "#34d399", label: "Bull" },
-  bear: { fill: "rgba(244, 63, 94, 0.16)", stroke: "#fb7185", label: "Bear" },
-  volatile: { fill: "rgba(251, 191, 36, 0.16)", stroke: "#fbbf24", label: "Volatile" },
+  bull: { fill: "rgba(16, 185, 129, 0.22)", stroke: "#34d399", label: "Bull" },
+  bear: { fill: "rgba(244, 63, 94, 0.22)", stroke: "#fb7185", label: "Bear" },
+  volatile: { fill: "rgba(251, 191, 36, 0.22)", stroke: "#fbbf24", label: "Volatile" },
 };
 
 function dailyReturns(closes: number[]): number[] {
@@ -85,25 +90,98 @@ export function mergeRegimeSegments(points: RegimePoint[]): RegimeSegment[] {
     const last = segments.at(-1);
     if (last && last.regime === point.regime) {
       last.end = point.date;
+      last.endIdx = point.idx;
     } else {
-      segments.push({ start: point.date, end: point.date, regime: point.regime });
+      segments.push({
+        start: point.date,
+        end: point.date,
+        startIdx: point.idx,
+        endIdx: point.idx,
+        regime: point.regime,
+      });
     }
   }
   for (let index = 0; index < segments.length - 1; index += 1) {
-    segments[index]!.end = segments[index + 1]!.start;
+    const next = segments[index + 1]!;
+    segments[index]!.end = next.start;
+    segments[index]!.endIdx = next.startIdx;
   }
   return segments;
 }
 
-export function classifyRegimes(bars: PriceBar[]): RegimeResult | null {
-  if (bars.length < REGIME_WINDOW + 2) return null;
+/**
+ * Forward-fill (then back-fill the leading gap) so every price date has a regime.
+ * Used when classified rows are shorter than the price series (warmup window).
+ */
+export function ffillRegimesToPrices(
+  priceBars: PriceBar[],
+  classified: Array<Omit<RegimePoint, "band" | "idx">>,
+): RegimePoint[] {
+  const byDate = new Map(classified.map((row) => [row.date, row]));
+  const slots: Array<Omit<RegimePoint, "band" | "idx"> | null> = priceBars.map((bar) => {
+    const hit = byDate.get(bar.date);
+    if (!hit) return null;
+    return { ...hit, date: bar.date, close: bar.close };
+  });
 
-  const closes = bars.map((bar) => bar.close);
+  let carry: Omit<RegimePoint, "band" | "idx"> | null = null;
+  for (let index = 0; index < slots.length; index += 1) {
+    const current = slots[index];
+    if (current) {
+      carry = current;
+    } else if (carry) {
+      const bar = priceBars[index]!;
+      slots[index] = {
+        ...carry,
+        date: bar.date,
+        close: bar.close,
+      };
+    }
+  }
+
+  let lead: Omit<RegimePoint, "band" | "idx"> | null = null;
+  for (let index = slots.length - 1; index >= 0; index -= 1) {
+    const current = slots[index];
+    if (current) {
+      lead = current;
+    } else if (lead) {
+      const bar = priceBars[index]!;
+      slots[index] = {
+        ...lead,
+        date: bar.date,
+        close: bar.close,
+      };
+    }
+  }
+
+  return slots
+    .map((row, idx) =>
+      row
+        ? {
+            ...row,
+            band: 1,
+            idx,
+          }
+        : null,
+    )
+    .filter((row): row is RegimePoint => row != null);
+}
+
+export function classifyRegimes(bars: PriceBar[]): RegimeResult | null {
+  const daily = uniqueBarsByIsoDate(
+    bars.map((bar) => ({
+      ...bar,
+      date: toIsoDateKey(bar),
+    })),
+  );
+  if (daily.length < REGIME_WINDOW + 2) return null;
+
+  const closes = daily.map((bar) => bar.close);
   const returns = dailyReturns(closes);
   const raw: MarketRegime[] = [];
-  const draft: Array<Omit<RegimePoint, "regime">> = [];
+  const classified: Array<Omit<RegimePoint, "band" | "idx">> = [];
 
-  for (let index = REGIME_WINDOW; index < bars.length; index += 1) {
+  for (let index = REGIME_WINDOW; index < daily.length; index += 1) {
     const returnIndex = index - 1;
     const base = closes[index - REGIME_WINDOW]!;
     const current = closes[index]!;
@@ -111,20 +189,24 @@ export function classifyRegimes(bars: PriceBar[]): RegimeResult | null {
     const vol30 = windowStd(returns, returnIndex, REGIME_WINDOW);
     const vol90 = windowStd(returns, returnIndex, REGIME_VOL_BASELINE);
     raw.push(classify(drift30, vol30, vol90));
-    draft.push({
-      date: bars[index]!.date,
+    classified.push({
+      date: daily[index]!.date,
       close: current,
       drift30,
       vol30,
       vol90,
+      regime: "bull",
     });
   }
 
   const smoothed = persistRegimes(raw, REGIME_MIN_RUN);
-  const points: RegimePoint[] = draft.map((row, index) => ({
+  const labeled = classified.map((row, index) => ({
     ...row,
-    regime: smoothed[index]!,
+    regime: smoothed[index] ?? row.regime,
   }));
+
+  const points = ffillRegimesToPrices(daily, labeled);
+  if (points.length === 0) return null;
 
   const counts: Record<MarketRegime, number> = { bull: 0, bear: 0, volatile: 0 };
   for (const point of points) counts[point.regime] += 1;

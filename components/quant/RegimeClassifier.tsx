@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import {
+  Bar,
   CartesianGrid,
+  Cell,
   ComposedChart,
   Line,
   ReferenceArea,
@@ -136,17 +138,26 @@ export function RegimeClassifier({ symbol, onSymbolChange }: RegimeClassifierPro
 
           <div className="h-[380px] rounded border border-slate-800 bg-[#111111] p-2">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={result.points} margin={{ top: 8, right: 12, left: 8, bottom: 0 }}>
+              <ComposedChart
+                data={result.points}
+                barCategoryGap={0}
+                barGap={0}
+                margin={{ top: 8, right: 12, left: 8, bottom: 0 }}
+              >
                 <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" vertical={false} />
                 <XAxis
                   dataKey="date"
+                  type="category"
+                  allowDuplicatedCategory={false}
                   tick={{ fill: "#737373", fontSize: 9, fontFamily: "monospace" }}
                   axisLine={{ stroke: "#334155" }}
                   tickLine={false}
                   minTickGap={28}
-                  tickFormatter={(value) => String(value).slice(5)}
+                  tickFormatter={(value) => String(value).slice(0, 10).slice(5)}
                 />
+                <YAxis yAxisId="regime" hide domain={[0, 1]} />
                 <YAxis
+                  yAxisId="price"
                   tickFormatter={(value) => formatAssetSpotPrice(Number(value), asset)}
                   tick={{ fill: "#737373", fontSize: 10, fontFamily: "monospace" }}
                   axisLine={{ stroke: "#334155" }}
@@ -157,7 +168,8 @@ export function RegimeClassifier({ symbol, onSymbolChange }: RegimeClassifierPro
                 <Tooltip content={<RegimeTooltip asset={asset} />} />
                 {result.segments.map((segment, index) => (
                   <ReferenceArea
-                    key={`${segment.regime}-${segment.start}-${index}`}
+                    key={`${segment.regime}-${segment.start}-${segment.endIdx}-${index}`}
+                    yAxisId="price"
                     x1={segment.start}
                     x2={segment.end}
                     fill={REGIME_COLORS[segment.regime].fill}
@@ -165,7 +177,23 @@ export function RegimeClassifier({ symbol, onSymbolChange }: RegimeClassifierPro
                     ifOverflow="visible"
                   />
                 ))}
+                <Bar
+                  yAxisId="regime"
+                  dataKey="band"
+                  isAnimationActive={false}
+                  legendType="none"
+                  maxBarSize={48}
+                >
+                  {result.points.map((row) => (
+                    <Cell
+                      key={`${row.date}-${row.idx}`}
+                      fill={REGIME_COLORS[row.regime].fill}
+                      stroke={REGIME_COLORS[row.regime].fill}
+                    />
+                  ))}
+                </Bar>
                 <Line
+                  yAxisId="price"
                   type="monotone"
                   dataKey="close"
                   stroke="#e5e7eb"
