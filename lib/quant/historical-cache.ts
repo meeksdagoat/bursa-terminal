@@ -2,11 +2,20 @@ import "server-only";
 
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import duckdb from "duckdb";
 import { resolveQuantAsset } from "@/lib/quant/asset-catalog";
 import { stripYahooFxSuffix, toYahooFxSymbol } from "@/lib/quant/asset-ticker-map";
 import type { ParquetCachedTimeframe } from "@/lib/quant/backtest-timeframe";
 import type { BacktestHistoryBar } from "@/lib/types";
+
+type DuckDbModule = typeof import("duckdb");
+
+async function loadDuckDb(): Promise<DuckDbModule | null> {
+  try {
+    return await import("duckdb");
+  } catch {
+    return null;
+  }
+}
 
 export type HistoricalAssetBucket = "XAUUSD" | "BURSA" | "NASDAQ";
 
@@ -64,14 +73,22 @@ function duckDbPath(filePath: string): string {
 
 function runDuckDbAll(sql: string, params: unknown[] = []): Promise<Record<string, unknown>[]> {
   return new Promise((resolve, reject) => {
-    const db = new duckdb.Database(":memory:");
-    const connection = db.connect();
-    connection.all(sql, ...params, (error: Error | null, rows: duckdb.TableData) => {
-      connection.close();
-      db.close();
-      if (error) reject(error);
-      else resolve((rows ?? []) as Record<string, unknown>[]);
-    });
+    void (async () => {
+      const duckdb = await loadDuckDb();
+      if (!duckdb) {
+        reject(new Error("DuckDB is not available in this runtime"));
+        return;
+      }
+
+      const db = new duckdb.Database(":memory:");
+      const connection = db.connect();
+      connection.all(sql, ...params, (error: Error | null, rows: unknown) => {
+        connection.close();
+        db.close();
+        if (error) reject(error);
+        else resolve((rows ?? []) as Record<string, unknown>[]);
+      });
+    })();
   });
 }
 
