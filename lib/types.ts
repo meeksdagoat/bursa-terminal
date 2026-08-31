@@ -753,6 +753,4 @@ export type MarketHubPayload = {
   warrants: MarketHubWarrant[];
   reits: MarketHubReitRow[];
   etfs: MarketHubEtfRow[];
-  form29b: MarketHubForm29B[];
-  exDividends: MarketHubExDiv[];
 };

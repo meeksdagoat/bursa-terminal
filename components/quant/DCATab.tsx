@@ -135,7 +135,7 @@ export function DCATab({ symbol, onSymbolChange }: DCATabProps) {
         <section className={`flex flex-col gap-3 ${PANEL}`}>
       <div className="grid gap-3 border-b border-neutral-800 pb-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
         <div className="min-w-0">
-          <QuantAssetSelector value={symbol} onChange={onSymbolChange} showHeader={false} />
+          <QuantAssetSelector value={symbol} onChange={onSymbolChange} />
         </div>
 
         <fieldset className="flex flex-col gap-1">

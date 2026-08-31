@@ -22,7 +22,7 @@ export function LearnQuantButton({ label, onClick }: { label: string; onClick: (
     <button
       type="button"
       onClick={onClick}
-      className="rounded border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 font-mono text-xs font-semibold text-amber-400 transition hover:bg-amber-500/20"
+      className="flex cursor-pointer items-center gap-1.5 rounded border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 font-mono text-xs font-medium text-amber-400 transition-colors hover:bg-amber-500/20"
     >
       💡 Learn {label}
     </button>
@@ -111,7 +111,7 @@ function ParameterKeyTable({ parameters }: { parameters: FormulaParam[] }) {
 
 export function AdvancedFormulaCard({ section }: { section: AdvancedFormulaSection }) {
   return (
-    <article className="rounded-lg border border-neutral-800 bg-gradient-to-r from-neutral-900 via-amber-950/20 to-neutral-900 p-4">
+    <article className="my-3 rounded-lg border border-neutral-800 bg-neutral-950 p-4">
       <h4 className="text-[10px] font-semibold uppercase tracking-[0.12em] text-neutral-300">
         {section.title}
       </h4>
@@ -119,7 +119,7 @@ export function AdvancedFormulaCard({ section }: { section: AdvancedFormulaSecti
         {section.latex.map((expression) => (
           <div
             key={expression}
-            className="my-2 rounded border border-neutral-800/80 bg-neutral-900/60 px-2 py-1"
+            className="katex-gold my-3 overflow-x-auto rounded-lg border border-neutral-800 bg-neutral-950 p-4"
           >
             <MathEquation latex={expression} />
           </div>

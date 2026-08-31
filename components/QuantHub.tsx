@@ -1,12 +1,15 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { BacktestTab } from "@/components/quant/BacktestTab";
 import { CustomStrategiesProvider } from "@/components/quant/CustomStrategiesProvider";
-import { DCATab } from "@/components/quant/DCATab";
 import { MonteCarloTab } from "@/components/quant/MonteCarloTab";
+import { PairsTrading } from "@/components/quant/PairsTrading";
 import { PortfolioFrontierTab } from "@/components/quant/PortfolioFrontierTab";
+import { RegimeClassifier } from "@/components/quant/RegimeClassifier";
+import { VaREngine } from "@/components/quant/VaREngine";
+import { WarrantPricer } from "@/components/quant/WarrantPricer";
 import { CorrelationEngine } from "@/components/quant-hub/CorrelationEngine";
 import { FactorScoreGrid } from "@/components/quant-hub/FactorScoreGrid";
 import {
@@ -14,6 +17,7 @@ import {
   QuantTabToolbar,
   type LearnQuantTabId,
 } from "@/components/quant-hub/LearnQuantModal";
+import { QuantLearnModal, type NewQuantLearnId } from "@/components/quant/QuantLearnModal";
 import { HeaderBar } from "@/components/header-bar";
 import { MainNav } from "@/components/main-nav";
 import { ResponsiveSplit } from "@/components/responsive-split";
@@ -34,7 +38,10 @@ const QUANT_TABS = [
   { id: "backtest", label: "Historical Backtest Engine" },
   { id: "monte-carlo", label: "Monte Carlo Simulator" },
   { id: "frontier", label: "Markowitz Efficient Frontier" },
-  { id: "dca", label: "DCA Simulator" },
+  { id: "var", label: "Value at Risk (VaR)" },
+  { id: "warrant", label: "Warrant Pricer (Black-Scholes)" },
+  { id: "pairs", label: "Statistical Arbitrage (Pairs)" },
+  { id: "regime", label: "HMM Regime Classification" },
   { id: "factors", label: "Factor Signals & Alt Data" },
 ] as const;
 
@@ -46,7 +53,9 @@ export function QuantHub() {
   const [searchHint, setSearchHint] = useState<string | null>(null);
   const [targetSymbol, setTargetSymbol] = useState("1155.KL");
   const [learnTab, setLearnTab] = useState<LearnQuantTabId | null>(null);
+  const [strategyLearnTab, setStrategyLearnTab] = useState<NewQuantLearnId | null>(null);
   const [activeTab, setActiveTab] = useState<QuantTabId>("backtest");
+  const tabListRef = useRef<HTMLElement>(null);
 
   const quant = useLiveData<QuantHubPayload>("/api/quant-hub", HUB_REFRESH_MS);
   const bnm = useLiveData<BnmPayload>("/api/bnm", BNM_REFRESH_MS);
@@ -66,6 +75,19 @@ export function QuantHub() {
   );
 
   const factorOptions = quant.data?.factorOptions ?? QUANT_FACTOR_OPTIONS;
+
+  useEffect(() => {
+    const node = tabListRef.current;
+    if (!node) return;
+
+    function onWheel(event: WheelEvent) {
+      if (event.deltaY === 0) return;
+      event.preventDefault();
+    }
+
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, []);
 
   return (
     <div className="flex h-dvh min-h-0 flex-col overflow-hidden bg-[#0d0d0d] text-neutral-200">
@@ -101,9 +123,15 @@ export function QuantHub() {
           </div>
 
           <nav
+            ref={tabListRef}
             role="tablist"
             aria-label="Quant Hub modules"
-            className="no-scrollbar flex shrink-0 flex-nowrap overflow-x-auto border-b border-neutral-800 bg-neutral-900"
+            className="flex w-full min-w-0 items-center gap-1 overflow-x-auto scroll-smooth whitespace-nowrap border-b border-neutral-800 bg-neutral-900 pb-1 scrollbar-none"
+            onWheel={(event) => {
+              if (event.deltaY !== 0) {
+                event.currentTarget.scrollLeft += event.deltaY;
+              }
+            }}
           >
             {QUANT_TABS.map((tab) => {
               const selected = activeTab === tab.id;
@@ -114,7 +142,7 @@ export function QuantHub() {
                   role="tab"
                   aria-selected={selected}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`shrink-0 whitespace-nowrap border-b-2 px-3 py-2 font-mono text-xs transition-colors ${
+                  className={`flex-shrink-0 whitespace-nowrap border-b-2 px-3 py-2 font-mono text-xs transition-colors ${
                     selected
                       ? "border-amber-400 text-amber-400"
                       : "border-transparent text-neutral-500 hover:border-neutral-700 hover:text-neutral-300"
@@ -188,8 +216,48 @@ export function QuantHub() {
               </div>
             ) : null}
 
-            {activeTab === "dca" ? (
-              <DCATab symbol={targetSymbol} onSymbolChange={setTargetSymbol} />
+            {activeTab === "var" ? (
+              <div className="flex flex-col gap-3">
+                <QuantTabToolbar
+                  title="Value at Risk (VaR)"
+                  learnLabel="VaR"
+                  onLearn={() => setStrategyLearnTab("var")}
+                />
+                <VaREngine symbol={targetSymbol} onSymbolChange={setTargetSymbol} />
+              </div>
+            ) : null}
+
+            {activeTab === "warrant" ? (
+              <div className="flex flex-col gap-3">
+                <QuantTabToolbar
+                  title="Warrant Pricer (Black-Scholes)"
+                  learnLabel="Warrant Pricer"
+                  onLearn={() => setStrategyLearnTab("warrant")}
+                />
+                <WarrantPricer symbol={targetSymbol} onSymbolChange={setTargetSymbol} />
+              </div>
+            ) : null}
+
+            {activeTab === "pairs" ? (
+              <div className="flex flex-col gap-3">
+                <QuantTabToolbar
+                  title="Statistical Arbitrage (Pairs)"
+                  learnLabel="Pairs Trading"
+                  onLearn={() => setStrategyLearnTab("pairs")}
+                />
+                <PairsTrading symbol={targetSymbol} onSymbolChange={setTargetSymbol} />
+              </div>
+            ) : null}
+
+            {activeTab === "regime" ? (
+              <div className="flex flex-col gap-3">
+                <QuantTabToolbar
+                  title="HMM Regime Classification"
+                  learnLabel="HMM Regimes"
+                  onLearn={() => setStrategyLearnTab("regime")}
+                />
+                <RegimeClassifier symbol={targetSymbol} onSymbolChange={setTargetSymbol} />
+              </div>
             ) : null}
           </div>
         </div>
@@ -208,6 +276,11 @@ export function QuantHub() {
         tab={learnTab}
         open={learnTab !== null}
         onClose={() => setLearnTab(null)}
+      />
+      <QuantLearnModal
+        tab={strategyLearnTab}
+        open={strategyLearnTab !== null}
+        onClose={() => setStrategyLearnTab(null)}
       />
     </div>
   );

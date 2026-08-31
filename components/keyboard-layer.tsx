@@ -54,6 +54,9 @@ export function KeyboardLayer() {
       } else if (event.code === "Digit4" || event.key === "4") {
         event.preventDefault();
         router.push(deskHref("my-politics"));
+      } else if (event.code === "Digit5" || event.key === "5") {
+        event.preventDefault();
+        router.push("/calculators");
       }
     }
 

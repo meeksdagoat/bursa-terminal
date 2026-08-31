@@ -61,6 +61,12 @@ html:has([data-app-shell]) body {
   display: none;
 }
 
+.katex-gold .katex,
+.katex-gold .katex-display,
+.quant-katex .katex {
+  color: #fbbf24;
+}
+
 /* Disable webkit native search input clear icon (custom React clear buttons only). */
 input[type="search"]::-webkit-search-decoration,
 input[type="search"]::-webkit-search-cancel-button,

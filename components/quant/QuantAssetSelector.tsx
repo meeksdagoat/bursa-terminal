@@ -29,14 +29,12 @@ export type QuantAssetSelectorProps = {
   value: string;
   onChange: (symbol: string) => void;
   className?: string;
-  showHeader?: boolean;
 };
 
 export function QuantAssetSelector({
   value,
   onChange,
   className = "",
-  showHeader = true,
 }: QuantAssetSelectorProps) {
   const listId = useId();
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -137,15 +135,6 @@ export function QuantAssetSelector({
 
   return (
     <div className={`flex min-w-0 flex-col gap-2 ${className}`}>
-      {showHeader ? (
-        <div className="flex items-center gap-2">
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-neutral-500">
-            Target Asset
-          </span>
-          {selected ? <CategoryBadge asset={selected} /> : null}
-        </div>
-      ) : null}
-
       <div className="flex flex-wrap gap-1.5">
         {QUANT_ASSET_FILTER_PILLS.map((pill) => {
           const activeFilter = filter === pill.id;

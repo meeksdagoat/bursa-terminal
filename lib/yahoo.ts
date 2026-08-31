@@ -3,6 +3,7 @@ import "server-only";
 import YahooFinance from "yahoo-finance2";
 import { usableArticleText } from "./eli5";
 import type { IntervalKey, RangeKey } from "./ranges";
+import { distributionYieldPctFromYahoo, sanitizeDividendYieldPct } from "./reit-yield";
 import type { Candle, CandlesPayload, Quote } from "./types";
 
 const yahoo = new YahooFinance({
@@ -79,16 +80,7 @@ function klTradingDay(unixSeconds: number): string {
 }
 
 function normalizeQuote(row: Record<string, unknown>): Quote {
-  const trailingYield = num(row.trailingAnnualDividendYield);
-  const plainYield = num(row.dividendYield);
-  const dividendYieldPct =
-    trailingYield != null
-      ? trailingYield * 100
-      : plainYield != null
-        ? plainYield > 1
-          ? plainYield
-          : plainYield * 100
-        : null;
+  const dividendYieldPct = sanitizeDividendYieldPct(distributionYieldPctFromYahoo(row));
 
   return {
     symbol: str(row.symbol) ?? "",

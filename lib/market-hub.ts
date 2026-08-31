@@ -1,9 +1,6 @@
 import "server-only";
 
-import { klseStockViewUrl } from "./filing-id";
-import { ANNOUNCEMENTS_TTL_MS, getAnnouncementsFeed } from "./announcements";
 import { cached } from "./cache";
-import { getCorporateActionsPayload } from "./corporate-actions";
 import {
   BENCHMARK_SPECS,
   FCPO_FALLBACK,
@@ -11,7 +8,6 @@ import {
   FKLI_FALLBACK,
   FKLI_SYMBOLS,
   ICB_SECTOR_GROUPS,
-  INSTITUTION_PATTERNS,
   MY_ETF_CATALOG,
   REIT_SECTOR_BY_CODE,
   WARRANT_MOTHERS,
@@ -20,12 +16,9 @@ import {
 import { isBursaOpen } from "./market-status";
 import { fetchHtml } from "./rss";
 import type {
-  MarketAnnouncement,
   MarketHubBenchmark,
   MarketHubDerivative,
   MarketHubEtfRow,
-  MarketHubExDiv,
-  MarketHubForm29B,
   MarketHubPayload,
   MarketHubReitRow,
   MarketHubSectorRow,
@@ -34,6 +27,7 @@ import type {
 } from "./types";
 import { KLCI_SYMBOL, entryBySymbol, universe } from "./universe";
 import { getStructuredWarrants } from "./warrants";
+import { distributionYieldPctFromYahoo, sanitizeReitDistributionYield } from "./reit-yield";
 import { fetchDailyCloses, fetchQuotes } from "./yahoo";
 import YahooFinance from "yahoo-finance2";
 
@@ -78,153 +72,6 @@ function statusBadge(marketState: string | null): MarketHubSectorRow["status"] {
   const state = (marketState ?? "").toUpperCase();
   if (state.includes("PRE") || state.includes("POST")) return "delayed";
   return "closed";
-}
-
-function detectInstitution(title: string): string | null {
-  for (const entry of INSTITUTION_PATTERNS) {
-    if (entry.pattern.test(title)) return entry.name;
-  }
-  return null;
-}
-
-function detectAction(title: string): MarketHubForm29B["action"] {
-  const text = title.toLowerCase();
-  if (/dispos|sold|cease|reduction|disposed/.test(text)) return "Disposal";
-  if (/acquir|bought|increased|subscribe|acquisition/.test(text)) return "Acquisition";
-  if (/29b|substantial|shareholding|notice of/.test(text)) return "Change";
-  return null;
-}
-
-function form29bItems(items: MarketAnnouncement[]): MarketHubForm29B[] {
-  const live = items
-    .filter((item) => {
-      const hay = `${item.title} ${item.filingType}`;
-      return (
-        /29\s*b|substantial shareholder|shareholding change|notice of interest|notice of change/i.test(
-          hay,
-        ) || detectInstitution(hay) != null
-      );
-    })
-    .slice(0, 24)
-    .map((item) => ({
-      id: item.id,
-      title: item.title,
-      company: item.company,
-      code: item.code,
-      symbol: item.symbol,
-      institution: detectInstitution(item.title),
-      action: detectAction(item.title),
-      publishedAt: item.publishedAt,
-      url: item.url,
-      bursaUrl: item.bursaUrl,
-      pdfUrl: item.pdfUrl,
-    }));
-
-  if (live.length >= 10) return live;
-  return [...live, ...form29bSnapshot()].slice(0, 24);
-}
-
-/** Quiet-session top-up for Form 29B when the market wire is thin. */
-function form29bSnapshot(): MarketHubForm29B[] {
-  const seeds: Array<{
-    symbol: string;
-    institution: string;
-    action: MarketHubForm29B["action"];
-    title: string;
-  }> = [
-    {
-      symbol: "1155.KL",
-      institution: "EPF",
-      action: "Acquisition",
-      title: "Changes in Sub. S-hldr's Int (Section 138) — EMPLOYEES PROVIDENT FUND BOARD",
-    },
-    {
-      symbol: "1295.KL",
-      institution: "EPF",
-      action: "Disposal",
-      title: "Changes in Sub. S-hldr's Int (Section 138) — EMPLOYEES PROVIDENT FUND BOARD",
-    },
-    {
-      symbol: "1023.KL",
-      institution: "KWAP",
-      action: "Acquisition",
-      title: "Changes in Sub. S-hldr's Int (Section 138) — KUMPULAN WANG PERSARAAN (DIPERBADANKAN)",
-    },
-    {
-      symbol: "5347.KL",
-      institution: "PNB",
-      action: "Change",
-      title: "Notice of Change in Interests — PERMODALAN NASIONAL BERHAD",
-    },
-    {
-      symbol: "3182.KL",
-      institution: "Khazanah",
-      action: "Change",
-      title: "Notice of Interest of Substantial Shareholder — KHAZANAH NASIONAL BERHAD",
-    },
-    {
-      symbol: "6012.KL",
-      institution: "EPF",
-      action: "Acquisition",
-      title: "Changes in Sub. S-hldr's Int (Section 138) — EMPLOYEES PROVIDENT FUND BOARD",
-    },
-    {
-      symbol: "5183.KL",
-      institution: "KWAP",
-      action: "Disposal",
-      title: "Changes in Sub. S-hldr's Int (Section 138) — KUMPULAN WANG PERSARAAN (DIPERBADANKAN)",
-    },
-    {
-      symbol: "4863.KL",
-      institution: "EPF",
-      action: "Acquisition",
-      title: "Changes in Sub. S-hldr's Int (Section 138) — EMPLOYEES PROVIDENT FUND BOARD",
-    },
-    {
-      symbol: "6888.KL",
-      institution: "PNB",
-      action: "Change",
-      title: "Notice of Change in Interests — AMANAH SAHAM BUMIPUTERA",
-    },
-    {
-      symbol: "3816.KL",
-      institution: "EPF",
-      action: "Disposal",
-      title: "Changes in Sub. S-hldr's Int (Section 138) — EMPLOYEES PROVIDENT FUND BOARD",
-    },
-    {
-      symbol: "5227.KL",
-      institution: "EPF",
-      action: "Acquisition",
-      title: "Changes in Sub. S-hldr's Int (Section 138) — EMPLOYEES PROVIDENT FUND BOARD",
-    },
-    {
-      symbol: "5106.KL",
-      institution: "KWAP",
-      action: "Change",
-      title: "Notice of Change in Interests — KUMPULAN WANG PERSARAAN (DIPERBADANKAN)",
-    },
-  ];
-
-  return seeds.flatMap((seed, index) => {
-    const entry = entryBySymbol(seed.symbol);
-    if (!entry) return [];
-    return [
-      {
-        id: `snapshot-29b-${entry.code}-${index}`,
-        title: seed.title,
-        company: entry.name,
-        code: entry.code,
-        symbol: entry.symbol,
-        institution: seed.institution,
-        action: seed.action,
-        publishedAt: new Date(Date.now() - index * 45 * 60 * 1000).toISOString(),
-        url: klseStockViewUrl(entry.code),
-        bursaUrl: null,
-        pdfUrl: null,
-      },
-    ];
-  });
 }
 
 /** Resolve the first Yahoo symbol in the chain that returns a usable price. */
@@ -302,14 +149,13 @@ async function loadBenchmarks(errors: string[]): Promise<{
 async function loadFcpoFromBarchart(): Promise<MarketHubDerivative | null> {
   const html = await fetchHtml(BARCHART_FCPO, 15_000);
   const match = html.match(
-    /"symbolName":"Palm Oil"[^}]*"lastPrice":"([0-9,]+)[a-zA-Z]*","priceChange":"([^"]*)","percentChange":"([^"]*)"[^}]*"volume":"([0-9,]*)"/,
+    /"symbolName":"Palm Oil"[^}]*"lastPrice":"([0-9,]+)[a-zA-Z]*","priceChange":"([^"]*)","percentChange":"([^"]*)"/,
   );
   if (!match) return null;
 
   const price = Number.parseFloat(match[1].replace(/,/g, ""));
   const changePts = Number.parseFloat(match[2].replace(/[+,\s]/g, ""));
   const changePct = Number.parseFloat(match[3].replace(/[+%]/g, ""));
-  const volume = Number.parseFloat((match[4] || "").replace(/,/g, ""));
 
   // BMD FCPO prints in MYR/t — reject USD-scale prints.
   if (!Number.isFinite(price) || price < 1500 || price > 12_000) return null;
@@ -317,11 +163,11 @@ async function loadFcpoFromBarchart(): Promise<MarketHubDerivative | null> {
   return {
     id: "fcpo",
     label: "FCPO · Crude Palm Oil",
-    contract: "Spot month (BMD)",
+    contract: "Front month · BMD (Barchart)",
     price,
     changePts: Number.isFinite(changePts) ? changePts : null,
     changePct1d: Number.isFinite(changePct) ? changePct : null,
-    volume: Number.isFinite(volume) ? volume : null,
+    volume: null,
     premiumPct: null,
     unit: "MYR/t",
     source: "bmd-fcpo",
@@ -543,33 +389,16 @@ async function buildMarketHub(): Promise<MarketHubPayload> {
     ...new Set([...reitEntries.map((entry) => entry.symbol), ...etfSymbols, ...sectorSample]),
   ];
 
-  const [benchmarkPack, quotes, announcements, corporateActions, fcpo, warrants, books] =
-    await Promise.all([
+  const [benchmarkPack, quotes, rawQuoteRows, fcpo, warrants, books] = await Promise.all([
       loadBenchmarks(errors),
       fetchQuotes(quoteSymbols).catch((error: unknown) => {
         errors.push(error instanceof Error ? error.message : String(error));
         return [] as Quote[];
       }),
-      cached("announcements:bursa:v1", ANNOUNCEMENTS_TTL_MS, getAnnouncementsFeed).catch(
-        (error: unknown) => {
-          errors.push(error instanceof Error ? error.message : String(error));
-          return {
-            items: [] as MarketAnnouncement[],
-            asOf: new Date().toISOString(),
-            source: "bursa" as const,
-            errors: [] as string[],
-          };
-        },
-      ),
-      getCorporateActionsPayload().catch((error: unknown) => {
-        errors.push(error instanceof Error ? error.message : String(error));
-        return {
-          asOf: new Date().toISOString(),
-          source: "snapshot" as const,
-          items: [] as MarketHubExDiv[],
-          errors: [] as string[],
-        };
-      }),
+      yahooRaw
+        .quote(quoteSymbols, {}, { validateResult: false })
+        .then((raw: unknown) => (Array.isArray(raw) ? raw : raw ? [raw] : []))
+        .catch(() => [] as unknown[]),
       loadFcpo(errors),
       loadTopWarrants(errors),
       loadBookValues(reitEntries.map((entry) => entry.symbol)),
@@ -578,6 +407,13 @@ async function buildMarketHub(): Promise<MarketHubPayload> {
   const { benchmarks, klci } = benchmarkPack;
   const fkli = await loadFkli(klci, errors);
   const bySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
+  const rawBySymbol = new Map<string, Record<string, unknown>>();
+  for (const row of rawQuoteRows) {
+    if (typeof row !== "object" || row == null) continue;
+    const item = row as Record<string, unknown>;
+    const symbol = typeof item.symbol === "string" ? item.symbol : "";
+    if (symbol) rawBySymbol.set(symbol, item);
+  }
   const sectorStatus = statusBadge(klci?.marketState ?? null);
 
   const sectors: MarketHubSectorRow[] = ICB_SECTOR_GROUPS.map((group) => {
@@ -617,7 +453,11 @@ async function buildMarketHub(): Promise<MarketHubPayload> {
   const reits: MarketHubReitRow[] = reitEntries
     .map((entry) => {
       const quote = bySymbol.get(entry.symbol);
+      const raw = rawBySymbol.get(entry.symbol);
       const book = books.get(entry.symbol);
+      const distributionYieldPct = sanitizeReitDistributionYield(
+        raw ? distributionYieldPctFromYahoo(raw) : (quote?.dividendYieldPct ?? null),
+      );
       return {
         symbol: entry.symbol,
         code: entry.code,
@@ -625,7 +465,7 @@ async function buildMarketHub(): Promise<MarketHubPayload> {
         reitSector: REIT_SECTOR_BY_CODE[entry.code] ?? "Diversified",
         price: quote?.price ?? null,
         changePct: quote?.changePct ?? null,
-        distributionYieldPct: quote?.dividendYieldPct ?? null,
+        distributionYieldPct,
         priceToNav:
           quote?.price != null && book != null && book > 0
             ? Math.round((quote.price / book) * 100) / 100
@@ -660,11 +500,9 @@ async function buildMarketHub(): Promise<MarketHubPayload> {
     warrants,
     reits,
     etfs,
-    form29b: form29bItems(announcements.items ?? []),
-    exDividends: corporateActions.items,
   };
 }
 
 export async function getMarketHubPayload(): Promise<MarketHubPayload> {
-  return cached("market-hub:v3", TTL_MS, buildMarketHub);
+  return cached("market-hub:v5", TTL_MS, buildMarketHub);
 }

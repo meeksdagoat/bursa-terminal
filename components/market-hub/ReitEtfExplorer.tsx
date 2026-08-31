@@ -10,6 +10,7 @@ import {
   formatRatio,
   formatVolume,
 } from "@/lib/format";
+import { sanitizeReitDistributionYield } from "@/lib/reit-yield";
 import type { MarketHubEtfRow, MarketHubReitRow } from "@/lib/types";
 import { terminalHref } from "@/lib/universe";
 
@@ -108,14 +109,19 @@ export function ReitEtfExplorer({ reits, etfs, filter }: ReitEtfExplorerProps) {
   const needle = filter.trim().toLowerCase();
 
   const reitRows = useMemo(() => {
+    const normalized = reits.map((row) => ({
+      ...row,
+      distributionYieldPct: sanitizeReitDistributionYield(row.distributionYieldPct),
+    }));
+
     const filtered = needle
-      ? reits.filter(
+      ? normalized.filter(
           (row) =>
             row.name.toLowerCase().includes(needle) ||
             row.code.toLowerCase().includes(needle) ||
             row.reitSector.toLowerCase().includes(needle),
         )
-      : reits;
+      : normalized;
 
     return [...filtered].sort((a, b) => {
       if (reitSort === "name" || reitSort === "reitSector") {

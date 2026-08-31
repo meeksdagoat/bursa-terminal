@@ -3,9 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { DerivativesPanel } from "@/components/market-hub/DerivativesPanel";
-import { ExDividendCalendar } from "@/components/market-hub/ExDividendCalendar";
 import { IndicesGrid } from "@/components/market-hub/IndicesGrid";
-import { InstitutionalFeed } from "@/components/market-hub/InstitutionalFeed";
 import { ReitEtfExplorer } from "@/components/market-hub/ReitEtfExplorer";
 import { HeaderBar } from "@/components/header-bar";
 import { MainNav } from "@/components/main-nav";
@@ -71,7 +69,7 @@ export function MarketHubView() {
             <div>
               <h1 className="text-[15px] font-semibold tracking-tight text-white">Market Hub</h1>
               <p className="mt-0.5 text-[12px] text-neutral-500">
-                Indices · BMD derivatives · REITs / ETFs · Form 29B &amp; ex-div flows
+                Indices · BMD derivatives · REITs / ETFs
               </p>
             </div>
             <label className="flex min-w-[220px] flex-1 items-center gap-2 sm:max-w-sm">
@@ -80,7 +78,7 @@ export function MarketHubView() {
                 type="search"
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
-                placeholder="Filter sectors, REITs, warrants, filings…"
+                placeholder="Filter sectors, REITs, warrants…"
                 className="min-h-11 w-full border border-neutral-800 bg-[#0a0a0a] px-2 font-mono text-[12px] text-neutral-100 placeholder:text-neutral-600 md:min-h-9"
               />
             </label>
@@ -105,24 +103,7 @@ export function MarketHubView() {
                 loading={hub.loading && !hub.data}
               />
               {hub.data ? (
-                <>
-                  <ReitEtfExplorer reits={hub.data.reits} etfs={hub.data.etfs} filter={filter} />
-                  <InstitutionalFeed form29b={hub.data.form29b} filter={filter} />
-                </>
-              ) : hub.loading ? (
-                <section className="space-y-3">
-                  <header>
-                    <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
-                      Institutional &amp; Corporate Flows
-                    </h2>
-                  </header>
-                  <div className="grid gap-3 xl:grid-cols-2">
-                    <div className="border border-neutral-800 bg-[#0d0d0d] px-3 py-8 text-center font-mono text-[10px] text-neutral-600">
-                      Loading filings…
-                    </div>
-                    <ExDividendCalendar filter={filter} />
-                  </div>
-                </section>
+                <ReitEtfExplorer reits={hub.data.reits} etfs={hub.data.etfs} filter={filter} />
               ) : null}
             </>
           )}
@@ -130,7 +111,7 @@ export function MarketHubView() {
       </div>
 
       <footer className="flex shrink-0 flex-col gap-0.5 border-t border-neutral-800 bg-[#0a0a0a] px-3 py-1.5 font-mono text-[9px] leading-tight text-neutral-600 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-4">
-        <span>MARKET HUB · FBM PROXIES · BMD FCPO · M-REIT / ETF · FORM 29B WIRE</span>
+        <span>MARKET HUB · FBM PROXIES · BMD FCPO · M-REIT / ETF</span>
         <span className={hub.error ? "text-loss" : "text-gain"}>
           {hub.error ? "FEED DEGRADED" : hub.data ? "SYS OK" : "CONNECTING"} · UPDATED{" "}
           {formatKlTime(hub.updatedAt)} MYT

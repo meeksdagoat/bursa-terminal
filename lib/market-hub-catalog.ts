@@ -142,6 +142,6 @@ export const FKLI_FALLBACK = {
   premiumPct: 0.05,
 };
 
-/** Yahoo futures symbols to try for BMD products. */
-export const FCPO_SYMBOLS = ["CPO=F", "KO=F"];
+/** Yahoo symbols to try for BMD crude palm oil (MYR/t scale). */
+export const FCPO_SYMBOLS = ["FCPO.KL", "FCPO=F", "CPO=F", "KO=F"];
 export const FKLI_SYMBOLS = ["FKLI=F"];

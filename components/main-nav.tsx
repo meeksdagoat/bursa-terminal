@@ -7,9 +7,9 @@ export type NavActive =
   | "market"
   | "market-hub"
   | "quant-hub"
+  | "calculators"
   | "screener"
   | "portfolio"
-  | "unit-trust"
   | HeadlineCategory;
 
 export const NAV_ITEMS: {
@@ -32,14 +32,15 @@ export const NAV_ITEMS: {
     label: "Quant Hub",
     blurb: "Multi-factor signals, alternative data and rolling correlations",
   },
+  {
+    id: "calculators",
+    href: "/calculators",
+    label: "Calculators",
+    shortcut: "Alt+5",
+    blurb: "DCA simulator, brokerage fees, and dividend DRIP planning",
+  },
   { id: "screener", href: "/screener", label: "Screener" },
   { id: "portfolio", href: "/portfolio", label: "My Portfolio", shortcut: "Alt+2" },
-  {
-    id: "unit-trust",
-    href: "/unit-trust",
-    label: "Unit Trust",
-    blurb: "ASNB, Public Mutual and major UTMC fund performance tracker",
-  },
   ...HEADLINE_CATEGORIES.map((tab) => ({
     id: tab.id,
     href: deskHref(tab.id),
@@ -64,9 +65,9 @@ export function MainNav({ active }: MainNavProps) {
           item.id !== "market" &&
           item.id !== "market-hub" &&
           item.id !== "quant-hub" &&
+          item.id !== "calculators" &&
           item.id !== "screener" &&
-          item.id !== "portfolio" &&
-          item.id !== "unit-trust";
+          item.id !== "portfolio";
         return (
           <Link
             key={item.id}
