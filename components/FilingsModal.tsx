@@ -98,17 +98,13 @@ export function FilingsModal({
   const belongsToTicker = !detail?.symbol || detail.symbol === activeTicker;
   const upstreamPdfUrl = belongsToTicker ? (detail?.pdfUrl ?? selectedFiling.pdfUrl) : null;
   const hasPdf = Boolean(upstreamPdfUrl);
-  // Prefer the working KLSE / explicit filing URL — Bursa announcement_details
-  // often 403/404s from browsers behind their WAF.
-  const filingPageUrl =
-    detail?.url ??
-    selectedFiling.url ??
-    resolveBursaAnnouncementUrl({
-      id: selectedFilingId,
-      bursaUrl: detail?.bursaUrl ?? selectedFiling.bursaUrl,
-      url: detail?.url ?? selectedFiling.url,
-      stockCode: detail?.code ?? selectedFiling.code ?? activeTicker.replace(/\.KL$/i, ""),
-    });
+  const filingPageUrl = resolveBursaAnnouncementUrl({
+    id: selectedFilingId,
+    bursaUrl: detail?.bursaUrl ?? selectedFiling.bursaUrl,
+    url: detail?.url ?? selectedFiling.url,
+    pdfUrl: detail?.pdfUrl ?? selectedFiling.pdfUrl,
+    stockCode: detail?.code ?? selectedFiling.code ?? activeTicker.replace(/\.KL$/i, ""),
+  });
   const title = detail?.title ?? selectedFiling.title;
   const company =
     detail?.company ??
@@ -170,7 +166,7 @@ export function FilingsModal({
               rel="noopener noreferrer"
               className="inline-flex items-center border border-slate-700 bg-transparent px-2.5 py-1.5 font-mono text-[9px] uppercase tracking-wider text-slate-300 hover:border-slate-500 hover:text-gain"
             >
-              Filing page ↗
+              Filing on Bursa ↗
             </a>
           </div>
         </div>

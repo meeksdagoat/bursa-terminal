@@ -10,6 +10,10 @@ import {
   LearnFactorSignalsContent,
 } from "@/components/quant-hub/learn/factor-signals";
 import {
+  DCA_ADVANCED,
+  LearnDCAContent,
+} from "@/components/quant-hub/learn/dca";
+import {
   FRONTIER_ADVANCED,
   LearnFrontierContent,
 } from "@/components/quant-hub/learn/frontier";
@@ -18,7 +22,7 @@ import {
   MONTE_CARLO_ADVANCED,
 } from "@/components/quant-hub/learn/monte-carlo";
 
-export type LearnQuantTabId = "factors" | "monte-carlo" | "backtest" | "frontier";
+export type LearnQuantTabId = "factors" | "monte-carlo" | "backtest" | "frontier" | "dca";
 
 const LEARN_MODAL_META: Record<
   LearnQuantTabId,
@@ -48,6 +52,12 @@ const LEARN_MODAL_META: Record<
       "Modern Portfolio Theory in plain English — how to blend stocks for the best return at the lowest risk, and how to read the chart.",
     advanced: FRONTIER_ADVANCED,
   },
+  dca: {
+    title: "Learn DCA & Cost Averaging",
+    subtitle:
+      "Invest steadily through market ups and downs. Understand average cost basis, lump-sum trade-offs, and how to read the simulator chart.",
+    advanced: DCA_ADVANCED,
+  },
 };
 
 type LearnQuantModalProps = {
@@ -73,6 +83,7 @@ export function LearnQuantModal({ tab, open, onClose }: LearnQuantModalProps) {
       {tab === "monte-carlo" ? <LearnMonteCarloContent /> : null}
       {tab === "backtest" ? <LearnBacktestContent /> : null}
       {tab === "frontier" ? <LearnFrontierContent /> : null}
+      {tab === "dca" ? <LearnDCAContent /> : null}
     </LearnQuantModalShell>
   );
 }

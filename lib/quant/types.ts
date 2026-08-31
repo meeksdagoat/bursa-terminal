@@ -52,6 +52,15 @@ export type QuantHubPayload = {
   errors: string[];
 };
 
+export type SymbolFactorsPayload = {
+  asOf: string;
+  symbol: string;
+  symbolLabel: string;
+  targetSector: string;
+  factors: QuantFactorSignal[];
+  errors: string[];
+};
+
 export type QuantChartPoint = {
   date: string;
   factorValue: number | null;

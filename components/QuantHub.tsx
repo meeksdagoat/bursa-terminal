@@ -3,6 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 import { BacktestTab } from "@/components/quant/BacktestTab";
+import { CustomStrategiesProvider } from "@/components/quant/CustomStrategiesProvider";
+import { DCATab } from "@/components/quant/DCATab";
 import { MonteCarloTab } from "@/components/quant/MonteCarloTab";
 import { PortfolioFrontierTab } from "@/components/quant/PortfolioFrontierTab";
 import { CorrelationEngine } from "@/components/quant-hub/CorrelationEngine";
@@ -21,7 +23,7 @@ import { formatFactorTargetCategories } from "@/lib/quant/sector-relevance";
 import { QUANT_FACTOR_OPTIONS } from "@/lib/quant/types";
 import { feedStatusFromQuote } from "@/lib/market-status";
 import type { BnmPayload, QuotesPayload } from "@/lib/types";
-import { findEntry, terminalHref } from "@/lib/universe";
+import { findEntry, terminalHref, entryBySymbol } from "@/lib/universe";
 import { useLiveData } from "@/lib/use-live-data";
 import { useShariahOnly } from "@/lib/use-shariah";
 
@@ -29,10 +31,11 @@ const HUB_REFRESH_MS = 5 * 60 * 1000;
 const BNM_REFRESH_MS = 10 * 60 * 1000;
 
 const QUANT_TABS = [
-  { id: "factors", label: "Factor Signals & Alt Data" },
-  { id: "monte-carlo", label: "Monte Carlo Simulator" },
   { id: "backtest", label: "Historical Backtest Engine" },
+  { id: "monte-carlo", label: "Monte Carlo Simulator" },
   { id: "frontier", label: "Markowitz Efficient Frontier" },
+  { id: "dca", label: "DCA Simulator" },
+  { id: "factors", label: "Factor Signals & Alt Data" },
 ] as const;
 
 type QuantTabId = (typeof QUANT_TABS)[number]["id"];
@@ -43,7 +46,7 @@ export function QuantHub() {
   const [searchHint, setSearchHint] = useState<string | null>(null);
   const [targetSymbol, setTargetSymbol] = useState("1155.KL");
   const [learnTab, setLearnTab] = useState<LearnQuantTabId | null>(null);
-  const [activeTab, setActiveTab] = useState<QuantTabId>("factors");
+  const [activeTab, setActiveTab] = useState<QuantTabId>("backtest");
 
   const quant = useLiveData<QuantHubPayload>("/api/quant-hub", HUB_REFRESH_MS);
   const bnm = useLiveData<BnmPayload>("/api/bnm", BNM_REFRESH_MS);
@@ -87,7 +90,8 @@ export function QuantHub() {
         </p>
       ) : null}
 
-      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+      <CustomStrategiesProvider>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 px-3 py-3">
           <div>
             <h1 className="text-[15px] font-semibold tracking-tight text-white">Quant Hub</h1>
@@ -183,6 +187,10 @@ export function QuantHub() {
                 <PortfolioFrontierTab />
               </div>
             ) : null}
+
+            {activeTab === "dca" ? (
+              <DCATab symbol={targetSymbol} onSymbolChange={setTargetSymbol} />
+            ) : null}
           </div>
         </div>
 
@@ -193,7 +201,8 @@ export function QuantHub() {
             ? ` · ${quant.data.factors.filter((factor) => factor.status === "live").length}/${quant.data.factors.length} live`
             : ""}
         </footer>
-      </div>
+        </div>
+      </CustomStrategiesProvider>
 
       <LearnQuantModal
         tab={learnTab}
@@ -215,6 +224,9 @@ function FactorSignalsTab({
   targetSymbol: string;
   onSymbolChange: (symbol: string) => void;
 }) {
+  const targetEntry = entryBySymbol(targetSymbol);
+  const targetSector = targetEntry?.sector ?? "Unknown";
+
   return (
     <div className="flex flex-col gap-3">
       <section className="flex flex-col gap-3">
@@ -229,6 +241,7 @@ function FactorSignalsTab({
         <FactorScoreGrid
           factors={quant.data?.factors ?? []}
           targetSymbol={targetSymbol}
+          targetSector={targetSector}
           loading={quant.loading}
         />
       </section>

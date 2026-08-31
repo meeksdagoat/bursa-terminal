@@ -36,8 +36,8 @@ export function QuantTabToolbar({
   trailing,
 }: {
   title: string;
-  learnLabel: string;
-  onLearn: () => void;
+  learnLabel?: string;
+  onLearn?: () => void;
   trailing?: ReactNode;
 }) {
   return (
@@ -45,10 +45,12 @@ export function QuantTabToolbar({
       <h2 className="text-[11px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
         {title}
       </h2>
-      <div className="flex flex-wrap items-center justify-end gap-2">
-        {trailing}
-        <LearnQuantButton label={learnLabel} onClick={onLearn} />
-      </div>
+      {trailing || (learnLabel && onLearn) ? (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {trailing}
+          {learnLabel && onLearn ? <LearnQuantButton label={learnLabel} onClick={onLearn} /> : null}
+        </div>
+      ) : null}
     </div>
   );
 }

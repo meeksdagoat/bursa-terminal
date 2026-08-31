@@ -1,5 +1,6 @@
 import "server-only";
 
+import { klseStockViewUrl } from "./filing-id";
 import { ANNOUNCEMENTS_TTL_MS, getAnnouncementsFeed } from "./announcements";
 import { cached } from "./cache";
 import type {
@@ -101,7 +102,7 @@ function toExDiv(item: MarketAnnouncement): MarketHubExDiv {
     bookClosureDate: parseDateNear(title, /book\s*closure|entitlement\s*date|record\s*date/i),
     paymentDate: parseDateNear(title, /payment|payable|payment\s*date/i),
     publishedAt: item.publishedAt,
-    url: item.url || item.bursaUrl,
+    url: item.bursaUrl ?? item.url,
     source: "bursa",
   };
 }
@@ -319,7 +320,7 @@ function snapshotEntitlements(): MarketHubExDiv[] {
         bookClosureDate: klDateOffset(seed.bookOffset),
         paymentDate: klDateOffset(seed.payOffset),
         publishedAt: new Date().toISOString(),
-        url: `https://www.bursamalaysia.com/market_information/announcements/company_announcement`,
+        url: klseStockViewUrl(entry.code),
         source: "snapshot" as const,
       },
     ];

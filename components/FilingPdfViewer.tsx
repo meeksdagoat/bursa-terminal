@@ -8,7 +8,7 @@ type FilingPdfViewerProps = {
   companyName: string;
   publishedLabel: string;
   categoryLabel: string;
-  /** Working announcement page (prefer KLSE / explicit filing URL). */
+  /** Official Bursa announcement detail / attachment page. */
   announcementUrl: string;
 };
 
@@ -59,7 +59,7 @@ export function FilingPdfViewer({
                 : "border border-emerald-500/50 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20"
             }`}
           >
-            View Official Filing Page ↗
+            View Official Filing on Bursa ↗
           </button>
         </div>
       </div>

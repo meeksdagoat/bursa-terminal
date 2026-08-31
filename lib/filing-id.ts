@@ -1,5 +1,8 @@
 import type { AnnouncementCategory, AnnouncementKind, BursaAnnouncement, MarketAnnouncement } from "./types";
 
+const BURSA_LISTING =
+  "https://www.bursamalaysia.com/market_information/announcements/company_announcement";
+
 /** Numeric Bursa LINK / KLSE Screener announcement id, when one can be parsed. */
 export function announcementIdFromUrl(value: string | null | undefined): string | null {
   if (!value) return null;
@@ -12,12 +15,52 @@ export function announcementIdFromUrl(value: string | null | undefined): string 
   return match?.[1] ?? null;
 }
 
+export function attachmentIdFromUrl(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const match =
+    trimmed.match(/[?&]att_id=(\d{6,12})/i) ??
+    trimmed.match(/\/att_file\?[^#]*att_id=(\d{6,12})/i);
+  return match?.[1] ?? null;
+}
+
 export function bursaAnnouncementUrl(id: string): string {
   return `https://www.bursamalaysia.com/market_information/announcements/company_announcement/announcement_details?ann_id=${id}`;
 }
 
+export function bursaAttachmentUrl(attId: string): string {
+  return `https://www.bursamalaysia.com/market_information/announcements/company_announcement/att_file?att_id=${attId}`;
+}
+
 export function bursaCompanyAnnouncementsUrl(stockCode: string): string {
   return `https://www.bursamalaysia.com/market_information/announcements/company_announcement?company=${encodeURIComponent(stockCode)}`;
+}
+
+export function klseViewUrl(id: string): string {
+  return `https://www.klsescreener.com/v2/announcements/view/${id}`;
+}
+
+const BURSA_STOCK_CODE_RE = /^\d{4}$/;
+
+/** Normalize Bursa main-market tickers to a 4-digit numeric code (e.g. 1155, 5247). */
+export function sanitizeBursaStockCode(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim().replace(/\.kl$/i, "");
+  if (BURSA_STOCK_CODE_RE.test(trimmed)) return trimmed;
+  const match = trimmed.match(/\b(\d{4})\b/);
+  return match && BURSA_STOCK_CODE_RE.test(match[1]) ? match[1] : null;
+}
+
+/** KLSE Screener stock profile (announcements tab lives on this page). */
+export function klseStockViewUrl(stockCode: string): string {
+  const code = sanitizeBursaStockCode(stockCode);
+  if (!code) return "https://www.klsescreener.com/v2/announcements";
+  return `https://www.klsescreener.com/v2/stocks/view/${code}`;
+}
+
+/** @deprecated Use {@link klseStockViewUrl} — kept for call-site compatibility. */
+export function klseStockAnnouncementsUrl(stockCode: string): string {
+  return klseStockViewUrl(stockCode);
 }
 
 export function isBursaAnnouncementDetailUrl(url: string | null | undefined): boolean {
@@ -25,34 +68,83 @@ export function isBursaAnnouncementDetailUrl(url: string | null | undefined): bo
   return /\/announcement_details\?[^#]*ann_id=\d{6,12}/i.test(url);
 }
 
+export function isBursaAttachmentUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /\/att_file\?[^#]*att_id=\d{6,12}/i.test(url);
+}
+
+export function isGenericBursaListingUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  if (isBursaAnnouncementDetailUrl(url) || isBursaAttachmentUrl(url)) return false;
+  return /\/company_announcement(?:\?|$)/i.test(url);
+}
+
+function isKlseAnnouncementViewUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /klsescreener\.com\/v2\/announcements\/view\/\d{6,12}/i.test(url);
+}
+
+function isKlseStockViewUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /klsescreener\.com\/v2\/stocks\/view\/\d{4}/i.test(url);
+}
+
+/** Legacy broken path — `/v2/stocks/{code}/announcements` 404s on KLSE Screener. */
+function isBrokenKlseStockAnnouncementsUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  return /klsescreener\.com\/v2\/stocks\/\d+\/announcements/i.test(url);
+}
+
+function isUsableDirectUrl(url: string | null | undefined): url is string {
+  if (!url) return false;
+  if (isGenericBursaListingUrl(url)) return false;
+  if (isBrokenKlseStockAnnouncementsUrl(url)) return false;
+  return true;
+}
+
 /**
- * Prefer an explicit announcement detail link. Rebuild from `ann_id` when the
- * payload only has a company-wide announcements search URL.
+ * Prefer an explicit Bursa announcement detail or attachment link.
+ * Rebuilds from `ann_id` / `att_id` when only a KLSE view URL or numeric id is present.
+ * Avoids generic Bursa listing/search URLs when a specific id can be resolved.
  */
 export function resolveBursaAnnouncementUrl(input: {
   id?: string | null;
   bursaUrl?: string | null;
   url?: string | null;
+  pdfUrl?: string | null;
   stockCode?: string | null;
 }): string {
-  if (isBursaAnnouncementDetailUrl(input.bursaUrl)) {
-    return input.bursaUrl as string;
+  for (const candidate of [input.bursaUrl, input.url, input.pdfUrl]) {
+    if (isBursaAnnouncementDetailUrl(candidate)) return candidate as string;
+    if (isBursaAttachmentUrl(candidate)) return candidate as string;
   }
 
-  const id =
+  const attId =
+    attachmentIdFromUrl(input.url) ??
+    attachmentIdFromUrl(input.bursaUrl) ??
+    attachmentIdFromUrl(input.pdfUrl);
+  if (attId) return bursaAttachmentUrl(attId);
+
+  const annId =
     announcementIdFromUrl(input.id) ??
     announcementIdFromUrl(input.bursaUrl) ??
-    announcementIdFromUrl(input.url);
+    announcementIdFromUrl(input.url) ??
+    announcementIdFromUrl(input.pdfUrl);
+  if (annId) return bursaAnnouncementUrl(annId);
 
-  if (id) return bursaAnnouncementUrl(id);
+  for (const candidate of [input.bursaUrl, input.url]) {
+    if (isUsableDirectUrl(candidate)) return candidate;
+  }
 
-  if (input.stockCode) return bursaCompanyAnnouncementsUrl(input.stockCode);
-  if (input.url) return input.url;
-  return input.bursaUrl ?? "https://www.bursamalaysia.com/market_information/announcements/company_announcement";
-}
+  if (isKlseAnnouncementViewUrl(input.url)) return input.url as string;
+  if (isKlseAnnouncementViewUrl(input.bursaUrl)) return input.bursaUrl as string;
+  if (isKlseStockViewUrl(input.url)) return input.url as string;
+  if (isKlseStockViewUrl(input.bursaUrl)) return input.bursaUrl as string;
 
-export function klseViewUrl(id: string): string {
-  return `https://www.klsescreener.com/v2/announcements/view/${id}`;
+  const stockCode = sanitizeBursaStockCode(input.stockCode);
+  if (stockCode) return klseStockViewUrl(stockCode);
+
+  return BURSA_LISTING;
 }
 
 /** Symbol-bound PDF proxy — never a static `public/docs/` path. */

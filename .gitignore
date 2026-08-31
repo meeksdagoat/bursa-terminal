@@ -35,6 +35,7 @@ yarn-error.log*
 
 # local ticker ingest dumps (regenerate via npm run ingest:universe)
 /data/raw/
+/data/historical/*.parquet
 /tmp-tv-scan.json
 
 # vercel

@@ -1,5 +1,6 @@
 import "server-only";
 
+import { klseStockViewUrl } from "./filing-id";
 import { ANNOUNCEMENTS_TTL_MS, getAnnouncementsFeed } from "./announcements";
 import { cached } from "./cache";
 import { getCorporateActionsPayload } from "./corporate-actions";
@@ -114,7 +115,9 @@ function form29bItems(items: MarketAnnouncement[]): MarketHubForm29B[] {
       institution: detectInstitution(item.title),
       action: detectAction(item.title),
       publishedAt: item.publishedAt,
-      url: item.url || item.bursaUrl,
+      url: item.url,
+      bursaUrl: item.bursaUrl,
+      pdfUrl: item.pdfUrl,
     }));
 
   if (live.length >= 10) return live;
@@ -216,7 +219,9 @@ function form29bSnapshot(): MarketHubForm29B[] {
         institution: seed.institution,
         action: seed.action,
         publishedAt: new Date(Date.now() - index * 45 * 60 * 1000).toISOString(),
-        url: "https://www.bursamalaysia.com/market_information/announcements/company_announcement",
+        url: klseStockViewUrl(entry.code),
+        bursaUrl: null,
+        pdfUrl: null,
       },
     ];
   });

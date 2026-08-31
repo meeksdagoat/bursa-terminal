@@ -1,8 +1,10 @@
 import type { NextRequest } from "next/server";
 import { cached } from "@/lib/cache";
 import type { HistoryPayload } from "@/lib/types";
+import { isQuantHubSymbol } from "@/lib/quant/asset-catalog";
+import { fetchAssetHistory } from "@/lib/quant/fetchAssetHistory";
+import { isUsTickerSymbol } from "@/constants/usTickers";
 import { isTrackedSymbol } from "@/lib/universe";
-import { fetchDailyCloses } from "@/lib/yahoo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,12 +15,33 @@ const MAX_SYMBOLS = 40;
 function parseSymbols(raw: string | null): string[] {
   const seen = new Set<string>();
   const symbols: string[] = [];
-  const benchmarkAllowlist = new Set(["^KLSE", "^GSPC"]);
+  const benchmarkAllowlist = new Set([
+    "^KLSE",
+    "^GSPC",
+    "QQQ",
+    "GC=F",
+    "XAUUSD=X",
+    "BZ=F",
+    "CL=F",
+    "KO=F",
+    "USDMYR=X",
+    "BTC-USD",
+    "SI=F",
+    "GLD",
+    "SLV",
+  ]);
 
   for (const token of (raw ?? "").split(",")) {
     const symbol = token.trim();
     if (!symbol || seen.has(symbol)) continue;
-    if (!isTrackedSymbol(symbol) && !benchmarkAllowlist.has(symbol)) continue;
+    if (
+      !isTrackedSymbol(symbol) &&
+      !benchmarkAllowlist.has(symbol) &&
+      !isQuantHubSymbol(symbol) &&
+      !isUsTickerSymbol(symbol)
+    ) {
+      continue;
+    }
     seen.add(symbol);
     symbols.push(symbol);
     if (symbols.length >= MAX_SYMBOLS) break;
@@ -58,15 +81,11 @@ export async function GET(request: NextRequest) {
 
       const results = await Promise.all(
         symbols.map(async (symbol) => {
-          try {
-            const points = await fetchDailyCloses(symbol, from);
-            return { symbol, points };
-          } catch (error) {
-            errors.push(
-              `${symbol}: ${error instanceof Error ? error.message : String(error)}`,
-            );
-            return { symbol, points: [] };
+          const result = await fetchAssetHistory(symbol, from);
+          if (result.hardError && result.points.length === 0) {
+            errors.push(`${symbol}: ${result.hardError}`);
           }
+          return { symbol, points: result.points };
         }),
       );
 

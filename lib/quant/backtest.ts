@@ -1,7 +1,20 @@
 /** Client-safe historical backtesting utilities. */
 
+import { generateCustomStrategySignals, resolveCustomRiskPct } from "./custom-strategy-engine";
+import { isSpotAccumulationStrategy, type CustomStrategy } from "./custom-strategy";
+import { isQuantCommoditySymbol } from "./asset-ticker-map";
+import {
+  backtestEvaluationBars,
+  backtestWarmupBars,
+  barKeyFromUnix,
+  barsPerTradingSession,
+  barsPerYear,
+  evaluationBarsFromCalendarDays,
+  isHighDensityTimeframe,
+  type BacktestTimeframe,
+} from "./backtest-timeframe";
 import { normalizeTradingDate, unixToDate } from "@/lib/quant/math";
-import type { DailyClose } from "@/lib/types";
+import type { BacktestHistoryBar, DailyClose } from "@/lib/types";
 
 export const BACKTEST_STRATEGIES = [
   { id: "rsi_mean_reversion_14", label: "RSI Mean-Reversion (14D / 30-70)" },
@@ -40,10 +53,33 @@ export const BACKTEST_TRADING_DAYS: Record<BacktestLookbackId, number> = {
 export type BacktestStrategyId = (typeof BACKTEST_STRATEGIES)[number]["id"];
 export type BacktestLookbackId = (typeof BACKTEST_LOOKBACKS)[number]["id"];
 
+export type BacktestSignalAction =
+  | "open_long"
+  | "close_long"
+  | "open_short"
+  | "close_short";
+
 export type BacktestSignal = {
   date: string;
   type: "buy" | "sell";
   price: number;
+  /** Explicit trade intent — inferred from type + position when omitted. */
+  action?: BacktestSignalAction;
+};
+
+export type BacktestTradeDirection = "LONG" | "SHORT";
+
+export type BacktestTradeRecord = {
+  id: number;
+  direction: BacktestTradeDirection;
+  entryDate: string;
+  entryPrice: number;
+  exitDate: string;
+  exitPrice: number;
+  pnlDollar: number;
+  pnlPct: number;
+  holdBars: number;
+  entryEquity: number;
 };
 
 export type BacktestEquityPoint = {
@@ -65,11 +101,17 @@ export type BacktestMetrics = {
   profitFactor: number;
   maxDrawdownPct: number;
   sharpeRatio: number;
+  executionMode?: "STANDARD" | "SPOT_ACCUMULATION";
+  buysExecutedCount?: number;
+  averageCostBasis?: number;
+  unrealizedPnlPct?: number;
+  totalUnitsHeld?: number;
 };
 
 export type BacktestResult = {
   equityCurve: BacktestEquityPoint[];
   signals: BacktestSignal[];
+  trades: BacktestTradeRecord[];
   metrics: BacktestMetrics;
   usedMockData: boolean;
 };
@@ -77,8 +119,11 @@ export type BacktestResult = {
 export type AlignedSeries = {
   dates: string[];
   closes: number[];
+  highs: number[];
+  lows: number[];
   benchmarkCloses: number[];
   sp500Closes: number[];
+  timeframe: BacktestTimeframe;
 };
 
 function hashSeed(input: string): number {
@@ -200,16 +245,20 @@ function attachSp500Series(aligned: AlignedSeries, sp500: DailyClose[], seed: nu
   const sorted = sortDailyCloses(sp500);
   const fallback = sorted.at(-1)?.close ?? 5200;
   if (sorted.length >= 20) {
+    const dayKeys = aligned.dates.map((date) =>
+      date.includes("T") ? date.slice(0, 10) : date,
+    );
     return {
       ...aligned,
-      sp500Closes: forwardFillOnDates(aligned.dates, sorted, fallback),
+      sp500Closes: forwardFillOnDates(dayKeys, sorted, fallback),
     };
   }
 
   const mock = generateMockCloses(aligned.dates.length, fallback, 0.00035, 0.012, seed + 211);
+  const dayKeys = aligned.dates.map((date) => (date.includes("T") ? date.slice(0, 10) : date));
   return {
     ...aligned,
-    sp500Closes: forwardFillOnDates(aligned.dates, mock, fallback),
+    sp500Closes: forwardFillOnDates(dayKeys, mock, fallback),
   };
 }
 
@@ -239,8 +288,11 @@ function alignWithForwardFill(stock: DailyClose[], benchmark: DailyClose[]): Ali
   return {
     dates,
     closes,
+    highs: closes,
+    lows: closes,
     benchmarkCloses,
     sp500Closes: forwardFillOnDates(dates, [], lastBench),
+    timeframe: "1D",
   };
 }
 
@@ -250,7 +302,7 @@ export function prepareBacktestData(input: {
   benchmarkPoints: DailyClose[];
   sp500Points: DailyClose[];
   lookback: BacktestLookbackId;
-}): { aligned: AlignedSeries; usedMockData: boolean } {
+}): { aligned: AlignedSeries | null; usedMockData: boolean } {
   const fetchTarget = BACKTEST_FETCH_DAYS[input.lookback];
   const seed = hashSeed(`${input.symbol}:${input.lookback}`);
   const stockStart =
@@ -258,22 +310,36 @@ export function prepareBacktestData(input: {
     sortDailyCloses(input.stockPoints).at(0)?.close ??
     10;
 
+  const commodity = isQuantCommoditySymbol(input.symbol);
+  const minStockBars = commodity ? 20 : 30;
+  const minAlignedBars = commodity ? 20 : 30;
+
   let usedMockData = false;
   let stock = sortDailyCloses(input.stockPoints);
   let benchmark = sortDailyCloses(input.benchmarkPoints);
   let sp500 = sortDailyCloses(input.sp500Points);
 
-  if (stock.length < 30) {
-    stock = generateMockCloses(fetchTarget, stockStart, 0.00025, 0.018, seed);
-    benchmark = generateMockCloses(fetchTarget, 1520, 0.00012, 0.011, seed + 99);
-    sp500 = generateMockCloses(fetchTarget, 5200, 0.00035, 0.012, seed + 199);
-    usedMockData = true;
+  if (stock.length < minStockBars) {
+    if (commodity) {
+      if (stock.length === 0) {
+        return { aligned: null, usedMockData: false };
+      }
+    } else {
+      stock = generateMockCloses(fetchTarget, stockStart, 0.00025, 0.018, seed);
+      benchmark = generateMockCloses(fetchTarget, 1520, 0.00012, 0.011, seed + 99);
+      sp500 = generateMockCloses(fetchTarget, 5200, 0.00035, 0.012, seed + 199);
+      usedMockData = true;
+    }
   } else if (benchmark.length < 20) {
     benchmark = deriveBenchmarkFromStock(stock, seed);
   }
 
   let aligned = alignWithForwardFill(stock, benchmark);
-  if (!aligned || aligned.dates.length < 30) {
+  if (!aligned || aligned.dates.length < minAlignedBars) {
+    if (commodity) {
+      return { aligned, usedMockData: false };
+    }
+
     stock = generateMockCloses(fetchTarget, stockStart, 0.00025, 0.018, seed + 1);
     benchmark = generateMockCloses(fetchTarget, 1520, 0.00012, 0.011, seed + 100);
     sp500 = generateMockCloses(fetchTarget, 5200, 0.00035, 0.012, seed + 200);
@@ -289,12 +355,145 @@ export function prepareBacktestData(input: {
     aligned = {
       dates: aligned.dates.slice(start),
       closes: aligned.closes.slice(start),
+      highs: aligned.highs.slice(start),
+      lows: aligned.lows.slice(start),
       benchmarkCloses: aligned.benchmarkCloses.slice(start),
       sp500Closes: aligned.sp500Closes.slice(start),
+      timeframe: aligned.timeframe,
     };
   }
 
   return { aligned, usedMockData };
+}
+
+function sortBacktestBars(bars: BacktestHistoryBar[]): BacktestHistoryBar[] {
+  return [...bars]
+    .filter(
+      (bar) =>
+        Number.isFinite(bar.close) &&
+        bar.close > 0 &&
+        Number.isFinite(bar.high) &&
+        Number.isFinite(bar.low),
+    )
+    .sort((left, right) => left.time - right.time);
+}
+
+function alignBarSeriesWithDailyBenchmarks(
+  bars: BacktestHistoryBar[],
+  benchmark: DailyClose[],
+  sp500: DailyClose[],
+  timeframe: BacktestTimeframe,
+): AlignedSeries | null {
+  const sorted = sortBacktestBars(bars);
+  if (sorted.length === 0) return null;
+
+  const benchSorted = sortDailyCloses(benchmark);
+  const benchMap = closesToMap(benchSorted);
+  let lastBench =
+    benchSorted.find((point) => Number.isFinite(point.close))?.close ?? sorted[0]!.close;
+
+  const dates: string[] = [];
+  const closes: number[] = [];
+  const highs: number[] = [];
+  const lows: number[] = [];
+  const benchmarkCloses: number[] = [];
+
+  for (const bar of sorted) {
+    const dayKey = normalizeTradingDate(unixToDate(bar.time));
+    if (benchMap.has(dayKey)) lastBench = benchMap.get(dayKey)!;
+    dates.push(barKeyFromUnix(bar.time, timeframe));
+    closes.push(bar.close);
+    highs.push(bar.high);
+    lows.push(bar.low);
+    benchmarkCloses.push(lastBench);
+  }
+
+  if (dates.length < 20) return null;
+
+  return {
+    dates,
+    closes,
+    highs,
+    lows,
+    benchmarkCloses,
+    sp500Closes: forwardFillOnDates(
+      dates.map((date) => (date.includes("T") ? date.slice(0, 10) : date)),
+      sp500,
+      sp500.at(-1)?.close ?? lastBench,
+    ),
+    timeframe,
+  };
+}
+
+export function prepareBacktestBarData(input: {
+  symbol: string;
+  bars: BacktestHistoryBar[];
+  benchmarkPoints: DailyClose[];
+  sp500Points: DailyClose[];
+  lookback: BacktestLookbackId;
+  timeframe: BacktestTimeframe;
+  calendarDaysCap?: number;
+  evaluationCalendarDays?: number;
+}): { aligned: AlignedSeries | null; usedMockData: boolean } {
+  const seed = hashSeed(`${input.symbol}:${input.lookback}:${input.timeframe}`);
+  const sortedBars = sortBacktestBars(input.bars);
+  const commodity = isQuantCommoditySymbol(input.symbol);
+  const minBars = commodity ? 20 : 30;
+
+  if (sortedBars.length < minBars) {
+    if (commodity && sortedBars.length === 0) {
+      return { aligned: null, usedMockData: false };
+    }
+    return prepareBacktestData({
+      symbol: input.symbol,
+      stockPoints: sortedBars.map((bar) => ({ time: bar.time, close: bar.close })),
+      benchmarkPoints: input.benchmarkPoints,
+      sp500Points: input.sp500Points,
+      lookback: input.lookback,
+    });
+  }
+
+  let aligned = alignBarSeriesWithDailyBenchmarks(
+    sortedBars,
+    input.benchmarkPoints,
+    input.sp500Points,
+    input.timeframe,
+  );
+
+  if (!aligned || aligned.dates.length < minBars) {
+    if (commodity) return { aligned, usedMockData: false };
+    return prepareBacktestData({
+      symbol: input.symbol,
+      stockPoints: sortedBars.map((bar) => ({ time: bar.time, close: bar.close })),
+      benchmarkPoints: input.benchmarkPoints,
+      sp500Points: input.sp500Points,
+      lookback: input.lookback,
+    });
+  }
+
+  aligned = attachSp500Series(aligned, sortDailyCloses(input.sp500Points), seed);
+
+  const evaluationDays =
+    input.evaluationCalendarDays ?? input.calendarDaysCap ?? null;
+  const evaluationBars =
+    evaluationDays != null
+      ? evaluationBarsFromCalendarDays(evaluationDays, input.timeframe)
+      : backtestEvaluationBars(input.lookback, input.timeframe);
+  const maxBars = evaluationBars + backtestWarmupBars(input.timeframe);
+  if (aligned.dates.length > maxBars) {
+    const start = aligned.dates.length - maxBars;
+    aligned = {
+      dates: aligned.dates.slice(start),
+      closes: aligned.closes.slice(start),
+      highs: aligned.highs.slice(start),
+      lows: aligned.lows.slice(start),
+      benchmarkCloses: aligned.benchmarkCloses.slice(start),
+      sp500Closes: aligned.sp500Closes.slice(start),
+      timeframe: aligned.timeframe,
+    };
+  }
+
+  return { aligned, usedMockData: false };
 }
 
 function sma(values: number[], period: number): (number | null)[] {
@@ -693,15 +892,78 @@ function maxDrawdownPct(equity: number[]): number {
   return maxDd * 100;
 }
 
-function sharpeRatio(dailyReturns: number[]): number {
-  if (dailyReturns.length < 5) return 0;
-  const mean = dailyReturns.reduce((sum, value) => sum + value, 0) / dailyReturns.length;
+function sharpeRatio(periodReturns: number[], annualizationFactor = 252): number {
+  if (periodReturns.length < 5) return 0;
+  const mean = periodReturns.reduce((sum, value) => sum + value, 0) / periodReturns.length;
   const variance =
-    dailyReturns.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
-    Math.max(1, dailyReturns.length - 1);
+    periodReturns.reduce((sum, value) => sum + (value - mean) ** 2, 0) /
+    Math.max(1, periodReturns.length - 1);
   const std = Math.sqrt(variance);
   if (std === 0) return 0;
-  return (mean / std) * Math.sqrt(252);
+  return (mean / std) * Math.sqrt(annualizationFactor);
+}
+
+function resolveStopExitPrice(input: {
+  direction: BacktestTradeDirection;
+  entryPrice: number;
+  stopLossPct: number;
+  takeProfitPct: number;
+  close: number;
+  high: number;
+  low: number;
+}): { triggered: boolean; price: number; reason: "stop" | "take" } | null {
+  const { direction, entryPrice, stopLossPct, takeProfitPct, close, high, low } = input;
+  if (entryPrice <= 0) return null;
+
+  if (direction === "LONG") {
+    if (stopLossPct > 0) {
+      const stopPrice = entryPrice * (1 - stopLossPct / 100);
+      if (low <= stopPrice) {
+        return { triggered: true, price: stopPrice, reason: "stop" };
+      }
+    }
+
+    if (takeProfitPct > 0) {
+      const takePrice = entryPrice * (1 + takeProfitPct / 100);
+      if (high >= takePrice) {
+        return { triggered: true, price: takePrice, reason: "take" };
+      }
+    }
+
+    const movePct = ((close - entryPrice) / entryPrice) * 100;
+    if (stopLossPct > 0 && movePct <= -stopLossPct) {
+      return { triggered: true, price: close, reason: "stop" };
+    }
+    if (takeProfitPct > 0 && movePct >= takeProfitPct) {
+      return { triggered: true, price: close, reason: "take" };
+    }
+
+    return null;
+  }
+
+  if (stopLossPct > 0) {
+    const stopPrice = entryPrice * (1 + stopLossPct / 100);
+    if (high >= stopPrice) {
+      return { triggered: true, price: stopPrice, reason: "stop" };
+    }
+  }
+
+  if (takeProfitPct > 0) {
+    const takePrice = entryPrice * (1 - takeProfitPct / 100);
+    if (low <= takePrice) {
+      return { triggered: true, price: takePrice, reason: "take" };
+    }
+  }
+
+  const movePct = ((entryPrice - close) / entryPrice) * 100;
+  if (stopLossPct > 0 && movePct <= -stopLossPct) {
+    return { triggered: true, price: close, reason: "stop" };
+  }
+  if (takeProfitPct > 0 && movePct >= takeProfitPct) {
+    return { triggered: true, price: close, reason: "take" };
+  }
+
+  return null;
 }
 
 function normalizeWindowCurve(
@@ -729,40 +991,123 @@ function normalizeWindowCurve(
   }));
 }
 
+function pushTradeRecord(
+  trades: BacktestTradeRecord[],
+  input: {
+    direction: BacktestTradeDirection;
+    entryDate: string;
+    entryPrice: number;
+    exitDate: string;
+    exitPrice: number;
+    pnlDollar: number;
+    entryEquity: number;
+    entryIndex: number;
+    exitIndex: number;
+  },
+): void {
+  const rawMovePct =
+    input.entryPrice > 0
+      ? ((input.exitPrice - input.entryPrice) / input.entryPrice) * 100
+      : 0;
+  const pnlPct =
+    input.direction === "SHORT" ? -rawMovePct : rawMovePct;
+  trades.push({
+    id: trades.length + 1,
+    direction: input.direction,
+    entryDate: input.entryDate,
+    entryPrice: input.entryPrice,
+    exitDate: input.exitDate,
+    exitPrice: input.exitPrice,
+    pnlDollar: input.pnlDollar,
+    pnlPct,
+    holdBars: Math.max(0, input.exitIndex - input.entryIndex),
+    entryEquity: input.entryEquity,
+  });
+}
+
 function executeSell(input: {
   shares: number;
   price: number;
   entryEquity: number;
   tradePnls: number[];
-}): { cash: number; shares: number; inPosition: false } {
+}): { cash: number; shares: number; inPosition: false; pnlDollar: number } {
   const cash = input.shares * input.price * (1 - TRADING_FEE_RATE);
-  input.tradePnls.push(cash - input.entryEquity);
-  return { cash, shares: 0, inPosition: false };
+  const pnlDollar = cash - input.entryEquity;
+  input.tradePnls.push(pnlDollar);
+  return { cash, shares: 0, inPosition: false, pnlDollar };
 }
 
-export function runBacktest(input: {
+function executeCloseShort(input: {
+  shares: number;
+  price: number;
+  entryPrice: number;
+  entryEquity: number;
+  tradePnls: number[];
+}): { cash: number; shares: number; inPosition: false; pnlDollar: number } {
+  const openFee = input.shares * input.entryPrice * TRADING_FEE_RATE;
+  const closeFee = input.shares * input.price * TRADING_FEE_RATE;
+  const pnlDollar =
+    input.shares * (input.entryPrice - input.price) - openFee - closeFee;
+  const cash = input.entryEquity + pnlDollar;
+  input.tradePnls.push(pnlDollar);
+  return { cash, shares: 0, inPosition: false, pnlDollar };
+}
+
+function resolveSignalAction(
+  signal: BacktestSignal,
+  positionSide: BacktestTradeDirection | null,
+): BacktestSignalAction | null {
+  if (signal.action) return signal.action;
+  if (signal.type === "buy") {
+    return positionSide === "SHORT" ? "close_short" : "open_long";
+  }
+  if (signal.type === "sell") {
+    return positionSide === "LONG" ? "close_long" : "open_short";
+  }
+  return null;
+}
+
+function positionEquity(input: {
+  positionSide: BacktestTradeDirection;
+  cash: number;
+  shares: number;
+  entryPrice: number;
+  price: number;
+}): number {
+  if (input.positionSide === "LONG") {
+    return input.cash + input.shares * input.price;
+  }
+  return input.cash + input.shares * (input.entryPrice - input.price);
+}
+
+function runSpotAccumulationBacktest(input: {
   aligned: AlignedSeries;
   lookback: BacktestLookbackId;
-  strategy: BacktestStrategyId;
+  customStrategy: CustomStrategy;
   initialCapital: number;
   stopLossPct: number;
   takeProfitPct: number;
   usedMockData?: boolean;
 }): BacktestResult {
-  const { aligned, lookback, strategy, initialCapital, stopLossPct, takeProfitPct } = input;
-  const { dates, closes, benchmarkCloses, sp500Closes } = aligned;
-  const signalEvents = generateSignals(strategy, closes, dates);
+  const { aligned, lookback, customStrategy, initialCapital, stopLossPct, takeProfitPct } = input;
+  const { dates, closes, highs, lows, benchmarkCloses, sp500Closes, timeframe } = aligned;
+  const risk = resolveCustomRiskPct(customStrategy, stopLossPct, takeProfitPct);
+  const buyPct = Math.min(100, Math.max(1, customStrategy.spotBuyPctOfCash ?? 25)) / 100;
+  const buySignals = generateCustomStrategySignals(customStrategy, closes, dates);
+  const buyDates = new Set(buySignals.map((signal) => signal.date));
 
   let cash = initialCapital;
-  let shares = 0;
-  let entryPrice = 0;
-  let entryEquity = initialCapital;
-  let inPosition = false;
+  let totalUnits = 0;
+  let totalInvested = 0;
+  let buysExecutedCount = 0;
+  let liquidations = 0;
 
   const fullCurve: BacktestEquityPoint[] = [];
-  const tradePnls: number[] = [];
   const dailyReturns: number[] = [];
   const executedSignals: BacktestSignal[] = [];
+  const completedTrades: BacktestTradeRecord[] = [];
+  let cycleStartDate: string | null = null;
+  let cycleStartIndex = 0;
 
   const benchStart = benchmarkCloses[0] ?? 1;
   const stockStart = closes[0] ?? 1;
@@ -772,44 +1117,61 @@ export function runBacktest(input: {
   for (let index = 0; index < dates.length; index += 1) {
     const date = dates[index]!;
     const price = closes[index]!;
+    const high = highs[index] ?? price;
+    const low = lows[index] ?? price;
     const benchPrice = benchmarkCloses[index]!;
-    const pending = signalEvents.find((signal) => signal.date === date);
+    const averageCostBasis = totalUnits > 0 ? totalInvested / totalUnits : 0;
 
-    if (inPosition) {
-      const movePct = ((price - entryPrice) / entryPrice) * 100;
-      if (stopLossPct > 0 && movePct <= -stopLossPct) {
-        const sold = executeSell({ shares, price, entryEquity, tradePnls });
-        cash = sold.cash;
-        shares = sold.shares;
-        inPosition = sold.inPosition;
-        executedSignals.push({ date, type: "sell", price });
-      } else if (takeProfitPct > 0 && movePct >= takeProfitPct) {
-        const sold = executeSell({ shares, price, entryEquity, tradePnls });
-        cash = sold.cash;
-        shares = sold.shares;
-        inPosition = sold.inPosition;
-        executedSignals.push({ date, type: "sell", price });
+    if (totalUnits > 0 && averageCostBasis > 0) {
+      const stopExit = resolveStopExitPrice({
+        direction: "LONG",
+        entryPrice: averageCostBasis,
+        stopLossPct: risk.stopLossPct,
+        takeProfitPct: risk.takeProfitPct,
+        close: price,
+        high,
+        low,
+      });
+      if (stopExit) {
+        const proceeds = totalUnits * stopExit.price * (1 - TRADING_FEE_RATE);
+        const pnlDollar = proceeds - totalInvested;
+        pushTradeRecord(completedTrades, {
+          direction: "LONG",
+          entryDate: cycleStartDate ?? date,
+          entryPrice: averageCostBasis,
+          exitDate: date,
+          exitPrice: stopExit.price,
+          pnlDollar,
+          entryEquity: totalInvested,
+          entryIndex: cycleStartIndex,
+          exitIndex: index,
+        });
+        cash += proceeds;
+        totalUnits = 0;
+        totalInvested = 0;
+        cycleStartDate = null;
+        liquidations += 1;
+        executedSignals.push({ date, type: "sell", price: stopExit.price });
       }
     }
 
-    if (pending) {
-      if (pending.type === "buy" && !inPosition && cash > 0) {
-        entryEquity = cash;
-        shares = (cash * (1 - TRADING_FEE_RATE)) / price;
-        cash = 0;
-        entryPrice = price;
-        inPosition = true;
-        executedSignals.push(pending);
-      } else if (pending.type === "sell" && inPosition) {
-        const sold = executeSell({ shares, price, entryEquity, tradePnls });
-        cash = sold.cash;
-        shares = sold.shares;
-        inPosition = sold.inPosition;
-        executedSignals.push(pending);
+    if (buyDates.has(date) && cash > 0) {
+      const deployCash = cash * buyPct;
+      if (deployCash > 0) {
+        if (cycleStartDate == null) {
+          cycleStartDate = date;
+          cycleStartIndex = index;
+        }
+        const units = (deployCash * (1 - TRADING_FEE_RATE)) / price;
+        totalUnits += units;
+        totalInvested += deployCash;
+        cash -= deployCash;
+        buysExecutedCount += 1;
+        executedSignals.push({ date, type: "buy", price });
       }
     }
 
-    const strategyEquity = cash + shares * price;
+    const strategyEquity = cash + totalUnits * price;
     const benchmarkEquity = initialCapital * (benchPrice / benchStart);
     const buyHoldEquity = initialCapital * (price / stockStart);
     const sp500Price = sp500Closes[index] ?? sp500Start;
@@ -830,10 +1192,11 @@ export function runBacktest(input: {
     prevEquity = strategyEquity;
   }
 
-  const windowDays = BACKTEST_TRADING_DAYS[lookback];
-  const windowStart = Math.max(0, fullCurve.length - windowDays);
+  const windowBars = backtestEvaluationBars(lookback, timeframe);
+  const windowStart = Math.max(0, fullCurve.length - windowBars);
   const equityCurve = normalizeWindowCurve(fullCurve, windowStart, initialCapital);
-  const windowReturns = dailyReturns.slice(Math.max(0, dailyReturns.length - windowDays));
+  const windowReturns = dailyReturns.slice(Math.max(0, dailyReturns.length - windowBars));
+  const annualization = barsPerYear(timeframe);
 
   const sp500WindowStart = aligned.sp500Closes[windowStart] ?? aligned.sp500Closes[0] ?? 1;
   const sp500End = aligned.sp500Closes.at(-1) ?? sp500WindowStart;
@@ -842,6 +1205,283 @@ export function runBacktest(input: {
 
   const windowSignals = executedSignals.filter(
     (signal) => equityCurve.some((point) => point.date === signal.date),
+  );
+  const windowTrades = completedTrades.filter((trade) =>
+    equityCurve.some((point) => point.date === trade.exitDate),
+  );
+  const windowBuys = windowSignals.filter((signal) => signal.type === "buy").length;
+  const spotWins = windowTrades.filter((trade) => trade.pnlDollar > 0);
+  const spotLosses = windowTrades.filter((trade) => trade.pnlDollar < 0);
+  const spotGrossProfit = spotWins.reduce((sum, trade) => sum + trade.pnlDollar, 0);
+  const spotGrossLoss = Math.abs(spotLosses.reduce((sum, trade) => sum + trade.pnlDollar, 0));
+
+  const finalStrategy = equityCurve.at(-1)?.strategy ?? initialCapital;
+  const finalBenchmark = equityCurve.at(-1)?.benchmark ?? initialCapital;
+  const finalBuyHold = equityCurve.at(-1)?.buyHold ?? initialCapital;
+  const lastPrice = closes.at(-1) ?? 0;
+  const finalAcb = totalUnits > 0 ? totalInvested / totalUnits : 0;
+  const unrealizedPnlPct =
+    totalUnits > 0 && finalAcb > 0 ? ((lastPrice - finalAcb) / finalAcb) * 100 : 0;
+
+  return {
+    equityCurve,
+    signals: windowSignals,
+    trades: windowTrades,
+    usedMockData: input.usedMockData ?? false,
+    metrics: {
+      totalReturnPct: ((finalStrategy - initialCapital) / initialCapital) * 100,
+      benchmarkReturnPct: ((finalBenchmark - initialCapital) / initialCapital) * 100,
+      buyHoldReturnPct: ((finalBuyHold - initialCapital) / initialCapital) * 100,
+      sp500ReturnPct,
+      winRatePct: windowTrades.length ? (spotWins.length / windowTrades.length) * 100 : 0,
+      totalTrades: liquidations,
+      profitFactor:
+        spotGrossLoss > 0
+          ? spotGrossProfit / spotGrossLoss
+          : spotGrossProfit > 0
+            ? 999
+            : 0,
+      maxDrawdownPct: maxDrawdownPct(equityCurve.map((point) => point.strategy)),
+      sharpeRatio: sharpeRatio(windowReturns, annualization),
+      executionMode: "SPOT_ACCUMULATION",
+      buysExecutedCount: windowBuys,
+      averageCostBasis: finalAcb,
+      unrealizedPnlPct,
+      totalUnitsHeld: totalUnits,
+    },
+  };
+}
+
+export function runBacktest(input: {
+  aligned: AlignedSeries;
+  lookback: BacktestLookbackId;
+  strategy: BacktestStrategyId;
+  customStrategy?: CustomStrategy | null;
+  initialCapital: number;
+  stopLossPct: number;
+  takeProfitPct: number;
+  usedMockData?: boolean;
+  /** Precomputed signals — reserved for future server-side overrides. */
+  overrideSignals?: BacktestSignal[] | null;
+}): BacktestResult {
+  if (input.customStrategy && isSpotAccumulationStrategy(input.customStrategy)) {
+    return runSpotAccumulationBacktest({
+      aligned: input.aligned,
+      lookback: input.lookback,
+      customStrategy: input.customStrategy,
+      initialCapital: input.initialCapital,
+      stopLossPct: input.stopLossPct,
+      takeProfitPct: input.takeProfitPct,
+      usedMockData: input.usedMockData,
+    });
+  }
+
+  const { aligned, lookback, strategy, customStrategy, initialCapital, stopLossPct, takeProfitPct } =
+    input;
+  const { dates, closes, highs, lows, benchmarkCloses, sp500Closes, timeframe } = aligned;
+  const risk = resolveCustomRiskPct(customStrategy, stopLossPct, takeProfitPct);
+  const signalEvents = input.overrideSignals
+    ? input.overrideSignals
+    : customStrategy
+      ? generateCustomStrategySignals(customStrategy, closes, dates)
+      : generateSignals(strategy, closes, dates);
+
+  let cash = initialCapital;
+  let shares = 0;
+  let entryPrice = 0;
+  let entryEquity = initialCapital;
+  let entryDate = "";
+  let entryIndex = 0;
+  let inPosition = false;
+  let positionSide: BacktestTradeDirection | null = null;
+
+  const fullCurve: BacktestEquityPoint[] = [];
+  const tradePnls: number[] = [];
+  const dailyReturns: number[] = [];
+  const executedSignals: BacktestSignal[] = [];
+  const completedTrades: BacktestTradeRecord[] = [];
+
+  const benchStart = benchmarkCloses[0] ?? 1;
+  const stockStart = closes[0] ?? 1;
+  const sp500Start = sp500Closes[0] ?? 1;
+  let prevEquity = initialCapital;
+
+  for (let index = 0; index < dates.length; index += 1) {
+    const date = dates[index]!;
+    const price = closes[index]!;
+    const high = highs[index] ?? price;
+    const low = lows[index] ?? price;
+    const benchPrice = benchmarkCloses[index]!;
+    const pendingSignals = signalEvents.filter((signal) => signal.date === date);
+
+    if (inPosition && positionSide) {
+      const stopExit = resolveStopExitPrice({
+        direction: positionSide,
+        entryPrice,
+        stopLossPct: risk.stopLossPct,
+        takeProfitPct: risk.takeProfitPct,
+        close: price,
+        high,
+        low,
+      });
+      if (stopExit) {
+        const closingSide = positionSide;
+        if (positionSide === "LONG") {
+          const sold = executeSell({ shares, price: stopExit.price, entryEquity, tradePnls });
+          pushTradeRecord(completedTrades, {
+            direction: "LONG",
+            entryDate,
+            entryPrice,
+            exitDate: date,
+            exitPrice: stopExit.price,
+            pnlDollar: sold.pnlDollar,
+            entryEquity,
+            entryIndex,
+            exitIndex: index,
+          });
+          cash = sold.cash;
+          shares = sold.shares;
+          inPosition = sold.inPosition;
+        } else {
+          const closed = executeCloseShort({
+            shares,
+            price: stopExit.price,
+            entryPrice,
+            entryEquity,
+            tradePnls,
+          });
+          pushTradeRecord(completedTrades, {
+            direction: "SHORT",
+            entryDate,
+            entryPrice,
+            exitDate: date,
+            exitPrice: stopExit.price,
+            pnlDollar: closed.pnlDollar,
+            entryEquity,
+            entryIndex,
+            exitIndex: index,
+          });
+          cash = closed.cash;
+          shares = closed.shares;
+          inPosition = closed.inPosition;
+        }
+        positionSide = null;
+        executedSignals.push({
+          date,
+          type: closingSide === "LONG" ? "sell" : "buy",
+          price: stopExit.price,
+          action: closingSide === "LONG" ? "close_long" : "close_short",
+        });
+      }
+    }
+
+    for (const pending of pendingSignals) {
+      const action = resolveSignalAction(pending, positionSide);
+
+      if (action === "open_long" && !inPosition && cash > 0) {
+        entryEquity = cash;
+        shares = (cash * (1 - TRADING_FEE_RATE)) / price;
+        cash = 0;
+        entryPrice = price;
+        entryDate = date;
+        entryIndex = index;
+        inPosition = true;
+        positionSide = "LONG";
+        executedSignals.push({ ...pending, action: "open_long" });
+      } else if (action === "open_short" && !inPosition && cash > 0) {
+        entryEquity = cash;
+        shares = (cash * (1 - TRADING_FEE_RATE)) / price;
+        cash = entryEquity;
+        entryPrice = price;
+        entryDate = date;
+        entryIndex = index;
+        inPosition = true;
+        positionSide = "SHORT";
+        executedSignals.push({ ...pending, action: "open_short" });
+      } else if (action === "close_long" && inPosition && positionSide === "LONG") {
+        const sold = executeSell({ shares, price, entryEquity, tradePnls });
+        pushTradeRecord(completedTrades, {
+          direction: "LONG",
+          entryDate,
+          entryPrice,
+          exitDate: date,
+          exitPrice: price,
+          pnlDollar: sold.pnlDollar,
+          entryEquity,
+          entryIndex,
+          exitIndex: index,
+        });
+        cash = sold.cash;
+        shares = sold.shares;
+        inPosition = sold.inPosition;
+        positionSide = null;
+        executedSignals.push({ ...pending, action: "close_long" });
+      } else if (action === "close_short" && inPosition && positionSide === "SHORT") {
+        const closed = executeCloseShort({
+          shares,
+          price,
+          entryPrice,
+          entryEquity,
+          tradePnls,
+        });
+        pushTradeRecord(completedTrades, {
+          direction: "SHORT",
+          entryDate,
+          entryPrice,
+          exitDate: date,
+          exitPrice: price,
+          pnlDollar: closed.pnlDollar,
+          entryEquity,
+          entryIndex,
+          exitIndex: index,
+        });
+        cash = closed.cash;
+        shares = closed.shares;
+        inPosition = closed.inPosition;
+        positionSide = null;
+        executedSignals.push({ ...pending, action: "close_short" });
+      }
+    }
+
+    const strategyEquity = inPosition && positionSide
+      ? positionEquity({ positionSide, cash, shares, entryPrice, price })
+      : cash;
+    const benchmarkEquity = initialCapital * (benchPrice / benchStart);
+    const buyHoldEquity = initialCapital * (price / stockStart);
+    const sp500Price = sp500Closes[index] ?? sp500Start;
+    const sp500Equity = initialCapital * (sp500Price / sp500Start);
+
+    fullCurve.push({
+      date,
+      strategy: strategyEquity,
+      benchmark: benchmarkEquity,
+      buyHold: buyHoldEquity,
+      sp500Equity,
+      cash,
+    });
+
+    if (index > 0 && prevEquity > 0) {
+      dailyReturns.push((strategyEquity - prevEquity) / prevEquity);
+    }
+    prevEquity = strategyEquity;
+  }
+
+  const windowBars = backtestEvaluationBars(lookback, timeframe);
+  const windowStart = Math.max(0, fullCurve.length - windowBars);
+  const equityCurve = normalizeWindowCurve(fullCurve, windowStart, initialCapital);
+  const windowReturns = dailyReturns.slice(Math.max(0, dailyReturns.length - windowBars));
+  const annualization = barsPerYear(timeframe);
+
+  const sp500WindowStart = aligned.sp500Closes[windowStart] ?? aligned.sp500Closes[0] ?? 1;
+  const sp500End = aligned.sp500Closes.at(-1) ?? sp500WindowStart;
+  const sp500ReturnPct =
+    sp500WindowStart > 0 ? ((sp500End - sp500WindowStart) / sp500WindowStart) * 100 : 0;
+
+  const windowSignals = executedSignals.filter(
+    (signal) => equityCurve.some((point) => point.date === signal.date),
+  );
+  const windowTrades = completedTrades.filter((trade) =>
+    equityCurve.some((point) => point.date === trade.exitDate),
   );
 
   const finalStrategy = equityCurve.at(-1)?.strategy ?? initialCapital;
@@ -856,6 +1496,7 @@ export function runBacktest(input: {
   return {
     equityCurve,
     signals: windowSignals,
+    trades: windowTrades,
     usedMockData: input.usedMockData ?? false,
     metrics: {
       totalReturnPct: ((finalStrategy - initialCapital) / initialCapital) * 100,
@@ -866,7 +1507,8 @@ export function runBacktest(input: {
       totalTrades: tradePnls.length,
       profitFactor: grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 999 : 0,
       maxDrawdownPct: maxDrawdownPct(equityCurve.map((point) => point.strategy)),
-      sharpeRatio: sharpeRatio(windowReturns),
+      sharpeRatio: sharpeRatio(windowReturns, annualization),
+      executionMode: "STANDARD",
     },
   };
 }

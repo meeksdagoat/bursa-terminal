@@ -2,21 +2,27 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { TargetSymbolCombobox } from "@/components/quant-hub/TargetSymbolCombobox";
-import { formatPct, formatPrice } from "@/lib/format";
+import { QuantAssetSelector } from "@/components/quant/QuantAssetSelector";
+import { formatPct } from "@/lib/format";
 import {
+  DEFAULT_QUANT_ASSET_SYMBOL,
+  formatAssetSpotPrice,
+  resolveQuantAsset,
+} from "@/lib/quant/asset-catalog";
+import {
+  MONTE_CARLO_DRIFT_MODES,
   MONTE_CARLO_HORIZON_OPTIONS,
   MONTE_CARLO_RUN_OPTIONS,
-  annualizeMu,
-  annualizeSigma,
-  estimateGbmParameters,
+  estimateGbmParametersForSymbol,
+  isMonteCarloIndexSymbol,
+  monteCarloHistoryCalendarDays,
   runMonteCarloSimulation,
   type MonteCarloChartRow,
+  type MonteCarloDriftMode,
   type MonteCarloHorizon,
   type MonteCarloRunCount,
   type MonteCarloSimulationResult,
 } from "@/lib/quant/monte-carlo";
-import { formatStockPriceLabel } from "@/lib/stock-names";
 import type { HistoryPayload } from "@/lib/types";
 
 const PANEL = "rounded border border-neutral-800 bg-[#0d0d0d] p-3";
@@ -31,7 +37,8 @@ function historyFromDate(days: number): string {
 }
 
 async function fetchHistory(symbol: string): Promise<number[]> {
-  const from = historyFromDate(504);
+  const calendarDays = monteCarloHistoryCalendarDays(symbol);
+  const from = historyFromDate(calendarDays);
   const response = await fetch(
     `/api/history?symbols=${encodeURIComponent(symbol)}&from=${from}`,
   );
@@ -61,9 +68,11 @@ type MonteCarloTabProps = {
 };
 
 export function MonteCarloTab({ symbol, onSymbolChange }: MonteCarloTabProps) {
+  const asset = resolveQuantAsset(symbol) ?? resolveQuantAsset(DEFAULT_QUANT_ASSET_SYMBOL)!;
   const [horizon, setHorizon] = useState<MonteCarloHorizon>(30);
   const [runs, setRuns] = useState<MonteCarloRunCount>(250);
   const [closes, setCloses] = useState<number[]>([]);
+  const [driftMode, setDriftMode] = useState<MonteCarloDriftMode>("cagr_cap");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -78,6 +87,10 @@ export function MonteCarloTab({ symbol, onSymbolChange }: MonteCarloTabProps) {
         setCloses(next);
         if (next.length < 11) {
           setError("Insufficient price history for drift/volatility estimate");
+        } else if (isMonteCarloIndexSymbol(symbol) && next.length < 756) {
+          setError(
+            `Index history has ${next.length} bars — prefer ≥756 trading days (~3Y) for stable μ/σ.`,
+          );
         }
       })
       .catch((cause) => {
@@ -94,7 +107,10 @@ export function MonteCarloTab({ symbol, onSymbolChange }: MonteCarloTabProps) {
     };
   }, [symbol]);
 
-  const autoParams = useMemo(() => estimateGbmParameters(closes), [closes]);
+  const autoParams = useMemo(
+    () => estimateGbmParametersForSymbol(symbol, closes, driftMode),
+    [symbol, closes, driftMode],
+  );
   const startPrice = closes.at(-1) ?? null;
   const muDaily = autoParams?.muDaily ?? 0;
   const sigmaDaily = autoParams?.sigmaDaily ?? 0.02;
@@ -111,16 +127,12 @@ export function MonteCarloTab({ symbol, onSymbolChange }: MonteCarloTabProps) {
   }, [autoParams, horizon, muDaily, runs, sigmaDaily, startPrice]);
 
   const sampleKeys = simulation?.samplePathIndices.map((index) => `sample_${index}`) ?? [];
-  const priceLabel = formatStockPriceLabel(symbol);
 
   return (
     <section className={`flex flex-col gap-3 ${PANEL}`}>
       <div className="flex flex-wrap items-end gap-2 border-b border-neutral-800 pb-2">
-        <div className="min-w-[180px] flex-1">
-          <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-neutral-500">
-            Target
-          </span>
-          <TargetSymbolCombobox value={symbol} onChange={onSymbolChange} />
+        <div className="min-w-[220px] flex-1">
+          <QuantAssetSelector value={symbol} onChange={onSymbolChange} />
         </div>
 
         <fieldset className="flex flex-wrap items-center gap-1.5">
@@ -158,13 +170,50 @@ export function MonteCarloTab({ symbol, onSymbolChange }: MonteCarloTabProps) {
         </label>
 
         {autoParams ? (
-          <span className="inline-flex items-center gap-2 rounded border border-neutral-800 bg-[#111111] px-2 py-1 font-mono text-[10px] text-neutral-300">
-            <span>μ: {(annualizeMu(muDaily) * 100).toFixed(2)}%</span>
+          <span className="inline-flex flex-wrap items-center gap-x-2 gap-y-1 rounded border border-neutral-800 bg-[#111111] px-2 py-1 font-mono text-[10px] text-neutral-300">
+            <span>μ: {(autoParams.muAnnualAdjusted * 100).toFixed(2)}%</span>
             <span className="text-neutral-600">·</span>
-            <span>σ: {(annualizeSigma(sigmaDaily) * 100).toFixed(2)}%</span>
+            <span>σ: {(autoParams.sigmaAnnual * 100).toFixed(2)}%</span>
+            <span className="text-neutral-600">·</span>
+            <span className="text-neutral-500">{autoParams.lookbackDays}d window</span>
+            {autoParams.driftMode !== "historical" ? (
+              <>
+                <span className="text-neutral-600">·</span>
+                <span className="text-amber-400/90">
+                  raw μ {(autoParams.muAnnualRaw * 100).toFixed(1)}%
+                </span>
+              </>
+            ) : null}
           </span>
         ) : null}
       </div>
+
+      <fieldset className="flex flex-col gap-1.5">
+        <span className="font-mono text-[9px] uppercase tracking-[0.14em] text-neutral-500">
+          Drift Mode (GBM μ)
+        </span>
+        <div className="flex flex-wrap gap-1.5">
+          {MONTE_CARLO_DRIFT_MODES.map((mode) => (
+            <button
+              key={mode.id}
+              type="button"
+              title={mode.description}
+              onClick={() => setDriftMode(mode.id)}
+              className={`rounded border px-2 py-1 font-mono text-[10px] transition-colors ${
+                driftMode === mode.id ? TAB_PILL_ACTIVE : TAB_PILL_IDLE
+              }`}
+            >
+              {mode.label}
+            </button>
+          ))}
+        </div>
+        <p className="font-mono text-[9px] text-neutral-600">
+          {MONTE_CARLO_DRIFT_MODES.find((mode) => mode.id === driftMode)?.description}
+          {autoParams?.isIndex
+            ? " · Index estimates use 3–5Y log-return window (756–1,260 sessions)."
+            : ""}
+        </p>
+      </fieldset>
 
       {error ? (
         <p className="rounded border border-loss/30 bg-loss/10 px-2 py-1 font-mono text-[10px] text-loss">
@@ -185,13 +234,13 @@ export function MonteCarloTab({ symbol, onSymbolChange }: MonteCarloTabProps) {
           <div className="grid gap-2 sm:grid-cols-3">
             <MicroCard
               label="S₀ → Expected"
-              value={`${formatPrice(startPrice)} → ${formatPrice(simulation.stats.meanPrice)}`}
+              value={`${formatAssetSpotPrice(startPrice, asset)} → ${formatAssetSpotPrice(simulation.stats.meanPrice, asset)}`}
               sub={`${formatPct(simulation.stats.meanReturnPct)} · ${simulation.horizonLabel}`}
             />
             <MicroCard
               label="Profit Probability"
               value={`${simulation.stats.profitProbability.toFixed(1)}%`}
-              sub={`Above ${formatPrice(startPrice)}`}
+              sub={`Above ${formatAssetSpotPrice(startPrice, asset)}`}
               tone="text-gain"
             />
             <MicroCard
@@ -216,17 +265,17 @@ export function MonteCarloTab({ symbol, onSymbolChange }: MonteCarloTabProps) {
                 />
                 <YAxis
                   tick={{ fill: "#737373", fontSize: 10, fontFamily: "monospace" }}
-                  tickFormatter={(value) => `RM ${Number(value).toFixed(2)}`}
+                  tickFormatter={(value) => formatAssetSpotPrice(Number(value), asset)}
                   axisLine={{ stroke: "#262626" }}
                   tickLine={false}
-                  width={58}
+                  width={72}
                   domain={simulation.chartYDomain}
                 />
                 <Tooltip
                   content={
                     <MonteCarloTooltip
                       startPrice={startPrice}
-                      priceLabel={priceLabel}
+                      asset={asset}
                       horizonLabel={simulation.horizonLabel}
                     />
                   }
@@ -252,7 +301,7 @@ export function MonteCarloTab({ symbol, onSymbolChange }: MonteCarloTabProps) {
           </div>
         </>
       ) : !loading && !error ? (
-        <p className="font-mono text-[10px] text-neutral-500">Select a valid ticker to run GBM paths.</p>
+        <p className="font-mono text-[10px] text-neutral-500">Select a valid asset to run GBM paths.</p>
       ) : null}
     </section>
   );
@@ -282,16 +331,16 @@ function MonteCarloTooltip({
   active,
   payload,
   startPrice,
-  priceLabel,
+  asset,
   horizonLabel,
 }: {
   active?: boolean;
   payload?: Array<{ payload?: MonteCarloChartRow }>;
   startPrice: number;
-  priceLabel: string;
+  asset: ReturnType<typeof resolveQuantAsset>;
   horizonLabel: string;
 }) {
-  if (!active || !payload?.length) return null;
+  if (!active || !payload?.length || !asset) return null;
   const row = payload[0]?.payload;
   if (!row) return null;
 
@@ -300,11 +349,11 @@ function MonteCarloTooltip({
       <p className="text-neutral-400">
         Day +{row.day} · {horizonLabel}
       </p>
-      <p className="text-gain">Bull 90th · {formatPrice(row.p90)}</p>
-      <p className="text-amber-400">Median · {formatPrice(row.p50)}</p>
-      <p className="text-loss">Bear 10th · {formatPrice(row.p10)}</p>
+      <p className="text-gain">Bull 90th · {formatAssetSpotPrice(row.p90, asset)}</p>
+      <p className="text-amber-400">Median · {formatAssetSpotPrice(row.p50, asset)}</p>
+      <p className="text-loss">Bear 10th · {formatAssetSpotPrice(row.p10, asset)}</p>
       <p className="mt-1 text-neutral-600">
-        {priceLabel} · S₀ {formatPrice(startPrice)}
+        {asset.label} · S₀ {formatAssetSpotPrice(startPrice, asset)}
       </p>
     </div>
   );

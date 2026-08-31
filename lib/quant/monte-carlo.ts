@@ -1,11 +1,48 @@
 /** Client-safe Geometric Brownian Motion Monte Carlo utilities. */
 
+import { resolveQuantAsset } from "@/lib/quant/asset-catalog";
+
 export const TRADING_DAYS_PER_YEAR = 252;
 export const DELTA_T = 1 / TRADING_DAYS_PER_YEAR;
 export const SAMPLE_PATH_COUNT = 35;
 /** Maximum background paths drawn on the chart regardless of run count. */
 export const MAX_CHART_SAMPLE_PATHS = 40;
 export const MAX_HORIZON_DAYS = 365;
+
+/** Minimum trading-day window for index μ/σ (≈3Y). */
+export const INDEX_MIN_LOOKBACK_TRADING_DAYS = 756;
+/** Preferred trading-day window for index μ/σ (≈5Y). */
+export const INDEX_PREFERRED_LOOKBACK_TRADING_DAYS = 1260;
+/** Default equity lookback when not an index. */
+export const DEFAULT_LOOKBACK_TRADING_DAYS = 504;
+
+export const MONTE_CARLO_WARMUP_CALENDAR_DAYS = 90;
+
+export type MonteCarloDriftMode = "historical" | "cagr_cap" | "risk_free";
+
+export const MONTE_CARLO_DRIFT_MODES: readonly {
+  id: MonteCarloDriftMode;
+  label: string;
+  description: string;
+}[] = [
+  {
+    id: "historical",
+    label: "Historical μ",
+    description: "Sample mean of long-horizon log returns.",
+  },
+  {
+    id: "cagr_cap",
+    label: "CAGR Cap",
+    description: "Cap drift to long-term index CAGR (~10% S&P).",
+  },
+  {
+    id: "risk_free",
+    label: "Risk-Free",
+    description: "Use conservative risk-free drift for GBM projection.",
+  },
+] as const;
+
+export const DEFAULT_RISK_FREE_RATE_ANNUAL = 0.04;
 
 export const MONTE_CARLO_HORIZON_OPTIONS = [
   { label: "30D", days: 30 },
@@ -26,6 +63,19 @@ export type GbmParameters = {
   muDaily: number;
   /** Daily log-return volatility σ */
   sigmaDaily: number;
+  /** Trading days used in the estimate. */
+  lookbackDays: number;
+  /** Annualized drift before optional adjustment. */
+  muAnnualRaw: number;
+  /** Annualized volatility. */
+  sigmaAnnual: number;
+  driftMode: MonteCarloDriftMode;
+  /** Whether long-horizon index window rules were applied. */
+  isIndex: boolean;
+};
+
+export type GbmEstimateResult = GbmParameters & {
+  muAnnualAdjusted: number;
 };
 
 export type MonteCarloTerminalStats = {
@@ -110,18 +160,94 @@ export function computeVar95Pct(startPrice: number, p5Price: number): number {
   return ((p5Price - startPrice) / startPrice) * 100;
 }
 
-/** Estimate daily GBM μ and σ from an ascending close-price series. */
-export function estimateGbmParameters(closes: number[]): GbmParameters | null {
-  const logReturns: number[] = [];
+const INDEX_CAGR_CAP: Record<string, number> = {
+  "^GSPC": 0.1,
+  "^KLSE": 0.07,
+  "QQQ": 0.12,
+  "^NDX": 0.12,
+  "^IXIC": 0.11,
+};
 
+export function isMonteCarloIndexSymbol(symbol: string): boolean {
+  const asset = resolveQuantAsset(symbol);
+  if (asset?.sector === "Index") return true;
+  const upper = symbol.trim().toUpperCase();
+  return upper.startsWith("^") || upper in INDEX_CAGR_CAP;
+}
+
+export function monteCarloHistoryCalendarDays(symbol: string): number {
+  const tradingTarget = isMonteCarloIndexSymbol(symbol)
+    ? INDEX_PREFERRED_LOOKBACK_TRADING_DAYS
+    : DEFAULT_LOOKBACK_TRADING_DAYS;
+  const calendarDays = Math.ceil(tradingTarget * (365 / TRADING_DAYS_PER_YEAR));
+  return calendarDays + MONTE_CARLO_WARMUP_CALENDAR_DAYS;
+}
+
+export function indexLongTermCagrCap(symbol: string): number | null {
+  const upper = symbol.trim().toUpperCase();
+  if (INDEX_CAGR_CAP[upper] != null) return INDEX_CAGR_CAP[upper]!;
+  if (isMonteCarloIndexSymbol(symbol)) return 0.1;
+  return null;
+}
+
+/** Slice closes to the estimation window (indices prefer 3–5Y). */
+export function selectEstimationCloses(symbol: string, closes: number[]): number[] {
+  const sorted = closes.filter((price) => Number.isFinite(price) && price > 0);
+  if (sorted.length === 0) return sorted;
+
+  if (!isMonteCarloIndexSymbol(symbol)) {
+    const window = Math.min(sorted.length, DEFAULT_LOOKBACK_TRADING_DAYS);
+    return sorted.slice(-window);
+  }
+
+  const preferred = Math.min(sorted.length, INDEX_PREFERRED_LOOKBACK_TRADING_DAYS);
+  if (preferred >= INDEX_MIN_LOOKBACK_TRADING_DAYS) {
+    return sorted.slice(-preferred);
+  }
+
+  return sorted.slice(-Math.max(preferred, Math.min(sorted.length, INDEX_MIN_LOOKBACK_TRADING_DAYS)));
+}
+
+export function computeLogReturns(closes: number[]): number[] {
+  const logReturns: number[] = [];
   for (let index = 1; index < closes.length; index += 1) {
     const previous = closes[index - 1];
     const current = closes[index];
     if (previous == null || current == null || previous <= 0 || current <= 0) continue;
     logReturns.push(Math.log(current / previous));
   }
+  return logReturns;
+}
 
-  if (logReturns.length < 10) return null;
+export function applyDriftAdjustment(
+  muDaily: number,
+  mode: MonteCarloDriftMode,
+  symbol: string,
+  riskFreeRateAnnual = DEFAULT_RISK_FREE_RATE_ANNUAL,
+): number {
+  const muAnnual = annualizeMu(muDaily);
+
+  if (mode === "historical") {
+    return muDaily;
+  }
+
+  if (mode === "cagr_cap") {
+    const cap = indexLongTermCagrCap(symbol);
+    const cappedAnnual = cap == null ? muAnnual : Math.min(muAnnual, cap);
+    return cappedAnnual / TRADING_DAYS_PER_YEAR;
+  }
+
+  return riskFreeRateAnnual / TRADING_DAYS_PER_YEAR;
+}
+
+/** Estimate daily GBM μ and σ from an ascending close-price series. */
+export function estimateGbmParameters(
+  closes: number[],
+  options?: { minReturns?: number },
+): Omit<GbmParameters, "driftMode" | "isIndex"> | null {
+  const logReturns = computeLogReturns(closes);
+  const minReturns = options?.minReturns ?? 10;
+  if (logReturns.length < minReturns) return null;
 
   const n = logReturns.length;
   const muDaily = logReturns.reduce((sum, value) => sum + value, 0) / n;
@@ -132,6 +258,37 @@ export function estimateGbmParameters(closes: number[]): GbmParameters | null {
   return {
     muDaily,
     sigmaDaily: sigmaDaily > 0 ? sigmaDaily : 0.0001,
+    lookbackDays: closes.length,
+    muAnnualRaw: annualizeMu(muDaily),
+    sigmaAnnual: annualizeSigma(sigmaDaily > 0 ? sigmaDaily : 0.0001),
+  };
+}
+
+export function estimateGbmParametersForSymbol(
+  symbol: string,
+  closes: number[],
+  driftMode: MonteCarloDriftMode = "historical",
+  riskFreeRateAnnual = DEFAULT_RISK_FREE_RATE_ANNUAL,
+): GbmEstimateResult | null {
+  const windowCloses = selectEstimationCloses(symbol, closes);
+  const isIndex = isMonteCarloIndexSymbol(symbol);
+  const minReturns = isIndex ? 120 : 10;
+  const base = estimateGbmParameters(windowCloses, { minReturns });
+  if (!base) return null;
+
+  const muDailyAdjusted = applyDriftAdjustment(
+    base.muDaily,
+    driftMode,
+    symbol,
+    riskFreeRateAnnual,
+  );
+
+  return {
+    ...base,
+    muDaily: muDailyAdjusted,
+    driftMode,
+    isIndex,
+    muAnnualAdjusted: annualizeMu(muDailyAdjusted),
   };
 }
 

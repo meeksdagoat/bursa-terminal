@@ -120,6 +120,39 @@ export type HistoryPayload = {
   errors: string[];
 };
 
+export type BacktestHistoryBar = {
+  time: number;
+  open: number;
+  high: number;
+  low: number;
+  close: number;
+  volume: number | null;
+};
+
+export type AssetBuyAndHoldPoint = {
+  timestamp: string;
+  value: number;
+};
+
+export type BacktestHistoryPayload = {
+  source: "yahoo" | "parquet";
+  symbol: string;
+  timeframe: string;
+  from: string;
+  to: string;
+  asOf: string;
+  bars: BacktestHistoryBar[];
+  truncated: boolean;
+  /** User-facing warning when history is partial or unavailable. */
+  warning: string | null;
+  /** Buy & hold equity curve for the target asset (initial capital scaled to close prices). */
+  assetBuyAndHold: AssetBuyAndHoldPoint[];
+  /** Total buy & hold return % over the fetched bar range. */
+  assetHoldReturn: number | null;
+};
+
+export type BacktestHistoryWithPinePayload = BacktestHistoryPayload;
+
 /** A universe member that resolved to a usable quote, so `quote` is never null. */
 export type MoverRow = UniverseEntry & {
   quote: Quote;
@@ -680,6 +713,8 @@ export type MarketHubForm29B = {
   action: "Acquisition" | "Disposal" | "Change" | null;
   publishedAt: string | null;
   url: string;
+  bursaUrl: string | null;
+  pdfUrl: string | null;
 };
 
 export type ExDividendCategory = "interim" | "final" | "special" | "other";

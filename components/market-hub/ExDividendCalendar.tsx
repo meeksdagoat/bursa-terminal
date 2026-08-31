@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Pulse } from "@/components/skeleton";
 import { formatKlStamp } from "@/lib/format";
+import { resolveBursaAnnouncementUrl } from "@/lib/filing-id";
 import type { CorporateActionsPayload, ExDividendCategory, MarketHubExDiv } from "@/lib/types";
 import { terminalHref } from "@/lib/universe";
 import { useLiveData } from "@/lib/use-live-data";
@@ -149,9 +150,13 @@ export function ExDividendCalendar({ filter = "" }: ExDividendCalendarProps) {
                       </span>
                     </div>
                     <a
-                      href={row.url}
+                      href={resolveBursaAnnouncementUrl({
+                        id: row.id,
+                        url: row.url,
+                        stockCode: row.code,
+                      })}
                       target="_blank"
-                      rel="noreferrer"
+                      rel="noopener noreferrer"
                       className="mt-0.5 block max-w-[220px] truncate text-[12px] text-neutral-200 hover:text-white"
                       title={row.title}
                     >
