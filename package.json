@@ -15,6 +15,7 @@
   "dependencies": {
     "@clerk/nextjs": "^7.8.2",
     "@clerk/themes": "^2.4.57",
+    "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
     "cheerio": "^1.2.0",
     "d3-geo": "^3.1.1",
     "d3-scale": "^4.0.2",
