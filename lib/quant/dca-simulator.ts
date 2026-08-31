@@ -1,6 +1,6 @@
 /** Dollar-cost averaging simulation — client-safe types and pure engine. */
 
-import { unixToDate } from "@/lib/quant/math";
+import { klIsoDate, unixToDate } from "@/lib/quant/math";
 import {
   resolveSymbolCurrency,
   type FrontierBaseCurrency,
@@ -19,12 +19,12 @@ export const DCA_FREQUENCIES = [
 export type DCAFrequency = (typeof DCA_FREQUENCIES)[number]["id"];
 
 export const DCA_PERIODS = [
-  { id: "6m", label: "6M", calendarDays: 183 },
-  { id: "1y", label: "1Y", calendarDays: 365 },
-  { id: "2y", label: "2Y", calendarDays: 365 * 2 },
-  { id: "3y", label: "3Y", calendarDays: 365 * 3 },
-  { id: "5y", label: "5Y", calendarDays: 365 * 5 },
-  { id: "10y", label: "10Y", calendarDays: 365 * 10 },
+  { id: "6m", label: "6M", calendarDays: 183, months: 6 },
+  { id: "1y", label: "1Y", calendarDays: 365, months: 12 },
+  { id: "2y", label: "2Y", calendarDays: 365 * 2, months: 24 },
+  { id: "3y", label: "3Y", calendarDays: 365 * 3, months: 36 },
+  { id: "5y", label: "5Y", calendarDays: 365 * 5, months: 60 },
+  { id: "10y", label: "10Y", calendarDays: 365 * 10, months: 120 },
 ] as const;
 
 export type DCAPeriod = (typeof DCA_PERIODS)[number]["id"];
@@ -57,6 +57,8 @@ export type DCASimulatorPayload = {
   baseCurrency: DCABaseCurrency;
   investmentAmount: number;
   asOf: string;
+  startDate: string;
+  endDate: string;
   points: DCASimulatorPoint[];
   summary: DCASimulatorSummary;
   warning: string | null;
@@ -77,6 +79,127 @@ export function dcaPeriodCalendarDays(period: DCAPeriod): number {
   return DCA_PERIODS.find((row) => row.id === period)?.calendarDays ?? 365 * 2;
 }
 
+export function dcaPeriodMonths(period: DCAPeriod): number {
+  return DCA_PERIODS.find((row) => row.id === period)?.months ?? 24;
+}
+
+/** Exact calendar-month lookback window ending on `endDate` (MYT calendar dates). */
+export function computeDcaWindow(
+  period: DCAPeriod,
+  endDate: Date = new Date(),
+): { startDate: string; endDate: string; periodMonths: number } {
+  const periodMonths = dcaPeriodMonths(period);
+  const endDateIso = klIsoDate(endDate);
+  const startDate = subtractMonthsIso(endDateIso, periodMonths);
+  return { startDate, endDate: endDateIso, periodMonths };
+}
+
+function parseIsoParts(iso: string): { year: number; month: number; day: number } {
+  const [year, month, day] = iso.split("-").map(Number);
+  return { year: year!, month: month!, day: day! };
+}
+
+function formatIso(year: number, month: number, day: number): string {
+  return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+function daysInMonth(year: number, month: number): number {
+  return new Date(year, month, 0).getDate();
+}
+
+function shiftMonthsIso(iso: string, deltaMonths: number): string {
+  let { year, month, day } = parseIsoParts(iso);
+  month += deltaMonths;
+  while (month > 12) {
+    month -= 12;
+    year += 1;
+  }
+  while (month < 1) {
+    month += 12;
+    year -= 1;
+  }
+  const clampedDay = Math.min(day, daysInMonth(year, month));
+  return formatIso(year, month, clampedDay);
+}
+
+export function subtractMonthsIso(iso: string, months: number): string {
+  return shiftMonthsIso(iso, -months);
+}
+
+export function addMonthsIso(iso: string, months: number): string {
+  return shiftMonthsIso(iso, months);
+}
+
+/** Deterministic contribution schedule — monthly yields exactly `periodMonths` dates. */
+export function generateContributionTargets(
+  startDate: string,
+  endDate: string,
+  frequency: DCAFrequency,
+  periodMonths: number,
+): string[] {
+  if (frequency === "monthly") {
+    const targets: string[] = [];
+    let current = startDate;
+    for (let index = 0; index < periodMonths; index += 1) {
+      targets.push(current);
+      current = addMonthsIso(current, 1);
+    }
+    return targets;
+  }
+
+  if (frequency === "daily") {
+    return [];
+  }
+
+  const stepDays = frequency === "weekly" ? 7 : 14;
+  const targets: string[] = [];
+  let cursor = parseIsoMs(startDate);
+  const endMs = parseIsoMs(endDate);
+
+  while (cursor <= endMs) {
+    targets.push(klIsoDate(new Date(cursor)));
+    cursor += stepDays * 86_400_000;
+  }
+
+  return targets;
+}
+
+function parseIsoMs(iso: string): number {
+  return Date.parse(`${iso}T12:00:00+08:00`);
+}
+
+/** First trading day on or after `target`; falls back to the closest prior session. */
+export function resolveContributionTradingDate(
+  target: string,
+  tradingDates: readonly string[],
+): string | null {
+  if (tradingDates.length === 0) return null;
+
+  let lo = 0;
+  let hi = tradingDates.length - 1;
+  let onOrAfter: string | null = null;
+
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    const candidate = tradingDates[mid]!;
+    if (candidate >= target) {
+      onOrAfter = candidate;
+      hi = mid - 1;
+    } else {
+      lo = mid + 1;
+    }
+  }
+
+  if (onOrAfter) return onOrAfter;
+
+  for (let index = tradingDates.length - 1; index >= 0; index -= 1) {
+    const candidate = tradingDates[index]!;
+    if (candidate <= target) return candidate;
+  }
+
+  return null;
+}
+
 export function dcaNeedsFxConversion(symbol: string, baseCurrency: DCABaseCurrency): boolean {
   return resolveSymbolCurrency(symbol) !== baseCurrency;
 }
@@ -93,29 +216,6 @@ function convertPriceToBase(
     return usdMyrRate > 0 ? price / usdMyrRate : price;
   }
   return price;
-}
-
-function shouldContribute(
-  date: string,
-  lastContributionDate: string | null,
-  frequency: DCAFrequency,
-): boolean {
-  if (lastContributionDate == null) return true;
-  if (frequency === "daily") return true;
-
-  const currentMs = Date.parse(`${date}T12:00:00+08:00`);
-  const previousMs = Date.parse(`${lastContributionDate}T12:00:00+08:00`);
-  const dayGap = (currentMs - previousMs) / 86_400_000;
-
-  if (frequency === "weekly") return dayGap >= 7;
-  if (frequency === "biweekly") return dayGap >= 14;
-
-  const current = new Date(currentMs);
-  const previous = new Date(previousMs);
-  return (
-    current.getUTCFullYear() !== previous.getUTCFullYear() ||
-    current.getUTCMonth() !== previous.getUTCMonth()
-  );
 }
 
 export function alignFxRatesToDates(
@@ -141,6 +241,40 @@ export function buildFxDateMap(
   return map;
 }
 
+function buildContributionSchedule(input: {
+  tradingDates: readonly string[];
+  startDate: string;
+  endDate: string;
+  frequency: DCAFrequency;
+  periodMonths: number;
+}): Map<string, number> {
+  const schedule = new Map<string, number>();
+
+  if (input.frequency === "daily") {
+    for (const date of input.tradingDates) {
+      if (date >= input.startDate && date <= input.endDate) {
+        schedule.set(date, 1);
+      }
+    }
+    return schedule;
+  }
+
+  const targets = generateContributionTargets(
+    input.startDate,
+    input.endDate,
+    input.frequency,
+    input.periodMonths,
+  );
+
+  for (const target of targets) {
+    const tradingDate = resolveContributionTradingDate(target, input.tradingDates);
+    if (!tradingDate || tradingDate < input.startDate || tradingDate > input.endDate) continue;
+    schedule.set(tradingDate, (schedule.get(tradingDate) ?? 0) + 1);
+  }
+
+  return schedule;
+}
+
 export function runDCASimulation(input: {
   dates: string[];
   closes: number[];
@@ -149,14 +283,34 @@ export function runDCASimulation(input: {
   baseCurrency: DCABaseCurrency;
   investmentAmount: number;
   frequency: DCAFrequency;
+  startDate: string;
+  endDate: string;
+  periodMonths: number;
 }): { points: DCASimulatorPoint[]; summary: DCASimulatorSummary } {
-  const { dates, closes, investmentAmount, frequency, baseCurrency, assetCurrency } = input;
+  const {
+    dates,
+    closes,
+    investmentAmount,
+    frequency,
+    baseCurrency,
+    assetCurrency,
+    startDate,
+    endDate,
+    periodMonths,
+  } = input;
   const fxRates = input.fxRates ?? dates.map(() => 1);
+
+  const contributionSchedule = buildContributionSchedule({
+    tradingDates: dates,
+    startDate,
+    endDate,
+    frequency,
+    periodMonths,
+  });
 
   let totalUnits = 0;
   let cumulativeInvested = 0;
   let contributionCount = 0;
-  let lastContributionDate: string | null = null;
   const points: DCASimulatorPoint[] = [];
 
   for (let index = 0; index < dates.length; index += 1) {
@@ -168,11 +322,11 @@ export function runDCASimulation(input: {
         ? convertPriceToBase(nativeClose, assetCurrency, baseCurrency, fx)
         : 0;
 
-    if (unitPrice > 0 && shouldContribute(date, lastContributionDate, frequency)) {
-      totalUnits += investmentAmount / unitPrice;
-      cumulativeInvested += investmentAmount;
-      contributionCount += 1;
-      lastContributionDate = date;
+    const purchases = contributionSchedule.get(date) ?? 0;
+    if (unitPrice > 0 && purchases > 0) {
+      totalUnits += (investmentAmount * purchases) / unitPrice;
+      cumulativeInvested += investmentAmount * purchases;
+      contributionCount += purchases;
     }
 
     const portfolioValue = totalUnits * unitPrice;

@@ -6,8 +6,8 @@ import { isQuantHubSymbol } from "@/lib/quant/asset-catalog";
 import {
   alignFxRatesToDates,
   buildFxDateMap,
+  computeDcaWindow,
   dcaNeedsFxConversion,
-  dcaPeriodCalendarDays,
   isDCAFrequency,
   isDCAPeriod,
   runDCASimulation,
@@ -68,6 +68,17 @@ function parseBaseCurrency(raw: string | null): DCABaseCurrency {
   return raw === "USD" ? "USD" : "MYR";
 }
 
+function filterPointsToWindow<T extends { time: number; close: number }>(
+  rows: T[],
+  startDate: string,
+  endDate: string,
+): T[] {
+  return rows.filter((row) => {
+    const date = unixToDate(row.time);
+    return date >= startDate && date <= endDate;
+  });
+}
+
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;
   const symbol = (searchParams.get("symbol") ?? "").trim();
@@ -86,17 +97,21 @@ export async function GET(request: NextRequest) {
 
   const frequency: DCAFrequency = isDCAFrequency(frequencyRaw) ? frequencyRaw : "monthly";
   const period: DCAPeriod = isDCAPeriod(periodRaw) ? periodRaw : "2y";
-  const calendarDays = dcaPeriodCalendarDays(period);
-  const fromDate = new Date(Date.now() - calendarDays * 86_400_000);
+  const { startDate, endDate, periodMonths } = computeDcaWindow(period);
+  const fromDate = new Date(`${startDate}T00:00:00+08:00`);
 
-  const cacheKey = `dca-simulator:${symbol}:${frequency}:${period}:${baseCurrency}:${investmentAmount}`;
+  const cacheKey = `dca-simulator:${symbol}:${frequency}:${period}:${baseCurrency}:${investmentAmount}:${startDate}`;
 
   try {
     const payload = await cached(cacheKey, TTL_MS, async () => {
       const history = await fetchAssetHistory(symbol, fromDate);
-      const points = history.points.filter((row) => Number.isFinite(row.close) && row.close > 0);
+      const points = filterPointsToWindow(
+        history.points.filter((row) => Number.isFinite(row.close) && row.close > 0),
+        startDate,
+        endDate,
+      );
 
-      if (points.length < 20) {
+      if (points.length < 2) {
         const empty: DCASimulatorPayload = {
           symbol,
           frequency,
@@ -104,6 +119,8 @@ export async function GET(request: NextRequest) {
           baseCurrency,
           investmentAmount,
           asOf: new Date().toISOString(),
+          startDate,
+          endDate,
           points: [],
           summary: {
             totalCapitalInvested: 0,
@@ -115,7 +132,7 @@ export async function GET(request: NextRequest) {
             totalUnits: 0,
             contributionCount: 0,
           },
-          warning: `Insufficient daily history for ${symbol} over ${period.toUpperCase()}.`,
+          warning: `Insufficient daily history for ${symbol} between ${startDate} and ${endDate}.`,
         };
         return empty;
       }
@@ -128,12 +145,15 @@ export async function GET(request: NextRequest) {
 
       if (dcaNeedsFxConversion(symbol, baseCurrency)) {
         const fxHistory = await fetchAssetHistory(USD_MYR_FX_SYMBOL, fromDate);
-        const fxMap = buildFxDateMap(
-          fxHistory.points.map((row) => ({ time: row.time, close: row.close })),
+        const fxPoints = filterPointsToWindow(
+          fxHistory.points.filter((row) => Number.isFinite(row.close) && row.close > 0),
+          startDate,
+          endDate,
         );
+        const fxMap = buildFxDateMap(fxPoints.map((row) => ({ time: row.time, close: row.close })));
         const fallback = [...fxMap.values()].at(-1) ?? (baseCurrency === "MYR" ? 4.45 : 1);
         fxRates = alignFxRatesToDates(dates, fxMap, fallback);
-        if (fxHistory.points.length === 0) {
+        if (fxPoints.length === 0) {
           warning = `FX series ${USD_MYR_FX_SYMBOL} unavailable — using fallback rate ${fallback.toFixed(4)}.`;
         }
       }
@@ -147,6 +167,9 @@ export async function GET(request: NextRequest) {
         baseCurrency,
         investmentAmount,
         frequency,
+        startDate,
+        endDate,
+        periodMonths,
       });
 
       if (summary.contributionCount === 0) {
@@ -160,6 +183,8 @@ export async function GET(request: NextRequest) {
         baseCurrency,
         investmentAmount,
         asOf: new Date().toISOString(),
+        startDate,
+        endDate,
         points: series,
         summary,
         warning,
