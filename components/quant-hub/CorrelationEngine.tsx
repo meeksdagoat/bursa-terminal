@@ -1,10 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { DualAxisChart } from "@/components/quant-hub/DualAxisChart";
+import { ExportToolbar } from "@/components/quant-hub/ExportToolbar";
 import { TargetSymbolCombobox } from "@/components/quant-hub/TargetSymbolCombobox";
 import { formatStockPriceLabel } from "@/lib/stock-names";
 import { assessSeriesFactorRelevance } from "@/lib/quant/sector-relevance";
+import { buildWeatherAltDataExport, type WeatherDailyPoint } from "@/lib/quant/export-datasets";
 import type {
   QuantCorrelationPayload,
   QuantFactorOption,
@@ -88,6 +90,40 @@ export function CorrelationEngine({ factorOptions, symbol, onSymbolChange }: Cor
       ? `Calculated on ${alignedDays} aligned trading days`
       : null;
 
+  const getWeatherExportPayload = useCallback(async () => {
+    const signal = AbortSignal.timeout(30_000);
+    const [weatherResponse, correlationResponse] = await Promise.all([
+      fetch("/api/quant/weather?days=90", { signal }),
+      fetch(
+        `/api/quant-hub/correlation?factor=rainfall&symbol=${encodeURIComponent(symbol)}&window=90`,
+        { signal },
+      ),
+    ]);
+
+    const weatherBody = (await weatherResponse.json()) as {
+      series?: WeatherDailyPoint[];
+      error?: string;
+    };
+    if (!weatherResponse.ok && (!weatherBody.series || weatherBody.series.length === 0)) {
+      throw new Error(weatherBody.error ?? "Weather series unavailable");
+    }
+
+    const correlationBody = (await correlationResponse.json()) as
+      | QuantCorrelationPayload
+      | { error?: string };
+    if (!correlationResponse.ok) {
+      throw new Error(
+        "error" in correlationBody ? String(correlationBody.error) : "Price series unavailable",
+      );
+    }
+
+    return buildWeatherAltDataExport({
+      symbol,
+      weather: weatherBody.series ?? [],
+      correlation: correlationBody as QuantCorrelationPayload,
+    });
+  }, [symbol]);
+
   return (
     <section className="flex min-h-0 flex-col gap-3 rounded border border-neutral-800 bg-[#0d0d0d] p-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -99,7 +135,7 @@ export function CorrelationEngine({ factorOptions, symbol, onSymbolChange }: Cor
             Rolling Pearson r between live Open-Meteo data and target daily returns
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {([30, 60, 90] as const).map((window) => (
             <button
               key={window}
@@ -120,6 +156,7 @@ export function CorrelationEngine({ factorOptions, symbol, onSymbolChange }: Cor
               <span className={correlationTone(payload.pearsonR)}>{payload.pearsonR.toFixed(3)}</span>
             </span>
           ) : null}
+          <ExportToolbar disabled={loading} getPayload={getWeatherExportPayload} />
         </div>
       </div>
 

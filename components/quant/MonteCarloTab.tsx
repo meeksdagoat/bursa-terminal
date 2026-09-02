@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { QuantAssetSelector } from "@/components/quant/QuantAssetSelector";
+import { useRegisterQuantExport } from "@/components/quant-hub/QuantExportContext";
 import { formatPct } from "@/lib/format";
+import { buildMonteCarloExport } from "@/lib/quant/export-datasets";
 import {
   DEFAULT_QUANT_ASSET_SYMBOL,
   formatAssetSpotPrice,
@@ -127,6 +129,15 @@ export function MonteCarloTab({ symbol, onSymbolChange }: MonteCarloTabProps) {
   }, [autoParams, horizon, muDaily, runs, sigmaDaily, startPrice]);
 
   const sampleKeys = simulation?.samplePathIndices.map((index) => `sample_${index}`) ?? [];
+
+  const getExportPayload = useCallback(() => {
+    if (!simulation) {
+      throw new Error("No data to export");
+    }
+    return buildMonteCarloExport({ symbol, horizonDays: horizon, simulation });
+  }, [horizon, simulation, symbol]);
+
+  useRegisterQuantExport(getExportPayload, !simulation);
 
   return (
     <section className={`flex flex-col gap-3 ${PANEL}`}>

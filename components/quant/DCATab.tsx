@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Area,
   CartesianGrid,
@@ -15,6 +15,8 @@ import { QuantAssetSelector } from "@/components/quant/QuantAssetSelector";
 import { DCA_ADVANCED, LearnDCAContent } from "@/components/quant-hub/learn/dca";
 import { LearnQuantModalShell } from "@/components/quant-hub/LearnQuantModalShell";
 import { QuantTabToolbar } from "@/components/quant-hub/learn-quant-shared";
+import { ExportToolbar } from "@/components/quant-hub/ExportToolbar";
+import { buildDcaExport } from "@/lib/quant/export-datasets";
 import {
   DEFAULT_QUANT_ASSET_SYMBOL,
   formatAssetPrice,
@@ -123,6 +125,13 @@ export function DCATab({ symbol, onSymbolChange }: DCATabProps) {
   const chartData = useMemo(() => payload?.points ?? [], [payload?.points]);
   const summary = payload?.summary;
 
+  const getExportPayload = useCallback(() => {
+    if (!payload) {
+      throw new Error("No data to export");
+    }
+    return buildDcaExport(payload);
+  }, [payload]);
+
   return (
     <>
       <div className="flex flex-col gap-3">
@@ -130,6 +139,7 @@ export function DCATab({ symbol, onSymbolChange }: DCATabProps) {
           title="DCA / Cost Averaging"
           learnLabel="DCA"
           onLearn={() => setIsLearnModalOpen(true)}
+          trailing={<ExportToolbar disabled={!payload} getPayload={getExportPayload} />}
         />
 
         <section className={`flex flex-col gap-3 ${PANEL}`}>

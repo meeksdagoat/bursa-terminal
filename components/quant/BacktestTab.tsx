@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   CartesianGrid,
   ComposedChart,
@@ -57,6 +57,8 @@ import {
   type QuantAssetCurrency,
 } from "@/lib/quant/asset-catalog";
 import { useCustomStrategiesContext } from "@/components/quant/CustomStrategiesProvider";
+import { useRegisterQuantExport } from "@/components/quant-hub/QuantExportContext";
+import { buildBacktestExport } from "@/lib/quant/export-datasets";
 import type {
   AssetBuyAndHoldPoint,
   BacktestHistoryPayload,
@@ -451,9 +453,18 @@ export function BacktestTab({ symbol, onSymbolChange }: BacktestTabProps) {
     [mockNotice, performanceNotice],
   );
 
+  const getExportPayload = useCallback(() => {
+    if (!result) {
+      throw new Error("No data to export");
+    }
+    return buildBacktestExport({ symbol, result });
+  }, [result, symbol]);
+
+  useRegisterQuantExport(getExportPayload, !result || result.trades.length === 0);
+
   return (
     <section className={`flex flex-col gap-3 ${PANEL}`}>
-      <div className="border-b border-neutral-800 pb-2">
+      <div className="flex items-center justify-between gap-2 border-b border-neutral-800 pb-2">
         <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-neutral-500">
           Strategy Backtest
         </p>

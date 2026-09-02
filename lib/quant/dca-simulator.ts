@@ -33,10 +33,13 @@ export type DCABaseCurrency = FrontierBaseCurrency;
 
 export type DCASimulatorPoint = {
   timestamp: string;
+  investmentAmount: number;
+  unitsPurchased: number;
+  unitPrice: number;
   cumulativeInvested: number;
   portfolioValue: number;
-  unitPrice: number;
   totalUnits: number;
+  unrealizedPnl: number;
 };
 
 export type DCASimulatorSummary = {
@@ -323,9 +326,11 @@ export function runDCASimulation(input: {
         : 0;
 
     const purchases = contributionSchedule.get(date) ?? 0;
-    if (unitPrice > 0 && purchases > 0) {
-      totalUnits += (investmentAmount * purchases) / unitPrice;
-      cumulativeInvested += investmentAmount * purchases;
+    const periodInvestment = unitPrice > 0 && purchases > 0 ? investmentAmount * purchases : 0;
+    const unitsPurchased = unitPrice > 0 && purchases > 0 ? periodInvestment / unitPrice : 0;
+    if (periodInvestment > 0) {
+      totalUnits += unitsPurchased;
+      cumulativeInvested += periodInvestment;
       contributionCount += purchases;
     }
 
@@ -333,10 +338,13 @@ export function runDCASimulation(input: {
 
     points.push({
       timestamp: date,
+      investmentAmount: periodInvestment,
+      unitsPurchased,
+      unitPrice,
       cumulativeInvested,
       portfolioValue,
-      unitPrice,
       totalUnits,
+      unrealizedPnl: portfolioValue - cumulativeInvested,
     });
   }
 

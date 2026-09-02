@@ -17,6 +17,7 @@ import {
   QuantTabToolbar,
   type LearnQuantTabId,
 } from "@/components/quant-hub/LearnQuantModal";
+import { QuantExportProvider, RegisteredExportToolbar } from "@/components/quant-hub/QuantExportContext";
 import { QuantLearnModal, type NewQuantLearnId } from "@/components/quant/QuantLearnModal";
 import { HeaderBar } from "@/components/header-bar";
 import { MainNav } from "@/components/main-nav";
@@ -113,6 +114,7 @@ export function QuantHub() {
       ) : null}
 
       <CustomStrategiesProvider>
+        <QuantExportProvider>
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
         <div className="mx-auto flex w-full max-w-[1400px] flex-col gap-3 px-3 py-3">
           <div>
@@ -173,6 +175,7 @@ export function QuantHub() {
                   title="Factor Signals & Alt Data"
                   learnLabel="Signals"
                   onLearn={() => setLearnTab("factors")}
+                  trailing={<RegisteredExportToolbar />}
                 />
                 <FactorSignalsTab
                   quant={quant}
@@ -189,6 +192,7 @@ export function QuantHub() {
                   title="Monte Carlo Simulator"
                   learnLabel="Monte Carlo"
                   onLearn={() => setLearnTab("monte-carlo")}
+                  trailing={<RegisteredExportToolbar />}
                 />
                 <MonteCarloTab symbol={targetSymbol} onSymbolChange={setTargetSymbol} />
               </div>
@@ -200,6 +204,7 @@ export function QuantHub() {
                   title="Historical Backtest Engine"
                   learnLabel="Backtesting"
                   onLearn={() => setLearnTab("backtest")}
+                  trailing={<RegisteredExportToolbar />}
                 />
                 <BacktestTab symbol={targetSymbol} onSymbolChange={setTargetSymbol} />
               </div>
@@ -270,6 +275,7 @@ export function QuantHub() {
             : ""}
         </footer>
         </div>
+        </QuantExportProvider>
       </CustomStrategiesProvider>
 
       <LearnQuantModal

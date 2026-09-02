@@ -1,9 +1,12 @@
 "use client";
 
+import { useCallback } from "react";
 import type { QuantFactorSignal } from "@/lib/quant/types";
 import { assessOverviewFactorRelevance, formatFactorTargetCategories } from "@/lib/quant/sector-relevance";
 import { useSymbolFactorScores } from "@/lib/use-symbol-factors";
 import { entryBySymbol } from "@/lib/universe";
+import { useRegisterQuantExport } from "@/components/quant-hub/QuantExportContext";
+import { buildFactorMatrixExport } from "@/lib/quant/export-datasets";
 
 type FactorScoreGridProps = {
   factors: QuantFactorSignal[];
@@ -47,6 +50,13 @@ export function FactorScoreGrid({
     fallbackFactors,
     hubLoading,
   );
+
+  const getExportPayload = useCallback(
+    () => buildFactorMatrixExport({ symbol: targetSymbol, factors }),
+    [factors, targetSymbol],
+  );
+
+  useRegisterQuantExport(getExportPayload, factors.length === 0);
 
   if (loading && factors.length === 0) {
     return (
