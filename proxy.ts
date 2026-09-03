@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 /** Auth is optional — the terminal stays public without a session. */
-export default function middleware() {
+export function proxy() {
   return NextResponse.next();
 }
 

@@ -95,7 +95,7 @@ function LockedPortfolioPage() {
         index={quotes.data?.index ?? null}
         onSearch={(query) => {
           const entry = findEntry(query);
-          router.push(entry ? terminalHref(entry.yahoo) : terminalHref());
+          router.push(entry ? terminalHref(entry.symbol) : terminalHref());
         }}
         searchPlaceholder="Search a ticker to open Bursa MY — Maybank 1155.KL"
         active="portfolio"
