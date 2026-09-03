@@ -2,7 +2,6 @@
 
 export type QuantFactorId =
   | "weather-agri"
-  | "institutional-divergence"
   | "news-velocity"
   | "fx-beta"
   | "yield-spread"
@@ -15,7 +14,6 @@ export type QuantSeriesFactorId =
   | "bnm_opr"
   | "mgs_proxy"
   | "news_velocity"
-  | "institutional_flow"
   | "sector_breadth";
 
 export type QuantDataStatus = "live" | "degraded" | "fallback";
@@ -128,12 +126,6 @@ export const QUANT_FACTOR_OPTIONS: QuantFactorOption[] = [
     label: "News Velocity",
     unit: "headlines",
     blurb: "Daily headline frequency from Google News wire",
-  },
-  {
-    id: "institutional_flow",
-    label: "Institutional Flow",
-    unit: "filings",
-    blurb: "EPF/PNB Form 29B filing count",
   },
   {
     id: "sector_breadth",

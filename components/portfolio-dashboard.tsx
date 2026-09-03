@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { FormEvent, useMemo, useRef, useState, type ReactNode } from "react";
 import { AllocationDonut } from "@/components/allocation-donut";
+import { SignInModal } from "@/components/auth/SignInModal";
 import { ExportCsvButton } from "@/components/export-csv-button";
-import { ExportMenu } from "@/components/export-menu";
 import { HeaderBar } from "@/components/header-bar";
 import { stickyCellClass, stickyHeadClass, tableCellClass, tableHeadClass } from "@/components/h-scroll";
 import { MainNav } from "@/components/main-nav";
@@ -76,6 +77,64 @@ const RANGE_LABEL: Record<PortfolioRange, string> = {
 type PortfolioTab = "holdings" | "transactions" | "dividends";
 
 export function PortfolioDashboard() {
+  const { status } = useSession();
+  if (status !== "authenticated") return <LockedPortfolioPage />;
+  return <AuthenticatedPortfolioDashboard />;
+}
+
+function LockedPortfolioPage() {
+  const router = useRouter();
+  const [modalOpen, setModalOpen] = useState(false);
+  const quotes = useMarketData([]);
+  const bnm = useLiveData<BnmPayload>("/api/bnm", BNM_REFRESH_MS);
+
+  return (
+    <div className="flex min-h-full flex-col touch-pan-y bg-terminal text-neutral-200">
+      <HeaderBar
+        bnm={bnm.data}
+        index={quotes.data?.index ?? null}
+        onSearch={(query) => {
+          const entry = findEntry(query);
+          router.push(entry ? terminalHref(entry.yahoo) : terminalHref());
+        }}
+        searchPlaceholder="Search a ticker to open Bursa MY — Maybank 1155.KL"
+        active="portfolio"
+        feedStatus={quotes.status}
+        ticks={quotes.ticks}
+        latencyMs={quotes.latencyMs}
+      />
+      <MainNav active="portfolio" />
+
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+        <div aria-hidden className="pointer-events-none select-none">
+          <MockPortfolioPreview />
+        </div>
+        <div className="absolute inset-0 z-10 flex items-center justify-center bg-black/55 p-4 backdrop-blur-md">
+          <div className="w-full max-w-sm rounded-xl border border-line bg-panel px-6 py-8 text-center text-neutral-200 shadow-2xl">
+            <p className="font-mono text-[10px] uppercase tracking-[0.16em] text-neutral-500">Locked</p>
+            <h1 className="mt-2 text-[16px] font-semibold tracking-tight text-white">
+              Sign in to track your portfolio
+            </h1>
+            <p className="mt-2 text-[12px] leading-relaxed text-neutral-500">
+              Holdings, live P&amp;L, and allocation are available after you sign in.
+            </p>
+            <button
+              type="button"
+              onClick={() => setModalOpen(true)}
+              className="mt-6 inline-flex h-9 w-full items-center justify-center rounded-md bg-gain px-3.5 font-mono text-[12px] font-semibold text-[#052e16] transition-colors hover:bg-[#4ade80]"
+            >
+              SIGN IN
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <SignInModal open={modalOpen} onClose={() => setModalOpen(false)} />
+    </div>
+  );
+}
+
+function AuthenticatedPortfolioDashboard() {
   const router = useRouter();
   const portfolio = usePortfolio();
   const shariahOnly = useShariahOnly();
@@ -300,55 +359,6 @@ export function PortfolioDashboard() {
     setFormError(null);
   }
 
-  const exportActions = [
-    {
-      id: "holdings-csv",
-      label: "Holdings CSV",
-      onSelect: () =>
-        downloadCsv(
-          stampFilename("bursa-holdings", "csv"),
-          holdingsCsvRows(
-            rows.map((row) => ({
-              symbol: row.holding.symbol,
-              name: row.entry?.name ?? row.holding.symbol,
-              quantity: row.holding.quantity,
-              costPerShare: row.holding.costPerShare,
-              last: row.last,
-              value: row.value,
-              pnl: row.pnl,
-              boughtAt: row.holding.boughtAt,
-            })),
-          ),
-        ),
-    },
-    {
-      id: "transactions-csv",
-      label: "Transaction history CSV",
-      onSelect: () =>
-        downloadCsv(stampFilename("bursa-transactions", "csv"), [
-          ["Date", "Symbol", "Type", "Quantity", "Price", "Fees", "Realised P&L"],
-          ...portfolio.transactions.map((row) => [
-            formatHoldingDay(row.date),
-            row.symbol,
-            row.type.toUpperCase(),
-            row.quantity,
-            row.price,
-            row.fees,
-            row.realizedPnl,
-          ]),
-        ]),
-    },
-    {
-      id: "pdf",
-      label: "PDF summary report",
-      onSelect: async () => {
-        if (!reportRef.current) return;
-        const { exportElementPdf } = await import("@/lib/export-pdf");
-        await exportElementPdf(reportRef.current, stampFilename("bursa-portfolio-report", "pdf"));
-      },
-    },
-  ];
-
   return (
     <div className="flex min-h-full flex-col touch-pan-y bg-terminal text-neutral-200">
       <HeaderBar
@@ -360,7 +370,6 @@ export function PortfolioDashboard() {
         feedStatus={quotes.status}
         ticks={quotes.ticks}
         latencyMs={quotes.latencyMs}
-        actions={<ExportMenu actions={exportActions} />}
       />
       <MainNav active="portfolio" />
 
@@ -872,6 +881,131 @@ export function PortfolioDashboard() {
           {formatMarketState(quotes.data?.marketState)} · UPDATED {formatKlTime(quotes.updatedAt)} MYT
         </span>
       </footer>
+    </div>
+  );
+}
+
+const MOCK_HOLDINGS = [
+  { name: "Maybank", symbol: "1155.KL", shares: "12,400", buy: "9.85", last: "10.58", value: "131,192", wt: "38.4%", pnl: "+9,052", pnlPct: "+7.4%", tone: 1 },
+  { name: "Tenaga", symbol: "5347.KL", shares: "4,200", buy: "13.10", last: "13.68", value: "57,456", wt: "16.8%", pnl: "+2,436", pnlPct: "+4.4%", tone: 1 },
+  { name: "CIMB Group", symbol: "1023.KL", shares: "6,800", buy: "7.42", last: "7.99", value: "54,332", wt: "15.9%", pnl: "+3,876", pnlPct: "+7.7%", tone: 1 },
+  { name: "Public Bank", symbol: "1295.KL", shares: "8,100", buy: "4.62", last: "5.00", value: "40,500", wt: "11.9%", pnl: "+3,078", pnlPct: "+8.2%", tone: 1 },
+  { name: "Inari Amertron", symbol: "0166.KL", shares: "9,500", buy: "2.88", last: "2.61", value: "24,795", wt: "7.3%", pnl: "-2,565", pnlPct: "-9.4%", tone: -1 },
+  { name: "Genting", symbol: "3182.KL", shares: "11,200", buy: "2.18", last: "2.04", value: "22,848", wt: "6.7%", pnl: "-1,568", pnlPct: "-6.4%", tone: -1 },
+] as const;
+
+const MOCK_SLICES = [
+  { label: "Banking", pct: 66, color: "#22c55e" },
+  { label: "Utilities", pct: 17, color: "#38bdf8" },
+  { label: "Tech", pct: 7, color: "#eab308" },
+  { label: "Gaming", pct: 7, color: "#a78bfa" },
+  { label: "Cash", pct: 3, color: "#fb7185" },
+] as const;
+
+function MockPortfolioPreview() {
+  return (
+    <div className="mx-auto flex w-full max-w-6xl flex-col gap-4 px-4 py-4">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="text-[15px] font-semibold tracking-tight text-white">My Portfolio</h2>
+          <p className="mt-0.5 text-[12px] text-neutral-500">
+            Saved locally · live Yahoo marks · P&amp;L vs buy price, windows vs the tape
+          </p>
+        </div>
+        <div className="flex overflow-hidden border border-line">
+          {(["1M", "3M", "6M", "YTD", "1Y", "ALL"] as const).map((key) => (
+            <span
+              key={key}
+              className={`px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider ${
+                key === "ALL" ? "bg-gain/15 text-gain" : "text-neutral-500"
+              }`}
+            >
+              {key}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <section className="grid grid-cols-2 gap-px overflow-hidden border border-line bg-line md:grid-cols-4">
+        <Kpi label="Total portfolio value" value="RM 341,123" />
+        <Kpi label="Unrealised P&L" value="+RM 14,309" hint="+4.4%" tone={1} />
+        <Kpi label="Total realised P&L" value="+RM 6,840" tone={1} />
+        <Kpi label="Win rate" value="71.4%" hint="7 closed trades" tone={21} />
+      </section>
+
+      <section className="grid grid-cols-2 gap-px overflow-hidden border border-line bg-line md:grid-cols-3">
+        <Kpi label="Cost basis" value="RM 326,814" />
+        <Kpi label="All return" value="+RM 14,309" hint="+4.4%" tone={1} />
+        <Kpi label="Today" value="+RM 1,286" hint="+0.4%" tone={1} />
+      </section>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="border border-line bg-panel p-4">
+          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
+            Weight by market value
+          </h3>
+          <div className="space-y-2">
+            {MOCK_SLICES.map((slice) => (
+              <div key={slice.label} className="flex items-center gap-3">
+                <span className="w-16 font-mono text-[10px] text-neutral-500">{slice.label}</span>
+                <div className="h-1.5 flex-1 bg-[#161616]">
+                  <div className="h-full" style={{ width: `${slice.pct}%`, backgroundColor: slice.color }} />
+                </div>
+                <span className="w-10 text-right font-mono text-[10px] text-neutral-400">{slice.pct}%</span>
+              </div>
+            ))}
+          </div>
+        </section>
+        <section className="border border-line bg-panel p-4">
+          <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-400/90">
+            All mark-to-market
+          </h3>
+          <div className="flex h-24 items-end gap-1">
+            {[42, 48, 45, 51, 55, 52, 58, 61, 59, 64, 68, 66, 71, 74, 70, 76, 80, 78, 84, 88].map(
+              (h, i) => (
+                <div key={i} className="flex-1 rounded-sm bg-gain/40" style={{ height: `${h}%` }} />
+              ),
+            )}
+          </div>
+        </section>
+      </div>
+
+      <section className="min-w-0 border border-line bg-panel">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[720px] border-collapse text-left">
+            <thead>
+              <tr className="border-b border-line text-[9px] font-semibold uppercase tracking-[0.12em] text-neutral-500">
+                <th className="px-3 py-2">Name</th>
+                <th className="px-3 py-2 text-right">Shares</th>
+                <th className="px-3 py-2 text-right">Buy px</th>
+                <th className="px-3 py-2 text-right">Last</th>
+                <th className="px-3 py-2 text-right">Value</th>
+                <th className="px-3 py-2 text-right">Wt</th>
+                <th className="px-3 py-2 text-right">P&amp;L</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-line">
+              {MOCK_HOLDINGS.map((row) => (
+                <tr key={row.symbol}>
+                  <td className="px-3 py-2">
+                    <span className="block text-[13px] text-neutral-100">{row.name}</span>
+                    <span className="font-mono text-[9px] text-neutral-600">{row.symbol}</span>
+                  </td>
+                  <td className="px-3 py-2 text-right font-mono text-[12px] text-neutral-200">{row.shares}</td>
+                  <td className="px-3 py-2 text-right font-mono text-[12px] text-neutral-200">{row.buy}</td>
+                  <td className="px-3 py-2 text-right font-mono text-[12px] text-neutral-100">{row.last}</td>
+                  <td className="px-3 py-2 text-right font-mono text-[12px] text-neutral-100">{row.value}</td>
+                  <td className="px-3 py-2 text-right font-mono text-[12px] text-neutral-400">{row.wt}</td>
+                  <td className={`px-3 py-2 text-right font-mono text-[12px] ${changeClass(row.tone)}`}>
+                    <span className="block">{row.pnl}</span>
+                    <span className="text-[10px]">{row.pnlPct}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </section>
     </div>
   );
 }

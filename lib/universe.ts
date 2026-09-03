@@ -96,6 +96,19 @@ export function isTrackedSymbol(symbol: string): boolean {
   return entryBySymbol(symbol) != null;
 }
 
+const DEFAULT_BURSA_SYMBOL = "1155.KL";
+
+/** Returns true if the symbol resolves to a Bursa Malaysia (.KL) ticker in our universe. */
+export function isBursaSymbol(symbol: string): boolean {
+  const entry = entryBySymbol(symbol);
+  return entry != null && entry.symbol.endsWith(".KL");
+}
+
+/** If `symbol` is not a valid Bursa ticker, falls back to the default (1155.KL / Maybank). */
+export function ensureBursaSymbol(symbol: string): string {
+  return isBursaSymbol(symbol) ? symbol : DEFAULT_BURSA_SYMBOL;
+}
+
 /**
  * Same-sector comparables for the deep-dive matrix. Watchlist and curated
  * liquid names are preferred so Maybank pairs with CIMB, Public Bank and RHB

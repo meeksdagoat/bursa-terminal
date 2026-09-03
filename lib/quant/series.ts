@@ -2,7 +2,6 @@ import "server-only";
 
 import { getAnnouncementsFeed } from "@/lib/announcements";
 import { getBnmSnapshot } from "@/lib/bnm";
-import { INSTITUTION_PATTERNS } from "@/lib/market-hub-catalog";
 import { fetchRss, googleNewsUrl } from "@/lib/rss";
 import { NEWS_WINDOW_DAYS } from "@/lib/news-window";
 import { entryBySymbol, universe } from "@/lib/universe";
@@ -23,10 +22,6 @@ const FX_SYMBOL = "USDMYR=X";
 const BOND_PROXY_SYMBOL = "0800EA.KL";
 const SECTOR_BREADTH_SYMBOL_LIMIT = 32;
 const SECTOR_BREADTH_CONCURRENCY = 6;
-
-function detectInstitution(title: string): boolean {
-  return INSTITUTION_PATTERNS.some((entry) => entry.pattern.test(title));
-}
 
 function countByDate(items: Array<{ publishedAt: string | null }>, days: number): Map<string, number> {
   const counts = new Map<string, number>();
@@ -69,17 +64,6 @@ async function fetchNewsVelocitySeries(days: number): Promise<Map<string, number
     80,
   );
   return countByDate(entries, days);
-}
-
-async function fetchInstitutionalFlowSeries(days: number): Promise<Map<string, number>> {
-  const feed = await getAnnouncementsFeed();
-  const items = (feed.items ?? []).filter((item) => {
-    const hay = `${item.title} ${item.filingType ?? ""}`;
-    return /29\s*b|substantial shareholder|shareholding change|notice of interest|notice of change/i.test(
-      hay,
-    ) && detectInstitution(hay);
-  });
-  return countByDate(items, days);
 }
 
 async function mapWithConcurrency<T, R>(
@@ -205,10 +189,6 @@ export async function buildFactorSeries(
       }
       case "news_velocity": {
         const map = await fetchNewsVelocitySeries(days + 35);
-        return { series: map, errors, status: "live" };
-      }
-      case "institutional_flow": {
-        const map = await fetchInstitutionalFlowSeries(days + 35);
         return { series: map, errors, status: "live" };
       }
       case "sector_breadth": {

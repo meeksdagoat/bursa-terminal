@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { VirtualList } from "@/components/virtual-list";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 import { searchUniverse, universe } from "@/lib/universe";
@@ -24,14 +24,6 @@ export function StockPicker({
 }: StockPickerProps) {
   const [query, setQuery] = useState("");
   useBodyScrollLock(true);
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
 
   const shariahOnly = useShariahOnly();
   const saved = useMemo(() => new Set(savedSymbols), [savedSymbols]);

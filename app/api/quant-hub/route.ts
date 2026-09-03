@@ -9,7 +9,7 @@ const TTL_MS = 5 * 60 * 1000;
 
 export async function GET() {
   try {
-    const payload = await cached("quant-hub:v2", TTL_MS, getQuantHubPayload);
+    const payload = await cached("quant-hub:v3", TTL_MS, getQuantHubPayload);
     return Response.json(payload, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const detail = error instanceof Error ? error.message : "Unknown error";

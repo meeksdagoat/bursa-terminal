@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AppClerkProvider } from "@/components/clerk-provider";
-import { KeyboardLayer } from "@/components/keyboard-layer";
+import { AuthProvider } from "@/components/providers/AuthProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -36,10 +35,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       {/* Pages use normal document flow; compact shells lock themselves below lg. */}
       <body className="min-h-full overflow-x-hidden overflow-y-auto touch-pan-y bg-terminal font-sans text-neutral-200">
-        <AppClerkProvider>
-          <KeyboardLayer />
-          {children}
-        </AppClerkProvider>
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

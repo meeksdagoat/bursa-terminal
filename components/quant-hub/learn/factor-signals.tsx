@@ -67,14 +67,6 @@ export const FACTOR_SIGNALS_ADVANCED: AdvancedFormulaSection[] = [
     ],
   },
   {
-    id: "institutional-divergence",
-    title: "Institutional Accumulation Divergence",
-    latex: [
-      "\\text{Divergence} = Z(\\text{Volume}_{\\text{Institutional}}) - Z(\\text{Price Return})",
-    ],
-    note: "Flags EPF/PNB Form 29B stealth buying when price is flat or falling — smart money loading up quietly.",
-  },
-  {
     id: "sector-breadth",
     title: "Sector Market Breadth",
     latex: [

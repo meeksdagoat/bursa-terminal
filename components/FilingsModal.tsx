@@ -87,14 +87,6 @@ export function FilingsModal({
     return () => controller.abort();
   }, [activeTicker, selectedFilingId]);
 
-  useEffect(() => {
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
   const belongsToTicker = !detail?.symbol || detail.symbol === activeTicker;
   const upstreamPdfUrl = belongsToTicker ? (detail?.pdfUrl ?? selectedFiling.pdfUrl) : null;
   const hasPdf = Boolean(upstreamPdfUrl);

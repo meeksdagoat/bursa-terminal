@@ -28,7 +28,7 @@ import { formatFactorTargetCategories } from "@/lib/quant/sector-relevance";
 import { QUANT_FACTOR_OPTIONS } from "@/lib/quant/types";
 import { feedStatusFromQuote } from "@/lib/market-status";
 import type { BnmPayload, QuotesPayload } from "@/lib/types";
-import { findEntry, terminalHref, entryBySymbol } from "@/lib/universe";
+import { findEntry, terminalHref, entryBySymbol, ensureBursaSymbol } from "@/lib/universe";
 import { useLiveData } from "@/lib/use-live-data";
 import { useShariahOnly } from "@/lib/use-shariah";
 
@@ -143,7 +143,12 @@ export function QuantHub() {
                   type="button"
                   role="tab"
                   aria-selected={selected}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    if (tab.id === "factors") {
+                      setTargetSymbol((prev) => ensureBursaSymbol(prev));
+                    }
+                    setActiveTab(tab.id);
+                  }}
                   className={`flex-shrink-0 whitespace-nowrap border-b-2 px-3 py-2 font-mono text-xs transition-colors ${
                     selected
                       ? "border-amber-400 text-amber-400"
@@ -303,6 +308,11 @@ function FactorSignalsTab({
   targetSymbol: string;
   onSymbolChange: (symbol: string) => void;
 }) {
+  const handleSymbolChange = useCallback(
+    (symbol: string) => onSymbolChange(ensureBursaSymbol(symbol)),
+    [onSymbolChange],
+  );
+
   const targetEntry = entryBySymbol(targetSymbol);
   const targetSector = targetEntry?.sector ?? "Unknown";
 
@@ -337,7 +347,7 @@ function FactorSignalsTab({
               <CorrelationEngine
                 factorOptions={factorOptions}
                 symbol={targetSymbol}
-                onSymbolChange={onSymbolChange}
+                onSymbolChange={handleSymbolChange}
               />
             ),
           }}
@@ -366,7 +376,7 @@ function QuantFactorGuide({
           Factor Methodology
         </h2>
         <p className="mt-1 text-[11px] leading-relaxed text-neutral-500">
-          Six orthogonal signals combining alternative data, institutional flows, macro rates and
+          Five orthogonal signals combining alternative data, macro rates and
           market breadth. Scores are scaled to a −100…+100 terminal gauge.
         </p>
       </div>

@@ -101,14 +101,15 @@ export function HeaderBar({
           <Link
             href="/"
             title="Home"
-            className="flex min-h-11 flex-shrink-0 items-center gap-1.5 whitespace-nowrap border-r border-neutral-800 pr-2 md:min-h-0 md:items-baseline md:gap-2 md:pr-3"
+            className="flex min-h-11 flex-shrink-0 items-center border-r border-neutral-800 pr-2 md:min-h-0 md:pr-3"
           >
-            <span className="text-[13px] font-semibold tracking-[0.08em] text-white md:tracking-[0.18em]">
-              BURSA
-            </span>
-            <span className="text-[13px] font-semibold tracking-[0.08em] text-gain md:tracking-[0.18em]">
-              TERMINAL
-            </span>
+            <img
+              src="/bursa-terminal-logo.png"
+              alt="Bursa Terminal"
+              width={148}
+              height={20}
+              className="h-5 w-[148px] object-contain object-left"
+            />
           </Link>
 
           {nav}
@@ -119,9 +120,6 @@ export function HeaderBar({
           className="hidden w-48 shrink-0 items-center gap-1 md:flex lg:w-64"
         >
           <TickerSearchField id="ticker-search" placeholder="Search a ticker..." onSearch={onSearch} />
-          <kbd className="hidden flex-shrink-0 whitespace-nowrap border border-neutral-800 px-1 py-0.5 font-mono text-[8px] text-neutral-600 lg:inline">
-            Ctrl+K
-          </kbd>
         </form>
 
         <div className="ml-auto flex h-full min-w-0 items-center justify-end gap-2 overflow-x-clip overflow-y-clip md:gap-4 lg:ml-0 lg:flex-1">

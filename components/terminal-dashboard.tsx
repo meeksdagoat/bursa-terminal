@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { AnnouncementsDrawer } from "@/components/AnnouncementsDrawer";
 import { ChartWidget } from "@/components/chart-widget";
-import { ExportMenu } from "@/components/export-menu";
 import { HeaderBar } from "@/components/header-bar";
 import { IntelPanel } from "@/components/intel-panel";
 import { MainNav } from "@/components/main-nav";
@@ -15,7 +14,6 @@ import { SlideDrawer } from "@/components/slide-drawer";
 import { StockPicker } from "@/components/stock-picker";
 import { TickerRibbon } from "@/components/ticker-ribbon";
 import { WatchlistSidebar } from "@/components/watchlist-sidebar";
-import { downloadCsv, stampFilename, watchlistCsvRows } from "@/lib/export";
 import { formatKlTime } from "@/lib/format";
 import type {
   BnmPayload,
@@ -245,29 +243,6 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
         feedStatus={quotes.status}
         ticks={quotes.ticks}
         latencyMs={quotes.latencyMs}
-        actions={
-          <ExportMenu
-            actions={[
-              {
-                id: "watchlist-csv",
-                label: "Watchlist CSV",
-                onSelect: () =>
-                  downloadCsv(
-                    stampFilename("bursa-watchlist", "csv"),
-                    watchlistCsvRows(
-                      rows.map((row) => ({
-                        symbol: row.symbol,
-                        name: row.name,
-                        price: row.quote?.price ?? null,
-                        changePct: row.quote?.changePct ?? null,
-                        volume: row.quote?.volume ?? null,
-                      })),
-                    ),
-                  ),
-              },
-            ]}
-          />
-        }
       />
 
       <MainNav active="market" />

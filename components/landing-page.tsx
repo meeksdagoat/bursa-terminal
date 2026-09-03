@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useId, useMemo, useState, type ReactNode } from "react";
+import { HeaderAuth } from "@/components/header-auth";
 import { MarketOverview } from "@/components/market-overview";
 import { SignedPct } from "@/components/signed-change";
 import { NewsFeedSkeleton } from "@/components/skeleton";
@@ -369,14 +370,14 @@ function LandingHeader({
   return (
     <header className="sticky top-0 z-40 border-b border-white/10 bg-[#0a0a0a]/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-4 px-4 sm:px-6">
-        <Link href="/" className="flex shrink-0 items-baseline gap-2">
-          <span className="text-[13px] font-semibold tracking-[0.22em] text-white">BURSA</span>
-          <span
-            className="text-[13px] font-semibold tracking-[0.22em]"
-            style={{ color: ACCENT_GREEN }}
-          >
-            TERMINAL
-          </span>
+        <Link href="/" className="flex h-5 w-[155px] shrink-0 items-center">
+          <img
+            src="/bursa-terminal-logo.png"
+            alt="Bursa Terminal"
+            width={155}
+            height={20}
+            className="h-5 w-[155px] object-contain object-left"
+          />
         </Link>
 
         <nav className="ml-6 hidden items-center gap-6 text-[13px] text-neutral-400 md:flex">
@@ -406,9 +407,12 @@ function LandingHeader({
               <span className="block h-px w-4 bg-current" />
             </span>
           </button>
-          <LaunchButton href={terminalHref()} size="header">
-            Launch Terminal
-          </LaunchButton>
+          <div className="grid grid-cols-2 items-center gap-2">
+            <LaunchButton href={terminalHref()} size="header">
+              Launch Terminal
+            </LaunchButton>
+            <HeaderAuth size="header" />
+          </div>
         </div>
       </div>
 
@@ -504,7 +508,7 @@ function LaunchButton({
   size: "header" | "hero";
   children: ReactNode;
 }) {
-  const sizing = size === "hero" ? "h-12 px-6 text-sm" : "h-9 px-3.5 text-[12px]";
+  const sizing = size === "hero" ? "h-12 px-6 text-sm" : "h-9 w-full px-3.5 text-[12px]";
 
   return (
     <Link

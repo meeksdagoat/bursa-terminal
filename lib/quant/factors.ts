@@ -84,46 +84,6 @@ async function weatherAgriFactor(): Promise<QuantFactorSignal> {
   };
 }
 
-async function institutionalDivergenceFactor(): Promise<QuantFactorSignal> {
-  const flow = await buildFactorSeries("institutional_flow", 90);
-  const values = [...flow.series.values()];
-  const recent = values.slice(-14).reduce((sum, value) => sum + value, 0);
-  const prior = values.slice(-28, -14).reduce((sum, value) => sum + value, 0);
-  const filingTrend = recent - prior;
-
-  const benchmark = await fetchDailyCloses("1155.KL", daysAgo(60)).catch(() => []);
-  const momentum = momentumPct(benchmark, 30);
-
-  const divergence =
-    filingTrend > 1 && momentum != null && momentum < 0
-      ? -55
-      : filingTrend < -1 && momentum != null && momentum > 0
-        ? 45
-        : filingTrend > 0 && momentum != null && momentum > 0
-          ? 35
-          : 0;
-
-  return {
-    id: "institutional-divergence",
-    label: "Institutional Accumulation Divergence",
-    score: Math.max(-100, Math.min(100, divergence)),
-    confidence: values.length > 20 ? 72 : 48,
-    summary:
-      divergence < -20
-        ? "EPF/PNB Form 29B filings rising while price momentum fades — accumulation divergence."
-        : divergence > 20
-          ? "Institutional filings align with positive price momentum."
-          : "Institutional flow trends are neutral versus price action.",
-    targetSymbols: ["1155.KL", "1295.KL", "1023.KL"],
-    status: flow.status,
-    metadata: {
-      filingTrend14d: filingTrend,
-      momentum30d: momentum,
-      recentFilings: recent,
-    },
-  };
-}
-
 async function newsVelocityFactor(): Promise<QuantFactorSignal> {
   const news = await buildFactorSeries("news_velocity", 30);
   const values = [...news.series.values()];
@@ -344,7 +304,6 @@ export async function computeQuantFactors(): Promise<{
 }> {
   const results = await Promise.allSettled([
     weatherAgriFactor(),
-    institutionalDivergenceFactor(),
     newsVelocityFactor(),
     fxBetaFactor(),
     yieldSpreadFactor(),

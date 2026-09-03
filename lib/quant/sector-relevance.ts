@@ -16,7 +16,6 @@ const SERIES_FACTOR_SECTORS: Partial<Record<QuantSeriesFactorId, readonly string
   usd_myr: ["Energy", "Chemicals", "Materials", "Consumer", "Utilities"],
   bnm_opr: ["Banking", "Financials", "Insurance", "Utilities"],
   mgs_proxy: ["Banking", "Financials", "Insurance", "Utilities"],
-  institutional_flow: ["Banking", "Financials", "Insurance"],
 };
 
 const SERIES_FACTOR_CATEGORY: Partial<Record<QuantSeriesFactorId, string>> = {
@@ -25,19 +24,16 @@ const SERIES_FACTOR_CATEGORY: Partial<Record<QuantSeriesFactorId, string>> = {
   usd_myr: "FX Export Beta",
   bnm_opr: "Macro Rates",
   mgs_proxy: "Yield Sensitivity",
-  institutional_flow: "Institutional Flow",
 };
 
 const OVERVIEW_FACTOR_SECTORS: Partial<Record<QuantFactorId, readonly string[]>> = {
   "weather-agri": ["Plantation"],
-  "institutional-divergence": ["Banking", "Financials", "Insurance"],
   "fx-beta": ["Energy", "Chemicals", "Materials", "Consumer", "Utilities"],
   "yield-spread": ["Banking", "Financials", "Insurance", "Utilities"],
 };
 
 const OVERVIEW_FACTOR_CATEGORY: Partial<Record<QuantFactorId, string>> = {
   "weather-agri": "Weather",
-  "institutional-divergence": "Institutional Flow",
   "news-velocity": "News Velocity",
   "fx-beta": "FX Export Beta",
   "yield-spread": "Yield Sensitivity",
@@ -47,7 +43,6 @@ const OVERVIEW_FACTOR_CATEGORY: Partial<Record<QuantFactorId, string>> = {
 /** Sector/category labels shown instead of individual ticker names in factor UI. */
 export const FACTOR_TARGET_CATEGORIES: Record<QuantFactorId, readonly string[]> = {
   "weather-agri": ["Plantation"],
-  "institutional-divergence": ["Banking", "Financials", "Insurance"],
   "news-velocity": ["Large Cap", "Multi-sector"],
   "fx-beta": ["Export / FX Sensitive", "Energy", "Healthcare"],
   "yield-spread": ["Banking", "Fixed Income"],

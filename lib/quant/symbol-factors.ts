@@ -1,8 +1,6 @@
 import "server-only";
 
-import { getAnnouncementsFeed } from "@/lib/announcements";
 import { getCompanyNews } from "@/lib/company-news";
-import { INSTITUTION_PATTERNS } from "@/lib/market-hub-catalog";
 import { entryBySymbol } from "@/lib/universe";
 import type { UniverseEntry } from "@/lib/types";
 import { fetchDailyCloses } from "@/lib/yahoo";
@@ -34,10 +32,6 @@ function countByDate(items: Array<{ publishedAt: string | null }>, days: number)
   }
 
   return counts;
-}
-
-function detectInstitution(title: string): boolean {
-  return INSTITUTION_PATTERNS.some((entry) => entry.pattern.test(title));
 }
 
 function clampScore(score: number): number {
@@ -100,67 +94,6 @@ async function weatherAgriForSymbol(entry: UniverseEntry): Promise<QuantFactorSi
       correlationR90: r,
       pearsonR30: correlation.metrics.pearsonR30,
       pearsonR90: correlation.metrics.pearsonR90,
-    },
-  };
-}
-
-async function institutionalDivergenceForSymbol(entry: UniverseEntry): Promise<QuantFactorSignal> {
-  const relevance = assessOverviewFactorRelevance("institutional-divergence", entry.sector);
-  if (relevance.level === "low") {
-    return mutedSignal(
-      "institutional-divergence",
-      "Institutional Accumulation Divergence",
-      entry.sector,
-      "Institutional Flow",
-    );
-  }
-
-  const feed = await getAnnouncementsFeed();
-  const items = (feed.items ?? []).filter((item) => {
-    if (item.symbol !== entry.symbol && item.code !== entry.code) return false;
-    const hay = `${item.title} ${item.filingType ?? ""}`;
-    return (
-      /29\s*b|substantial shareholder|shareholding change|notice of interest|notice of change/i.test(
-        hay,
-      ) && detectInstitution(hay)
-    );
-  });
-
-  const counts = countByDate(items, 90);
-  const values = [...counts.values()];
-  const recent = values.slice(-14).reduce((sum, value) => sum + value, 0);
-  const prior = values.slice(-28, -14).reduce((sum, value) => sum + value, 0);
-  const filingTrend = recent - prior;
-
-  const closes = await fetchDailyCloses(entry.symbol, daysAgo(60)).catch(() => []);
-  const momentum = momentumPct(closes, 30);
-
-  const divergence =
-    filingTrend > 0 && momentum != null && momentum < 0
-      ? -55
-      : filingTrend < 0 && momentum != null && momentum > 0
-        ? 45
-        : filingTrend > 0 && momentum != null && momentum > 0
-          ? 35
-          : 0;
-
-  return {
-    id: "institutional-divergence",
-    label: "Institutional Accumulation Divergence",
-    score: clampScore(divergence),
-    confidence: values.length > 20 ? 72 : 48,
-    summary:
-      divergence < -20
-        ? `${entry.shortName}: institutional filings rising while price momentum fades.`
-        : divergence > 20
-          ? `${entry.shortName}: institutional filings align with positive momentum.`
-          : `${entry.shortName}: institutional flow trends neutral versus price action.`,
-    targetSymbols: [entry.symbol],
-    status: items.length > 0 ? "live" : "degraded",
-    metadata: {
-      filingTrend14d: filingTrend,
-      momentum30d: momentum,
-      recentFilings: recent,
     },
   };
 }
@@ -321,7 +254,6 @@ export async function computeQuantFactorsForSymbol(symbol: string): Promise<Symb
 
   const results = await Promise.allSettled([
     weatherAgriForSymbol(entry),
-    institutionalDivergenceForSymbol(entry),
     newsVelocityForSymbol(entry),
     fxBetaForSymbol(entry),
     yieldSpreadForSymbol(entry),

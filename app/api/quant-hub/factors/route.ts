@@ -16,7 +16,7 @@ export async function GET(request: NextRequest) {
     return Response.json({ error: `Unsupported symbol: ${symbol}` }, { status: 400 });
   }
 
-  const cacheKey = `quant-factors:v1:${symbol}`;
+  const cacheKey = `quant-factors:v2:${symbol}`;
 
   try {
     const payload = await cached(cacheKey, TTL_MS, () => computeQuantFactorsForSymbol(symbol));

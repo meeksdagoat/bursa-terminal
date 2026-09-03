@@ -260,11 +260,10 @@ const FACTOR_EXPORT_COLUMNS: readonly {
   header: string;
 }[] = [
   { id: "weather-agri", key: "factor1Weather", header: "Factor 1 (Weather)" },
-  { id: "institutional-divergence", key: "factor2InstFlow", header: "Factor 2 (Inst. Flow)" },
-  { id: "news-velocity", key: "factor3NewsVelocity", header: "Factor 3 (News Velocity)" },
-  { id: "fx-beta", key: "factor4FxBeta", header: "Factor 4 (FX Beta)" },
-  { id: "yield-spread", key: "factor5YieldSpread", header: "Factor 5 (Yield Spread)" },
-  { id: "sector-breadth", key: "factor6MarketBreadth", header: "Factor 6 (Market Breadth)" },
+  { id: "news-velocity", key: "factor2NewsVelocity", header: "Factor 2 (News Velocity)" },
+  { id: "fx-beta", key: "factor3FxBeta", header: "Factor 3 (FX Beta)" },
+  { id: "yield-spread", key: "factor4YieldSpread", header: "Factor 4 (Yield Spread)" },
+  { id: "sector-breadth", key: "factor5MarketBreadth", header: "Factor 5 (Market Breadth)" },
 ];
 
 function displayFactorScore(factor: QuantFactorSignal | undefined): number {

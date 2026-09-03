@@ -1,15 +1,9 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 
-const clerkConfigured =
-  Boolean(process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY) && Boolean(process.env.CLERK_SECRET_KEY);
-
-/** Auth is optional until Clerk keys are set — the rest of the terminal stays public. */
-export default clerkConfigured
-  ? clerkMiddleware()
-  : function middleware() {
-      return NextResponse.next();
-    };
+/** Auth is optional — the terminal stays public without a session. */
+export default function middleware() {
+  return NextResponse.next();
+}
 
 export const config = {
   matcher: [

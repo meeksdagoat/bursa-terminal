@@ -16,10 +16,9 @@ export const NAV_ITEMS: {
   id: NavActive;
   href: string;
   label: string;
-  shortcut?: string;
   blurb?: string;
 }[] = [
-  { id: "market", href: "/terminal", label: "Bursa MY", shortcut: "Alt+1" },
+  { id: "market", href: "/terminal", label: "Bursa MY" },
   {
     id: "market-hub",
     href: "/terminal/market-hub",
@@ -36,17 +35,14 @@ export const NAV_ITEMS: {
     id: "calculators",
     href: "/calculators",
     label: "Calculators",
-    shortcut: "Alt+5",
     blurb: "DCA simulator, brokerage fees, and dividend DRIP planning",
   },
   { id: "screener", href: "/screener", label: "Screener" },
-  { id: "portfolio", href: "/portfolio", label: "My Portfolio", shortcut: "Alt+2" },
+  { id: "portfolio", href: "/portfolio", label: "My Portfolio" },
   ...HEADLINE_CATEGORIES.map((tab) => ({
     id: tab.id,
     href: deskHref(tab.id),
     label: tab.label,
-    shortcut:
-      tab.id === "my-economy" ? "Alt+3" : tab.id === "my-politics" ? "Alt+4" : undefined,
     blurb: tab.blurb,
   })),
 ];
@@ -83,11 +79,6 @@ export function MainNav({ active }: MainNavProps) {
             }`}
           >
             {item.label}
-            {item.shortcut ? (
-              <kbd className="hidden font-mono text-[8px] font-normal normal-case tracking-normal text-neutral-600 lg:inline">
-                {item.shortcut}
-              </kbd>
-            ) : null}
           </Link>
         );
       })}

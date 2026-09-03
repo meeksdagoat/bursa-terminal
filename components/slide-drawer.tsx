@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 import { useBodyScrollLock } from "@/lib/use-body-scroll-lock";
 
 type SlideDrawerProps = {
@@ -33,17 +33,6 @@ export function SlideDrawer({
   headerClassName = "",
 }: SlideDrawerProps) {
   useBodyScrollLock(open);
-
-  useEffect(() => {
-    if (!open) return;
-
-    function onKey(event: KeyboardEvent) {
-      if (event.key === "Escape") onClose();
-    }
-
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
   if (!open) return null;
 

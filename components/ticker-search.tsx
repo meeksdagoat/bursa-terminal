@@ -116,14 +116,6 @@ export function TickerSearchField({
   }, [activeIndex, showMenu]);
 
   function onKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    if (event.key === "Escape") {
-      if (!showMenu) return;
-      event.preventDefault();
-      event.stopPropagation();
-      setOpen(false);
-      return;
-    }
-
     if (event.key === "ArrowDown") {
       if (results.length === 0) return;
       event.preventDefault();
@@ -179,14 +171,9 @@ export function TickerSearchField({
           }}
           onKeyDown={onKeyDown}
           className={`h-11 w-full rounded-sm border border-neutral-800 bg-[#0a0a0a] px-2.5 font-mono text-base text-neutral-200 outline-none placeholder:text-neutral-600 focus:border-gain/50 md:h-7 md:text-[11px] ${
-            mobile ? "pr-2.5" : "pr-2.5 lg:pr-10"
+            mobile ? "pr-2.5" : "pr-2.5"
           }`}
         />
-        {mobile ? null : (
-          <kbd className="pointer-events-none absolute right-1.5 top-1/2 hidden -translate-y-1/2 border border-neutral-800 px-1 font-mono text-[8px] text-neutral-600 lg:inline">
-            /
-          </kbd>
-        )}
       </div>
       <button
         type="submit"

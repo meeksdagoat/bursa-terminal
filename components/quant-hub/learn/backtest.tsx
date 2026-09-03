@@ -1,5 +1,52 @@
 import { IndicatorCard, StepCard, type AdvancedFormulaSection } from "@/components/quant-hub/learn-quant-shared";
 
+const STRATEGY_CHEAT_SHEET = [
+  {
+    title: "RSI Mean-Reversion (14D / 30-70)",
+    whatItIs: 'A "rubber band" indicator measuring whether a stock is stretched too far.',
+    howItTrades:
+      "Buys when oversold (below 30 — the stock dropped too fast) and sells when overbought (above 70 — the stock rose too fast).",
+  },
+  {
+    title: "Bollinger Band Breakout (20, 2.0)",
+    whatItIs: "A volatility envelope around the price.",
+    howItTrades:
+      "Triggers a buy when the price explodes above the top band (predicting a momentum breakout) or a sell when it pierces the lower band.",
+  },
+  {
+    title: "Fast EMA Crossover (5 / 20)",
+    whatItIs: "A fast-reacting trend trigger using Exponential Moving Averages.",
+    howItTrades:
+      "Buys when the 5-day average line crosses ABOVE the 20-day line (short-term momentum turning up). Sells when it crosses BELOW.",
+  },
+  {
+    title: "Stochastic Oscillator (%K 14, %D 3)",
+    whatItIs:
+      "A short-term momentum gauge tracking where the stock closed relative to its recent high/low range.",
+    howItTrades:
+      "Ideal for sideways markets. Buys when lines cross below 20 (oversold turnaround) and sells above 80 (overbought peak).",
+  },
+  {
+    title: "MACD Histogram Zero-Flip (12, 26, 9)",
+    whatItIs: "Measures the difference between short-term and long-term momentum.",
+    howItTrades:
+      "Buys the exact moment momentum flips positive (histogram bars cross above the zero line) and exits when momentum turns negative.",
+  },
+  {
+    title: "Keltner Channel Reversal (20 EMA, 2x ATR)",
+    whatItIs: "Uses Average True Range (ATR) volatility channels to detect extreme price stretches.",
+    howItTrades:
+      'Catches "over-extended" moves. Buys when price dips outside the lower channel and snaps back in.',
+  },
+  {
+    title: "Parabolic SAR Trailing Flip (0.02, 0.2)",
+    whatItIs:
+      "A strict trailing stop-and-reverse system represented by dots above or below price candles.",
+    howItTrades:
+      "Flips LONG when dots jump BELOW candles (uptrend start) and flips SHORT/EXIT when dots move ABOVE candles.",
+  },
+] as const;
+
 export const BACKTEST_ADVANCED: AdvancedFormulaSection[] = [
   {
     id: "profit-factor",
@@ -90,19 +137,29 @@ export function LearnBacktestContent() {
 
       <section className="mt-6 space-y-3">
         <h3 className="text-[11px] font-semibold uppercase tracking-[0.14em] text-amber-400/90">
-          Trade Frequency Insights
+          Indicator & Strategy Cheat Sheet (For Beginners)
         </h3>
-        <div className="flex flex-col gap-2.5">
-          <IndicatorCard
-            title="Slow Trend Strategies (20/50 MA Crossover, MACD)"
-            measures="Few signals — often only 4–8 trades over 5 years on daily data."
-            matters="Each trade carries more weight. One bad streak can dominate results. Good for patient swing traders; not for daily action seekers."
-          />
-          <IndicatorCard
-            title="Fast Oscillators (RSI 14, Stochastic, EMA 5/20, Bollinger)"
-            measures="Many signals — 50–100+ trades per year on the same data."
-            matters="Results average out faster (more statistical samples) but commissions and slippage matter more. Win rate and profit factor need tighter scrutiny."
-          />
+        <p className="text-[12px] leading-relaxed text-neutral-300">
+          These seven rules match the Strategy dropdown on the Historical Backtest Engine. Read{" "}
+          <span className="font-semibold text-neutral-200">What it is</span> to picture the indicator,
+          then <span className="font-semibold text-neutral-200">How it trades</span> to know when the
+          engine buys or sells.
+        </p>
+        <div className="grid gap-2.5 sm:grid-cols-2">
+          {STRATEGY_CHEAT_SHEET.map((entry) => (
+            <article
+              key={entry.title}
+              className="rounded-lg border border-neutral-800 bg-neutral-900/60 p-3"
+            >
+              <h4 className="text-[11px] font-semibold text-neutral-100">{entry.title}</h4>
+              <p className="mt-2 text-[11px] leading-relaxed text-neutral-400">
+                <span className="font-semibold text-neutral-200">What it is:</span> {entry.whatItIs}
+              </p>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-400">
+                <span className="font-semibold text-neutral-200">How it trades:</span> {entry.howItTrades}
+              </p>
+            </article>
+          ))}
         </div>
       </section>
 
@@ -114,7 +171,7 @@ export function LearnBacktestContent() {
           <StepCard
             step={1}
             title="Pick Strategy & Lookback"
-            body="Match strategy speed to your style — oscillators for active traders, MA crossovers for swing holders. Use 3Y+ for trend tests."
+            body="Use the cheat sheet above to match a rule to your style — oscillators for active traders, crossovers and SAR for trend followers. Use 3Y+ for trend tests."
           />
           <StepCard
             step={2}
