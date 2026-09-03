@@ -77,10 +77,10 @@ export function HeaderBar({
   const showLiveBadge = active === "my-economy" || active === "global-economy";
 
   return (
-    <header className="w-full shrink-0 overflow-x-clip overflow-y-clip border-b border-neutral-800 bg-[#0d0d0d]">
+    <header className="relative z-40 w-full shrink-0 overflow-x-clip overflow-y-visible border-b border-neutral-800 bg-[#0d0d0d]">
       <div
         ref={lockHeaderRow}
-        className="flex h-12 max-h-12 min-h-12 w-full items-center justify-between gap-2 overflow-x-clip overflow-y-clip px-3 md:gap-3"
+        className="flex h-12 max-h-12 min-h-12 w-full items-center justify-between gap-2 overflow-x-clip overflow-y-visible px-3 md:gap-3"
       >
         <div className="flex shrink-0 items-center gap-2 md:gap-4">
           <button
@@ -122,7 +122,7 @@ export function HeaderBar({
           <TickerSearchField id="ticker-search" placeholder="Search a ticker..." onSearch={onSearch} />
         </form>
 
-        <div className="ml-auto flex h-full min-w-0 items-center justify-end gap-2 overflow-x-clip overflow-y-clip md:gap-4 lg:ml-0 lg:flex-1">
+        <div className="ml-auto flex h-full min-w-0 items-center justify-end gap-2 overflow-x-clip overflow-y-visible md:gap-4 lg:ml-0 lg:flex-1">
           <button
             type="button"
             className="inline-flex min-h-11 min-w-11 flex-shrink-0 items-center justify-center border border-neutral-800 text-neutral-300 md:hidden"
@@ -149,7 +149,9 @@ export function HeaderBar({
 
           {showLiveBadge ? <RealtimeBadge /> : null}
 
-          <HeaderAuth />
+          <div className="relative z-[60] inline-block overflow-visible">
+            <HeaderAuth />
+          </div>
 
           {actions ? <div className="hidden flex-shrink-0 xl:block">{actions}</div> : null}
 
