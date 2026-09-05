@@ -19,6 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     },
     async session({ session, token }) {
       if (session.user) {
+        session.user.id = typeof token.sub === "string" ? token.sub : "";
         session.user.nickname = typeof token.nickname === "string" ? token.nickname : null;
       }
       return session;

@@ -10,7 +10,9 @@
     "verify:universe": "node scripts/verify-universe.mjs",
     "ingest:universe": "node scripts/ingest-universe.mjs",
     "ingest:us-tickers": "node scripts/ingest-us-tickers.mjs",
-    "ingest:historical": "node scripts/ingest-historical-parquet.mjs"
+    "ingest:historical": "node scripts/ingest-historical-parquet.mjs",
+    "postinstall": "prisma generate",
+    "db:push": "prisma db push"
   },
   "dependencies": {
     "@clerk/nextjs": "^7.8.2",
@@ -24,6 +26,7 @@
     "jspdf": "^4.2.1",
     "katex": "^0.18.4",
     "lightweight-charts": "^5.2.1",
+    "@prisma/client": "^6.16.2",
     "next": "16.3.2",
     "next-auth": "^5.0.0-beta.32",
     "react": "19.2.8",
@@ -39,6 +42,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "prisma": "^6.16.2",
     "eslint": "^9",
     "eslint-config-next": "16.3.2",
     "tailwindcss": "^4",

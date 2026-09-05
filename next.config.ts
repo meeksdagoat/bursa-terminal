@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   // yahoo-finance2 and duckdb ship native/node bindings; keep them out of the server bundle.
-  serverExternalPackages: ["yahoo-finance2", "duckdb", "@duckdb/duckdb-wasm"],
+  serverExternalPackages: ["yahoo-finance2", "duckdb", "@duckdb/duckdb-wasm", "@prisma/client", "prisma"],
   async redirects() {
     return [
       {
