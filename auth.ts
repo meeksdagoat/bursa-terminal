@@ -11,7 +11,12 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt" },
   callbacks: {
-    async jwt({ token, trigger, session }) {
+    async jwt({ token, account, trigger, session }) {
+      // Google's provider account id is stable across cookie clears; Auth.js
+      // otherwise mints a new `sub` on every sign-in without an adapter.
+      if (account?.providerAccountId) {
+        token.sub = account.providerAccountId;
+      }
       if (trigger === "update" && session && typeof session.nickname === "string") {
         token.nickname = session.nickname;
       }

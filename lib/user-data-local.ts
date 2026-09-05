@@ -55,6 +55,20 @@ export function hasGuestStorage(): boolean {
   return GUEST_STORAGE_KEYS.some((key) => readItem(key) != null);
 }
 
+/** Only used on sign-in. Missing keys stay empty — never invent the default watchlist. */
+export function readGuestSnapshotForMigration(): UserDataSnapshot | null {
+  if (!hasGuestStorage()) return null;
+
+  const portfolioRaw = readItem(PORTFOLIO_STORAGE_KEY) ?? readItem(PORTFOLIO_DATA_KEY);
+  const portfolioLegacy = readItem(PORTFOLIO_STORAGE_V1);
+  const watchlistRaw = readItem(WATCHLIST_STORAGE_KEY) ?? readItem(WATCHLIST_DATA_KEY);
+
+  return {
+    portfolio: parsePortfolioSnapshot(portfolioRaw, portfolioLegacy),
+    watchlist: parseWatchlistSymbols(watchlistRaw, []),
+  };
+}
+
 export function writeGuestPortfolio(state: PortfolioSnapshot): void {
   try {
     window.localStorage.setItem(PORTFOLIO_STORAGE_KEY, JSON.stringify(state));

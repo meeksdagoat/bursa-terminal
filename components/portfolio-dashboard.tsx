@@ -378,6 +378,11 @@ function AuthenticatedPortfolioDashboard() {
           {searchHint}
         </p>
       ) : null}
+      {portfolio.error ? (
+        <p className="border-b border-line bg-[#1a1208] px-3 py-1 font-mono text-[10px] text-amber-400">
+          {portfolio.error} · holdings are loaded from your account, not this browser.
+        </p>
+      ) : null}
 
       <div
         ref={reportRef}
@@ -388,7 +393,7 @@ function AuthenticatedPortfolioDashboard() {
           <div>
             <h1 className="text-[15px] font-semibold tracking-tight text-white">My Portfolio</h1>
             <p className="mt-0.5 text-[12px] text-neutral-500">
-              Saved locally · live Yahoo marks · P&amp;L vs buy price, windows vs the tape
+              Saved to your account · live Yahoo marks · P&amp;L vs buy price, windows vs the tape
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -432,7 +437,7 @@ function AuthenticatedPortfolioDashboard() {
         </div>
 
         <section className="grid grid-cols-2 gap-px overflow-hidden border border-line bg-line md:grid-cols-4">
-          {quotes.loading && quotes.data == null ? (
+          {portfolio.loading || (quotes.loading && quotes.data == null) ? (
             <>
               <KpiSkeleton />
               <KpiSkeleton />
@@ -464,7 +469,7 @@ function AuthenticatedPortfolioDashboard() {
         </section>
 
         <section className="grid grid-cols-2 gap-px overflow-hidden border border-line bg-line md:grid-cols-3">
-          {quotes.loading && quotes.data == null ? (
+          {portfolio.loading || (quotes.loading && quotes.data == null) ? (
             <>
               <KpiSkeleton />
               <KpiSkeleton />
@@ -640,8 +645,7 @@ function AuthenticatedPortfolioDashboard() {
             <SignedPct value={quotes.data?.index?.changePct} className="font-mono text-[11px]" />) ·{" "}
             {formatMarketState(quotes.data?.marketState)} · Yahoo{" "}
             {quotes.data?.delayMinutes != null ? `${quotes.data.delayMinutes}m delay` : "delayed"} · Updated{" "}
-            {formatKlTime(quotes.updatedAt)} MYT · {portfolio.holdings.length} open lots stored in this
-            browser.
+            {formatKlTime(quotes.updatedAt)} MYT ·             {portfolio.holdings.length} open lots stored on your account.
           </p>
         </section>
 
@@ -673,7 +677,7 @@ function AuthenticatedPortfolioDashboard() {
         {tab === "dividends" ? <DividendTable rows={dividends} /> : null}
 
         {tab === "holdings" ? (
-        quotes.loading && quotes.data == null && rows.length > 0 ? (
+        portfolio.loading || (quotes.loading && quotes.data == null && rows.length > 0) ? (
           <section className="min-w-0 border border-line bg-panel">
             <TableSkeleton rows={Math.min(rows.length, 8)} cols={6} />
           </section>

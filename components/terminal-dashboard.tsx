@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Panel, PanelGroup } from "react-resizable-panels";
 import { AnnouncementsDrawer } from "@/components/AnnouncementsDrawer";
 import { ChartWidget } from "@/components/chart-widget";
@@ -40,6 +41,7 @@ type CompactDrawer = "watchlist" | "news" | "filings" | null;
 
 export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
   const router = useRouter();
+  const { status: sessionStatus } = useSession();
   const breakpoint = useBreakpoint();
   const watchlist = useWatchlist();
   const shariahOnly = useShariahOnly();
@@ -189,6 +191,7 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
       onBrowse={openPicker}
       onClose={closeWatchlistDrawer}
       ticks={quotes.ticks}
+      loading={watchlist.loading}
     />
   );
 
@@ -249,9 +252,12 @@ export function TerminalDashboard({ initialSymbol }: TerminalDashboardProps) {
 
       <TickerRibbon rows={ribbonRows} ticks={quotes.ticks} onSelect={handleSelectFromList} />
 
-      {searchHint || feedError ? (
+      {searchHint || feedError || (sessionStatus === "authenticated" && watchlist.error) ? (
         <div className="flex shrink-0 items-center gap-3 border-b border-line bg-[#1a1208] px-3 py-1 font-mono text-[10px] text-amber-400">
           {searchHint ? <span>{searchHint}</span> : null}
+          {sessionStatus === "authenticated" && watchlist.error ? (
+            <span>ACCOUNT DATA · {watchlist.error}</span>
+          ) : null}
           {feedError ? <span className="text-loss">FEED ERROR · {feedError}</span> : null}
         </div>
       ) : null}

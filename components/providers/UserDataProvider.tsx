@@ -29,7 +29,7 @@ import {
 } from "@/lib/user-data-actions";
 import {
   clearGuestStorage,
-  hasGuestStorage,
+  readGuestSnapshotForMigration,
   readGuestUserData,
   writeGuestUserData,
 } from "@/lib/user-data-local";
@@ -44,6 +44,8 @@ import {
 export type UserDataContextValue = UserDataSnapshot & {
   status: "loading" | "authenticated" | "unauthenticated";
   ready: boolean;
+  loading: boolean;
+  error: string | null;
   upsert: (input: UpsertHoldingInput) => string | null;
   update: (id: string, patch: Partial<Pick<Holding, "quantity" | "costPerShare" | "boughtAt">>) => void;
   remove: (id: string) => void;
@@ -95,25 +97,38 @@ function subscribeGuest(onStoreChange: () => void) {
   };
 }
 
+function snapshotFromResponse(data: UserDataResponse, transactions?: UserDataSnapshot["portfolio"]["transactions"]): UserDataSnapshot {
+  return {
+    portfolio: {
+      holdings: data.portfolio.holdings,
+      transactions: transactions ?? data.portfolio.transactions,
+    },
+    watchlist: data.watchlist,
+  };
+}
+
 async function fetchUserData(): Promise<UserDataResponse> {
   const response = await fetch("/api/user/data", { cache: "no-store" });
   if (!response.ok) throw new Error(`Failed to load user data (${response.status})`);
   return (await response.json()) as UserDataResponse;
 }
 
-async function postUserData(snapshot: UserDataSnapshot, extra?: Record<string, unknown>): Promise<UserDataResponse> {
+async function postUserData(body: Record<string, unknown>): Promise<UserDataResponse> {
   const response = await fetch("/api/user/data", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      action: "sync",
-      portfolio: snapshot.portfolio.holdings.map(holdingToItem),
-      watchlist: snapshot.watchlist,
-      ...extra,
-    }),
+    body: JSON.stringify(body),
   });
   if (!response.ok) throw new Error(`Failed to save user data (${response.status})`);
   return (await response.json()) as UserDataResponse;
+}
+
+function syncBody(snapshot: UserDataSnapshot): Record<string, unknown> {
+  return {
+    action: "sync",
+    portfolio: snapshot.portfolio.holdings.map(holdingToItem),
+    watchlist: snapshot.watchlist,
+  };
 }
 
 export function UserDataProvider({ children }: { children: ReactNode }) {
@@ -121,49 +136,52 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
   const guest = useSyncExternalStore(subscribeGuest, readGuestCached, () => SERVER_SNAPSHOT);
   const [remote, setRemote] = useState<UserDataSnapshot | null>(null);
   const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const remoteRef = useRef<UserDataSnapshot>(EMPTY_USER_DATA);
   const writeChain = useRef(Promise.resolve());
+  const prevStatus = useRef(status);
 
   useEffect(() => {
     if (status !== "authenticated") {
       setRemote(null);
       setReady(status === "unauthenticated");
+      setError(null);
+      prevStatus.current = status;
       return;
     }
 
     let cancelled = false;
+    setReady(false);
+    setError(null);
 
     void (async () => {
-      try {
-        const data = await fetchUserData();
+      const data = await fetchUserData();
+      if (cancelled) return;
+
+      const guestPayload = readGuestSnapshotForMigration();
+      const shouldMigrate = Boolean(guestPayload) && (!data.initialized || prevStatus.current === "unauthenticated");
+
+      if (shouldMigrate && guestPayload && !data.initialized) {
+        const saved = await postUserData(syncBody(guestPayload));
         if (cancelled) return;
-
-        if (!data.initialized) {
-          const local = readGuestCached();
-          const payload = hasGuestStorage()
-            ? local
-            : { portfolio: local.portfolio, watchlist: local.watchlist };
-          await postUserData(payload);
-          clearGuestStorage();
-          guestCache = { portfolio: EMPTY_PORTFOLIO, watchlist: DEFAULT_WATCHLIST };
-          if (cancelled) return;
-          remoteRef.current = payload;
-          setRemote(payload);
-          setReady(true);
-          return;
-        }
-
-        const snapshot: UserDataSnapshot = {
-          portfolio: data.portfolio,
-          watchlist: data.watchlist,
-        };
-        remoteRef.current = snapshot;
-        setRemote(snapshot);
-        setReady(true);
-      } catch {
-        if (!cancelled) setReady(true);
+        const next = snapshotFromResponse(saved, guestPayload.portfolio.transactions);
+        remoteRef.current = next;
+        setRemote(next);
+      } else {
+        const next = snapshotFromResponse(data);
+        remoteRef.current = next;
+        setRemote(next);
       }
-    })();
+
+      clearGuestStorage();
+      guestCache = null;
+      setReady(true);
+      prevStatus.current = "authenticated";
+    })().catch((cause: unknown) => {
+      if (cancelled) return;
+      setError(cause instanceof Error ? cause.message : "Failed to load account data");
+      setReady(false);
+    });
 
     return () => {
       cancelled = true;
@@ -174,35 +192,33 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
     status === "authenticated" ? (remote ?? EMPTY_USER_DATA) : status === "unauthenticated" ? guest : SERVER_SNAPSHOT;
 
   const persist = useCallback(
-    (next: UserDataSnapshot) => {
-      if (status === "authenticated") {
-        remoteRef.current = next;
-        setRemote(next);
-        writeChain.current = writeChain.current
-          .catch(() => undefined)
-          .then(async () => {
-            const saved = await postUserData(remoteRef.current);
-            const next: UserDataSnapshot = {
-              portfolio: {
-                holdings: saved.portfolio.holdings,
-                transactions: remoteRef.current.portfolio.transactions,
-              },
-              watchlist: saved.watchlist,
-            };
-            remoteRef.current = next;
-            setRemote(next);
-          });
+    (next: UserDataSnapshot, body?: Record<string, unknown>) => {
+      if (status !== "authenticated") {
+        writeGuest(next);
         return;
       }
-      writeGuest(next);
+
+      remoteRef.current = next;
+      setRemote(next);
+      writeChain.current = writeChain.current
+        .catch(() => undefined)
+        .then(async () => {
+          const saved = await postUserData(body ?? syncBody(remoteRef.current));
+          const reconciled = snapshotFromResponse(saved, remoteRef.current.portfolio.transactions);
+          remoteRef.current = reconciled;
+          setRemote(reconciled);
+        })
+        .catch((cause: unknown) => {
+          setError(cause instanceof Error ? cause.message : "Failed to save account data");
+        });
     },
     [status],
   );
 
   const upsert = useCallback<UserDataContextValue["upsert"]>(
     (input) => {
-      const { next, error } = upsertHolding(snapshot, input);
-      if (error) return error;
+      const { next, error: upsertError } = upsertHolding(snapshot, input);
+      if (upsertError) return upsertError;
       persist(next);
       return null;
     },
@@ -211,22 +227,29 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
 
   const update = useCallback<UserDataContextValue["update"]>(
     (id, patch) => {
-      persist(updateHolding(snapshot, id, patch));
+      const next = updateHolding(snapshot, id, patch);
+      const item = next.portfolio.holdings.find((row) => row.id === id);
+      persist(
+        next,
+        item
+          ? { action: "edit", target: "portfolio", id, item: holdingToItem(item) }
+          : { action: "delete", target: "portfolio", id },
+      );
     },
     [persist, snapshot],
   );
 
   const remove = useCallback(
     (id: string) => {
-      persist(removeHolding(snapshot, id));
+      persist(removeHolding(snapshot, id), { action: "delete", target: "portfolio", id });
     },
     [persist, snapshot],
   );
 
   const sell = useCallback<UserDataContextValue["sell"]>(
     (input) => {
-      const { next, error } = sellHolding(snapshot, input);
-      if (error) return error;
+      const { next, error: sellError } = sellHolding(snapshot, input);
+      if (sellError) return sellError;
       persist(next);
       return null;
     },
@@ -235,21 +258,34 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
 
   const add = useCallback(
     (symbol: string) => {
-      persist(addWatchlistSymbol(snapshot, symbol));
+      persist(addWatchlistSymbol(snapshot, symbol), {
+        action: "add",
+        target: "watchlist",
+        ticker: symbol,
+      });
     },
     [persist, snapshot],
   );
 
   const removeSymbol = useCallback(
     (symbol: string) => {
-      persist(removeWatchlistSymbol(snapshot, symbol));
+      persist(removeWatchlistSymbol(snapshot, symbol), {
+        action: "delete",
+        target: "watchlist",
+        ticker: symbol,
+      });
     },
     [persist, snapshot],
   );
 
   const toggle = useCallback(
     (symbol: string) => {
-      persist(toggleWatchlistSymbol(snapshot, symbol));
+      const next = toggleWatchlistSymbol(snapshot, symbol);
+      persist(next, {
+        action: snapshot.watchlist.includes(symbol) ? "delete" : "add",
+        target: "watchlist",
+        ticker: symbol,
+      });
     },
     [persist, snapshot],
   );
@@ -267,6 +303,7 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
 
   const membership = useMemo(() => new Set(snapshot.watchlist), [snapshot.watchlist]);
   const saved = useCallback((symbol: string) => membership.has(symbol), [membership]);
+  const loading = status === "loading" || (status === "authenticated" && !ready);
 
   const value = useMemo<UserDataContextValue>(
     () => ({
@@ -274,6 +311,8 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       watchlist: snapshot.watchlist,
       status,
       ready,
+      loading,
+      error,
       upsert,
       update,
       remove,
@@ -285,7 +324,23 @@ export function UserDataProvider({ children }: { children: ReactNode }) {
       reorder,
       reset,
     }),
-    [add, ready, remove, removeSymbol, reorder, reset, saved, sell, snapshot, status, toggle, update, upsert],
+    [
+      add,
+      error,
+      loading,
+      ready,
+      remove,
+      removeSymbol,
+      reorder,
+      reset,
+      saved,
+      sell,
+      snapshot,
+      status,
+      toggle,
+      update,
+      upsert,
+    ],
   );
 
   return <UserDataContext.Provider value={value}>{children}</UserDataContext.Provider>;

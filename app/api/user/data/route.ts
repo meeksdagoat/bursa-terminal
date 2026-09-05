@@ -56,8 +56,13 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const data = await getUserData(user);
-  return NextResponse.json(data);
+  try {
+    const data = await getUserData(user);
+    return NextResponse.json(data);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Failed to load user data";
+    return NextResponse.json({ error: message }, { status: 500 });
+  }
 }
 
 export async function POST(request: Request) {
@@ -160,5 +165,33 @@ export async function POST(request: Request) {
     const message = error instanceof Error ? error.message : "Save failed";
     const status = message.includes("not found") ? 404 : 500;
     return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function PUT(request: Request) {
+  return POST(request);
+}
+
+export async function DELETE(request: Request) {
+  const user = sessionUser(await auth());
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const url = new URL(request.url);
+  const target = url.searchParams.get("target") ?? url.searchParams.get("type") ?? "portfolio";
+  const idOrTicker = url.searchParams.get("id") ?? url.searchParams.get("ticker");
+  if (!idOrTicker) {
+    return NextResponse.json({ error: "Missing id or ticker" }, { status: 400 });
+  }
+
+  try {
+    if (target === "watchlist") {
+      return NextResponse.json(await deleteWatchlistItem(user, idOrTicker));
+    }
+    return NextResponse.json(await deletePortfolioItem(user, idOrTicker));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Delete failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

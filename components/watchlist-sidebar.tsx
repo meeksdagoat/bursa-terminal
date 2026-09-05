@@ -8,6 +8,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import { SignedPct } from "@/components/signed-change";
+import { Pulse } from "@/components/skeleton";
 import { formatPrice } from "@/lib/format";
 import { sectorPerformance } from "@/lib/sectors";
 import type { SectorPerformance, WatchlistRow } from "@/lib/types";
@@ -25,6 +26,7 @@ type WatchlistSidebarProps = {
   onBrowse: () => void;
   onClose?: () => void;
   ticks?: Record<string, TickPulse>;
+  loading?: boolean;
 };
 
 type DragFloat = {
@@ -44,6 +46,7 @@ function WatchlistSidebarInner({
   onBrowse,
   onClose,
   ticks = {},
+  loading = false,
 }: WatchlistSidebarProps) {
   const shariahOnly = useShariahOnly();
   const [draggingSymbol, setDraggingSymbol] = useState<string | null>(null);
@@ -217,7 +220,17 @@ function WatchlistSidebarInner({
       ) : null}
 
       <ul className="custom-scrollbar min-h-0 flex-1 divide-y divide-line overflow-y-auto overscroll-contain touch-pan-y">
-        {visibleRows.map((row) => {
+        {loading
+          ? Array.from({ length: 8 }, (_, index) => (
+              <li key={index} className="flex items-center gap-3 px-2.5 py-2.5" aria-hidden>
+                <div className="min-w-0 flex-1">
+                  <Pulse className="h-3 w-[70%]" />
+                  <Pulse className="mt-1.5 h-2.5 w-[40%]" />
+                </div>
+                <Pulse className="h-3 w-12" />
+              </li>
+            ))
+          : visibleRows.map((row) => {
           const active = row.symbol === selectedSymbol;
           return (
             <WatchlistRowItem
@@ -234,7 +247,7 @@ function WatchlistSidebarInner({
           );
         })}
 
-        {visibleRows.length === 0 ? (
+        {!loading && visibleRows.length === 0 ? (
           <li className="px-2.5 py-3">
             <p className="font-mono text-[10px] leading-relaxed text-neutral-600">
               {rows.length > 0 ? "NO SHARIAH-COMPLIANT NAMES SAVED" : "WATCHLIST EMPTY"}
