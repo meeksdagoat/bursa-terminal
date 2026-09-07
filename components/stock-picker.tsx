@@ -80,7 +80,7 @@ export function StockPicker({
             value={query}
             onChange={(event) => setQuery(event.target.value)}
             placeholder="Search name, code or sector — maybank / 1155 / banking"
-            className="h-11 w-full rounded-sm border border-line bg-[#0a0a0a] px-2.5 font-mono text-base text-neutral-200 outline-none placeholder:text-neutral-600 focus:border-gain/50 md:h-8 md:text-[11px]"
+            className="min-h-[44px] h-11 w-full rounded-sm border border-line bg-[#0a0a0a] px-2.5 font-mono text-base text-neutral-200 outline-none placeholder:text-neutral-600 focus:border-gain/50 md:h-8 md:min-h-0 md:text-sm"
           />
         </div>
 

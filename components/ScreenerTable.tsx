@@ -59,7 +59,7 @@ export function ScreenerTable({
               value={query}
               onChange={(event) => onQuery(event.target.value)}
               placeholder="Search name or code — Maybank / 1155"
-              className="min-h-11 w-full border border-line bg-[#0e0e0e] px-2 font-mono text-[12px] text-neutral-100 placeholder:text-neutral-600 md:min-h-9"
+              className="min-h-[44px] w-full border border-line bg-[#0e0e0e] px-2 font-mono text-base text-neutral-100 placeholder:text-neutral-600 md:min-h-9 md:text-sm"
             />
           </label>
           <ExportCsvButton

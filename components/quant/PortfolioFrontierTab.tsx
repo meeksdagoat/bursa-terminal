@@ -630,7 +630,7 @@ function FrontierAssetAddCombobox({
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          className="w-full rounded-md border border-neutral-800 bg-[#121212] px-3 py-2 font-mono text-xs text-white placeholder-neutral-500 focus:border-emerald-500 focus:outline-none disabled:opacity-50"
+          className="min-h-[44px] w-full rounded-md border border-neutral-800 bg-[#121212] px-3 py-2 font-mono text-base text-white placeholder-neutral-500 focus:border-emerald-500 focus:outline-none disabled:opacity-50 md:min-h-0 md:text-sm"
         />
 
         {open && !disabled ? (

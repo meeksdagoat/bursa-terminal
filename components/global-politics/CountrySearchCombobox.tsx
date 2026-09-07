@@ -130,7 +130,7 @@ export function CountrySearchCombobox({
       <label className="sr-only" htmlFor={`${listId}-input`}>
         Search country
       </label>
-      <div className="flex items-center gap-2 rounded-md border border-neutral-800 bg-[#121212]/90 px-3 py-1.5 shadow-2xl backdrop-blur-md transition-all focus-within:border-amber-500/80">
+      <div className="flex min-h-[44px] items-center gap-2 rounded-md border border-neutral-800 bg-[#121212]/90 px-3 py-1.5 shadow-2xl backdrop-blur-md transition-all focus-within:border-amber-500/80 md:min-h-0">
         <svg
           aria-hidden
           viewBox="0 0 20 20"
@@ -163,7 +163,7 @@ export function CountrySearchCombobox({
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          className="min-w-0 flex-1 bg-transparent font-mono text-[11px] text-zinc-200 outline-none placeholder:text-neutral-600"
+          className="min-w-0 flex-1 bg-transparent font-mono text-base text-zinc-200 outline-none placeholder:text-neutral-600 md:text-sm"
         />
 
         {query.length > 0 ? (

@@ -188,7 +188,7 @@ export function QuantAssetSelector({
               setOpen(true);
             }}
             onKeyDown={onKeyDown}
-            className="w-full rounded-md border border-neutral-800 bg-[#121212] py-2 pl-9 pr-9 font-mono text-xs text-white placeholder-neutral-500 focus:border-emerald-500 focus:outline-none"
+            className="min-h-[44px] w-full rounded-md border border-neutral-800 bg-[#121212] py-2 pl-9 pr-9 font-mono text-base text-white placeholder-neutral-500 focus:border-emerald-500 focus:outline-none md:min-h-0 md:text-sm"
           />
           {query ? (
             <button

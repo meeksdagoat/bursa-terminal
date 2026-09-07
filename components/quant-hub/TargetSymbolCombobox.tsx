@@ -170,7 +170,7 @@ export function TargetSymbolCombobox({
           }}
           onFocus={() => setOpen(true)}
           onKeyDown={onKeyDown}
-          className={`w-full rounded border border-neutral-800 bg-[#0d0d0d] pl-8 pr-2.5 font-mono text-[11px] text-zinc-200 outline-none placeholder:text-neutral-600 focus:border-amber-400/40 ${
+          className={`min-h-[44px] w-full rounded border border-neutral-800 bg-[#0d0d0d] pl-8 pr-2.5 font-mono text-base text-zinc-200 outline-none placeholder:text-neutral-600 focus:border-amber-400/40 md:min-h-0 md:text-sm ${
             compact ? "py-1.5" : "py-2"
           }`}
         />

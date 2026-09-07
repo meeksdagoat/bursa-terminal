@@ -79,7 +79,7 @@ export function MarketHubView() {
                 value={filter}
                 onChange={(event) => setFilter(event.target.value)}
                 placeholder="Filter sectors, REITs, warrants…"
-                className="min-h-11 w-full border border-neutral-800 bg-[#0a0a0a] px-2 font-mono text-[12px] text-neutral-100 placeholder:text-neutral-600 md:min-h-9"
+                className="min-h-[44px] w-full border border-neutral-800 bg-[#0a0a0a] px-2 font-mono text-base text-neutral-100 placeholder:text-neutral-600 md:min-h-9 md:text-sm"
               />
             </label>
           </div>

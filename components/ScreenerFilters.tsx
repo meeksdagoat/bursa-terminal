@@ -213,7 +213,7 @@ function NumberField({
           if (!Number.isFinite(next)) return;
           onChange(Math.min(max, Math.max(min, next)));
         }}
-        className="min-h-11 border border-line bg-[#0e0e0e] px-2 font-mono text-[12px] text-neutral-100 md:min-h-9"
+        className="min-h-[44px] border border-line bg-[#0e0e0e] px-2 font-mono text-base text-neutral-100 md:min-h-9 md:text-sm"
       />
     </label>
   );
