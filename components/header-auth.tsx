@@ -76,7 +76,7 @@ export function HeaderAuth({ size = "compact" }: { size?: "compact" | "header" }
         className={
           headerSize
             ? "inline-flex h-9 w-full items-center justify-center rounded-md border border-zinc-700 bg-zinc-900 px-3.5 font-mono text-[12px] font-semibold text-zinc-200 transition-all hover:border-zinc-500 hover:bg-zinc-800"
-            : "rounded border border-zinc-700 bg-zinc-900 px-3 py-1.5 font-mono text-xs font-semibold text-zinc-200 transition-all hover:border-zinc-500 hover:bg-zinc-800"
+            : "inline-flex h-7 items-center rounded border border-zinc-700 bg-zinc-900 px-1.5 font-mono text-[10px] font-semibold leading-none whitespace-nowrap text-zinc-200 transition-all hover:border-zinc-500 hover:bg-zinc-800 md:h-auto md:px-3 md:py-1.5 md:text-xs"
         }
       >
         SIGN IN

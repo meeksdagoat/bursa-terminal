@@ -14,6 +14,7 @@ import { sectorPerformance } from "@/lib/sectors";
 import type { SectorPerformance, WatchlistRow } from "@/lib/types";
 import type { TickPulse } from "@/lib/use-market-data";
 import { usePriceFlash } from "@/lib/use-price-flash";
+import { ShariahToggle } from "@/components/shariah-toggle";
 import { useShariahOnly } from "@/lib/use-shariah";
 
 type WatchlistSidebarProps = {
@@ -191,7 +192,8 @@ function WatchlistSidebarInner({
         >
           Watchlist
         </h2>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 md:gap-3">
+          <ShariahToggle compact className="flex md:hidden" />
           <button
             type="button"
             onClick={onBrowse}

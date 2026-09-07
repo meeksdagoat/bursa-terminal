@@ -8,7 +8,7 @@ import { Jargon } from "@/components/jargon-term";
 import { NAV_ITEMS, type NavActive } from "@/components/main-nav";
 import { SlideDrawer } from "@/components/slide-drawer";
 import { TickerSearchField } from "@/components/ticker-search";
-import { ToggleSwitch } from "@/components/toggle-switch";
+import { ShariahToggle } from "@/components/shariah-toggle";
 import { SignedPct } from "@/components/signed-change";
 import {
   formatFx,
@@ -22,7 +22,6 @@ import type { BnmPayload, Quote } from "@/lib/types";
 import type { TickPulse } from "@/lib/use-market-data";
 import { usePanXLock } from "@/lib/use-pan-x-lock";
 import { usePriceFlash } from "@/lib/use-price-flash";
-import { useShariahFilter } from "@/lib/use-shariah";
 
 type HeaderBarProps = {
   bnm: BnmPayload | null;
@@ -134,14 +133,14 @@ export function HeaderBar({
             <SearchIcon />
           </button>
 
-          {showShariahToggle ? <ShariahToggle /> : null}
+          {showShariahToggle ? <ShariahToggle className="hidden md:flex" /> : null}
 
           {showDelayedBadge ? (
             <>
               <span className="hidden flex-shrink-0 whitespace-nowrap lg:inline-flex">
                 <ConnectionStatus status={status} latencyMs={latencyMs} />
               </span>
-              <span className="inline-flex flex-shrink-0 whitespace-nowrap lg:hidden">
+              <span className="hidden flex-shrink-0 whitespace-nowrap md:inline-flex lg:hidden">
                 <ConnectionStatus status={status} compact latencyMs={latencyMs} />
               </span>
             </>
@@ -219,35 +218,6 @@ function SearchIcon() {
       <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.4" />
       <path d="M10.5 10.5 14 14" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
     </svg>
-  );
-}
-
-function ShariahToggle() {
-  const { shariahOnly, setShariahOnly } = useShariahFilter();
-
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={shariahOnly}
-      onClick={() => setShariahOnly(!shariahOnly)}
-      title={
-        shariahOnly
-          ? "Showing Shariah-compliant names only"
-          : "Show Shariah-compliant names only — hides conventional banks, insurers, gaming and brewers"
-      }
-      className={`flex min-h-8 flex-shrink-0 items-center gap-1.5 whitespace-nowrap rounded-sm border px-1.5 py-0.5 transition-colors md:min-h-0 md:px-2 ${
-        shariahOnly
-          ? "border-gain/50 bg-gain/10 text-gain"
-          : "border-neutral-800 text-neutral-500 hover:border-neutral-600 hover:text-neutral-300"
-      }`}
-    >
-      <span className="hidden font-mono text-[9px] uppercase tracking-wider lg:inline">
-        Shariah Only
-      </span>
-      <span className="font-mono text-[9px] uppercase tracking-wider lg:hidden">🌙</span>
-      <ToggleSwitch checked={shariahOnly} />
-    </button>
   );
 }
 
