@@ -59,14 +59,16 @@ export function IndicatorCard({
   title,
   measures,
   matters,
+  titleClassName = "text-neutral-100",
 }: {
   title: string;
   measures: string;
   matters: string;
+  titleClassName?: string;
 }) {
   return (
     <article className="rounded-lg border border-neutral-800 bg-[#0d0d0d] p-3">
-      <h3 className="text-[11px] font-semibold text-neutral-100">{title}</h3>
+      <h3 className={`text-[11px] font-semibold ${titleClassName}`}>{title}</h3>
       <p className="mt-2 text-[11px] leading-relaxed text-neutral-400">
         <span className="font-semibold text-neutral-300">What it measures:</span> {measures}
       </p>

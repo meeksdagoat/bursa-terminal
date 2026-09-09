@@ -18,7 +18,7 @@ export const DEFAULT_LOOKBACK_TRADING_DAYS = 504;
 
 export const MONTE_CARLO_WARMUP_CALENDAR_DAYS = 90;
 
-export type MonteCarloDriftMode = "historical" | "cagr_cap" | "risk_free";
+export type MonteCarloDriftMode = "historical" | "cagr_cap";
 
 export const MONTE_CARLO_DRIFT_MODES: readonly {
   id: MonteCarloDriftMode;
@@ -35,14 +35,7 @@ export const MONTE_CARLO_DRIFT_MODES: readonly {
     label: "CAGR Cap",
     description: "Cap drift to long-term index CAGR (~10% S&P).",
   },
-  {
-    id: "risk_free",
-    label: "Risk-Free",
-    description: "Use conservative risk-free drift for GBM projection.",
-  },
 ] as const;
-
-export const DEFAULT_RISK_FREE_RATE_ANNUAL = 0.04;
 
 export const MONTE_CARLO_HORIZON_OPTIONS = [
   { label: "30D", days: 30 },
@@ -223,21 +216,15 @@ export function applyDriftAdjustment(
   muDaily: number,
   mode: MonteCarloDriftMode,
   symbol: string,
-  riskFreeRateAnnual = DEFAULT_RISK_FREE_RATE_ANNUAL,
 ): number {
-  const muAnnual = annualizeMu(muDaily);
-
   if (mode === "historical") {
     return muDaily;
   }
 
-  if (mode === "cagr_cap") {
-    const cap = indexLongTermCagrCap(symbol);
-    const cappedAnnual = cap == null ? muAnnual : Math.min(muAnnual, cap);
-    return cappedAnnual / TRADING_DAYS_PER_YEAR;
-  }
-
-  return riskFreeRateAnnual / TRADING_DAYS_PER_YEAR;
+  const muAnnual = annualizeMu(muDaily);
+  const cap = indexLongTermCagrCap(symbol);
+  const cappedAnnual = cap == null ? muAnnual : Math.min(muAnnual, cap);
+  return cappedAnnual / TRADING_DAYS_PER_YEAR;
 }
 
 /** Estimate daily GBM μ and σ from an ascending close-price series. */
@@ -268,7 +255,6 @@ export function estimateGbmParametersForSymbol(
   symbol: string,
   closes: number[],
   driftMode: MonteCarloDriftMode = "historical",
-  riskFreeRateAnnual = DEFAULT_RISK_FREE_RATE_ANNUAL,
 ): GbmEstimateResult | null {
   const windowCloses = selectEstimationCloses(symbol, closes);
   const isIndex = isMonteCarloIndexSymbol(symbol);
@@ -276,12 +262,7 @@ export function estimateGbmParametersForSymbol(
   const base = estimateGbmParameters(windowCloses, { minReturns });
   if (!base) return null;
 
-  const muDailyAdjusted = applyDriftAdjustment(
-    base.muDaily,
-    driftMode,
-    symbol,
-    riskFreeRateAnnual,
-  );
+  const muDailyAdjusted = applyDriftAdjustment(base.muDaily, driftMode, symbol);
 
   return {
     ...base,

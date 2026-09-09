@@ -16,8 +16,8 @@ export const REGIME_ADVANCED: AdvancedFormulaSection[] = [
       },
     ],
     interpretation: [
-      "Large diagonal entries (p₁₁, p₂₂, p₃₃) mean regimes persist — bull stays bull.",
-      "Off-diagonal mass is how often the climate switches. High p₁₃ is a bull-to-bear crash jump.",
+      "Large diagonal entries (p₁₁, p₂₂, p₃₃) mean regimes persist — Bull stays Bull.",
+      "Off-diagonal mass is how often the climate switches. High p₁₃ is a Bull-to-Volatile jump.",
     ],
   },
   {
@@ -31,9 +31,9 @@ export const REGIME_ADVANCED: AdvancedFormulaSection[] = [
       { symbol: "μₖ, σₖ", definition: "Mean and volatility of returns while the chain is in state k." },
     ],
     interpretation: [
-      "State 1 — Bullish trend: μ₁ > 0, σ₁ low.",
-      "State 2 — Sideways noise: μ₂ ≈ 0, σ₂ low.",
-      "State 3 — Volatile bear: μ₃ < 0, σ₃ high.",
+      "State 1 — Bull Regime: μ > 0, σ low (contained volatility).",
+      "State 2 — Bear Regime: μ < 0, σ low (contained volatility).",
+      "State 3 — Volatile Regime: σ_30d ≥ 1.35 × σ_90d baseline (or σ_ann ≥ 28%).",
     ],
     note: "The classifier infers which Gaussian is most likely generating today’s tape, then colours the chart. It does not pick your ticker — it tells you which playbook is less likely to be fighting the weather.",
   },
@@ -49,24 +49,28 @@ export function LearnRegimeContent() {
         <p className="text-[12px] leading-relaxed text-neutral-300">
           A Hidden Markov Model treats the true market state as unobservable (“hidden”) and infers
           it from what you can see: rolling return drift and volatility clustering. This tab uses a
-          30-day drift window plus 30-day vs 90-day realised vol, then smooths short flickers so
-          regimes persist like HMM states rather than flipping every session.
+          30-day drift window plus 30-day vs 90-day realised vol. Short 1–2 day noise flickers are
+          absorbed by HMM-style probability persistence so regime colours stay smooth rather than
+          flipping every single session.
         </p>
         <div className="flex flex-col gap-2.5">
           <IndicatorCard
-            title="State 1 — Bullish Trend"
-            measures="Positive drift, contained volatility (μ₁ > 0, σ₁ low)."
-            matters="Trend-following, breakouts, and adding to winners are statistically more at home here."
+            title="State 1 — Bull Regime (Green Shading)"
+            titleClassName="text-emerald-400"
+            measures="Low/contained volatility (σ_ann < 28%) paired with positive 30-day return drift (μ > 0)."
+            matters="Strong, steady price momentum. Ideal conditions for trend-following strategies, breakouts, and holding long positions."
           />
           <IndicatorCard
-            title="State 2 — Sideways Noise"
-            measures="Near-zero drift, low volatility (μ₂ ≈ 0, σ₂ low)."
-            matters="Fade-the-extremes and pairs mean-reversion often beat chasing breakouts. Easy to over-trade."
+            title="State 2 — Bear Regime (Red Shading)"
+            titleClassName="text-rose-400"
+            measures="Low/contained volatility (σ_ann < 28%) paired with negative 30-day return drift (μ < 0)."
+            matters="Persistent downtrend or price decay. Warns quants to close long positions, activate stop-losses, or pause dip-buying strategies."
           />
           <IndicatorCard
-            title="State 3 — Volatile Bear"
-            measures="Negative drift, expanded ranges (μ₃ < 0, σ₃ high)."
-            matters="Capital preservation, smaller size, and waiting for vol to cluster back down usually beat heroics."
+            title="State 3 — Volatile Regime (Yellow Shading)"
+            titleClassName="text-amber-400"
+            measures="Realized 30-day volatility expands above 1.35× the 90-day baseline (or σ_ann ≥ 28%), regardless of drift direction."
+            matters="High market anxiety and unpredictable price swings. Overrides standard trend signals to advise position downsizing and capital preservation."
           />
         </div>
       </section>
@@ -78,9 +82,11 @@ export function LearnRegimeContent() {
         <p className="text-[12px] leading-relaxed text-neutral-400">
           The shaded price chart maps those climates onto three colours:{" "}
           <span className="text-emerald-400">green Bull</span> when 30-day drift is positive and vol
-          is contained, <span className="text-rose-400">rose Bear</span> when drift is negative, and{" "}
-          <span className="text-amber-400">amber Volatile</span> when 30-day vol clusters above the
-          90-day baseline. Hover a date to see drift and σ together.
+          is contained, <span className="text-rose-400">red Bear</span> when drift is negative and
+          vol is still contained, and{" "}
+          <span className="text-amber-400">yellow Volatile</span> when 30-day vol clusters above
+          1.35× the 90-day baseline or annualised σ reaches 28%. Hover a date to see drift and σ
+          together.
         </p>
       </section>
 
@@ -89,9 +95,10 @@ export function LearnRegimeContent() {
           Strategic Utility
         </p>
         <p className="mt-1.5 text-[11px] leading-relaxed text-neutral-300">
-          Use Bull shades as a green light for trend-following and DCA add-ons. Treat amber Volatile
-          as a cue to cut leverage, widen stops, or stand aside. Bear / high-vol regimes favour
-          raising cash or tightly defined mean-reversion — not a one-strategy-fits-all tape.
+          Use green Bull shades as a green light for trend-following and holding longs. Treat red
+          Bear as a cue to close longs, tighten stops, or pause dip-buying. Yellow Volatile
+          overrides those trend signals — downsize, preserve capital, and wait for vol to cluster
+          back down.
         </p>
       </aside>
     </>

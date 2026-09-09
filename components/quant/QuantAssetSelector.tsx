@@ -278,8 +278,6 @@ function AssetMeta({ asset }: { asset: QuantAsset }) {
   return (
     <p className="text-[10px] text-neutral-600">
       {asset.label} · {asset.sector} · {asset.currency}
-      {" · "}
-      vs {asset.benchmarkLabel}
     </p>
   );
 }

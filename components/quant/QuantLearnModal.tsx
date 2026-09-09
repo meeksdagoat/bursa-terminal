@@ -43,7 +43,7 @@ const LEARN_META: Record<
   regime: {
     title: "Learn HMM Market Regime Classification",
     subtitle:
-      "Markets hide their “weather”. This tab infers bull, chop, or stress so you can switch playbooks instead of forcing one strategy through every climate.",
+      "Markets hide their “weather”. This tab infers Bull, Bear, or Volatile so you can switch playbooks instead of forcing one strategy through every climate.",
     advanced: REGIME_ADVANCED,
     content: LearnRegimeContent,
   },
