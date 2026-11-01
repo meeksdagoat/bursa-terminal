@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Bursa Terminal
 
-## Getting Started
+**A financial analytics platform focused on Bursa Malaysia.**
 
-First, run the development server:
+Bursa Terminal is a web-based platform designed to make stock market research and financial analysis more accessible to Malaysians, particularly those who are new to investing.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Inspired by Bloomberg Terminal, the project brings together company information, market data, financial analysis tools, and economic news in a simpler, freely accessible interface.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Live website:** https://www.bursaterminal.com/
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Market Research
+- Stock prices and historical price charts
+- Company financial statements and performance metrics
+- Technical analysis tools
+- Company-specific news
+- Local and global economic and political news
 
-## Learn More
+### Quant Hub
+Quant Hub provides interactive tools for exploring financial mathematics and quantitative analysis.
 
-To learn more about Next.js, take a look at the following resources:
+Its features include:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Monte Carlo Simulation:** Explore potential market outcomes using historical returns and stochastic modelling.
+- **Strategy Backtesting:** Examine how trading strategies would have performed using historical data.
+- **Efficient Frontier:** Explore portfolio risk and return using concepts from Modern Portfolio Theory.
+- **Value at Risk (VaR):** Estimate potential portfolio losses under specified assumptions.
+- **Warrant Pricing:** Explore theoretical pricing using the Black–Scholes model.
+- **Statistical Arbitrage:** Analyse relationships between pairs of securities.
+- **Market Regime Analysis:** Explore market conditions using statistical models.
+- **Factor and Alternative Data Analysis:** Investigate additional signals that may influence financial markets.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Motivation
 
-## Deploy on Vercel
+I created Bursa Terminal because I believe access to financial knowledge should not depend on someone's wealth.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+I wanted to build a platform that could help Malaysians explore financial markets while making mathematical and quantitative concepts more approachable.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Development
+
+I researched the financial and mathematical concepts, planned the features, and directed the development of Bursa Terminal.
+
+I used Cursor to generate and implement code based on my specifications. For example, I specified the historical mean returns and standard deviation used by the Monte Carlo simulator, while Cursor generated the implementation.
+
+I independently handled deployment through Vercel.
+
+## Technology and Data Sources
+
+- **Framework:** Next.js
+- **Language:** TypeScript
+- **Styling:** Tailwind CSS
+- **Deployment:** Vercel
+- **Financial data:** Yahoo Finance, Bursa Malaysia, and KLSE Screener APIs
+- **News:** External financial and news websites
+
+## Limitations
+
+Bursa Terminal is an educational and exploratory project, not a professional trading or investment advisory system.
+
+The Monte Carlo simulator uses historical return statistics and does not fully account for changing market regimes, volatility dynamics, or other complex market factors.
+
+Quantitative results depend on model assumptions and historical data, and should not be interpreted as reliable predictions of future market performance.
+
+## Future Improvements
+
+I hope to continue developing Bursa Terminal by improving the accuracy and reliability of its quantitative models, expanding its analytical capabilities, and making financial concepts easier for everyday users to understand.
+
+---
+
+*Bursa Terminal is intended for educational and informational purposes, not financial advice.*
